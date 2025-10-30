@@ -91,8 +91,8 @@ export default function VoterForm({ voterId = null }) {
     try {
       const payload = {
         name: values.name,
-        voterId: values.voterId || undefined,
-        phoneNumber: values.phoneNumber || undefined,
+        voterId: values.voterId,
+        phoneNumber: values.phoneNumber,
         profilePicture: values.profilePicture || undefined,
         electionIds: values.electionIds.map((id) => parseInt(id)),
       };
@@ -233,7 +233,7 @@ export default function VoterForm({ voterId = null }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base font-medium">
-                          Voter ID
+                          Voter ID *
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -243,7 +243,7 @@ export default function VoterForm({ voterId = null }) {
                           />
                         </FormControl>
                         <FormDescription>
-                          Unique identifier for the voter (optional).
+                          Enter the unique identifier for the voter.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -257,7 +257,7 @@ export default function VoterForm({ voterId = null }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base font-medium">
-                          Phone Number
+                          Phone Number *
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -267,8 +267,8 @@ export default function VoterForm({ voterId = null }) {
                           />
                         </FormControl>
                         <FormDescription>
-                          Voter's phone number in international format
-                          (optional).
+                          Enter the voter's phone number in international
+                          format.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

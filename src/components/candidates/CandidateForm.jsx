@@ -76,8 +76,8 @@ export default function CandidateForm({ candidateId = null }) {
     resolver: zodResolver(candidatesFormSchema),
     defaultValues: {
       name: "",
-      party: "",
-      partySymbol: "",
+      // party: "",
+      // partySymbol: "",
       electionId: "",
       portfolioId: "",
       profilePicture: null,
@@ -89,8 +89,8 @@ export default function CandidateForm({ candidateId = null }) {
     if (candidateData && isEditMode) {
       const updatedValues = {
         name: candidateData.name || "",
-        party: candidateData.party || "",
-        partySymbol: candidateData.partySymbol || "",
+        // party: candidateData.party || "",
+        // partySymbol: candidateData.partySymbol || "",
         electionId: String(candidateData.electionId) || "",
         portfolioId: String(candidateData.portfolioId) || "",
         profilePicture: null,
@@ -106,9 +106,9 @@ export default function CandidateForm({ candidateId = null }) {
     try {
       const formData = new FormData();
       formData.append("name", values.name);
-      if (values.party) formData.append("party", values.party);
-      if (values.partySymbol)
-        formData.append("partySymbol", values.partySymbol);
+      // if (values.party) formData.append("party", values.party);
+      // if (values.partySymbol)
+      //   formData.append("partySymbol", values.partySymbol);
       formData.append("electionId", values.electionId);
       formData.append("portfolioId", values.portfolioId);
       if (values.profilePicture instanceof File) {
@@ -251,7 +251,7 @@ export default function CandidateForm({ candidateId = null }) {
                       </FormItem>
                     )}
                   />
-                  <FormField
+                  {/* <FormField
                     control={form.control}
                     name="party"
                     render={({ field }) => (
@@ -272,8 +272,8 @@ export default function CandidateForm({ candidateId = null }) {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
-                  <FormField
+                  /> */}
+                  {/* <FormField
                     control={form.control}
                     name="partySymbol"
                     render={({ field }) => (
@@ -294,7 +294,7 @@ export default function CandidateForm({ candidateId = null }) {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  /> */}
                   <FormField
                     control={form.control}
                     name="profilePicture"

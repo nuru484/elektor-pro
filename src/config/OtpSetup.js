@@ -5,10 +5,6 @@ const apiKey = ENV.FROG_API_KEY;
 const username = ENV.FROG_USERNAME;
 const senderId = ENV.FROG_SENDER_ID;
 
-console.log("API Key:", apiKey);
-console.log("Username:", username);
-console.log("Sender ID:", senderId);
-
 const otpData = {
   expiry: 1,
   length: 6,

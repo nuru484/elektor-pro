@@ -8,8 +8,7 @@
     "build": "prisma generate && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
-    "migrate": "npx prisma migrate dev --name init",
-    "migrate-prod": "npx prisma migrate deploy"
+    "migrate": "npx prisma migrate dev --name init"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
