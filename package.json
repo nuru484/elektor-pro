@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "build": "prisma generate && next build",
+    "build": "npx prisma generate && npx prisma migrate deploy && next build",
+    "build:dev": "next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "migrate": "npx prisma migrate dev --name init"
