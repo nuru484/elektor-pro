@@ -59,6 +59,7 @@ app.prepare().then(() => {
     });
   };
 
+  // Custom server
   server.listen(port, (err) => {
     if (err) throw err;
     console.log(
