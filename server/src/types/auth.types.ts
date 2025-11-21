@@ -1,9 +1,8 @@
 // src/types/auth.types.ts
 import { Role } from '@/prisma/index.js';
 
-export interface IUserLoginInput {
-  password: string;
-  email: string;
+export interface IRefreshTokenPayload {
+  id: string;
 }
 
 export interface ITokenPayload {
@@ -11,6 +10,7 @@ export interface ITokenPayload {
   role: Role;
 }
 
-export interface IRefreshTokenPayload {
-  id: string;
+export interface IUserLoginInput {
+  email: string;
+  password: string;
 }

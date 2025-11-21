@@ -1,17 +1,19 @@
+import type { NextFunction, Request, Response } from 'express';
+
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 // app.ts
 import express from 'express';
 import morgan from 'morgan';
-import cookieParser from 'cookie-parser';
-import cors from 'cors';
-import routes from './src/routes/index.js';
+
 import ENV from './src/config/env.js';
-import { apiLimiter } from './src/middlewares/rateLimit.js';
 import {
   errorHandler,
   UnauthorizedError,
 } from './src/middlewares/error-handler.js';
-import type { Request, Response, NextFunction } from 'express';
 import { NotFoundError } from './src/middlewares/error-handler.js';
+import { apiLimiter } from './src/middlewares/rateLimit.js';
+import routes from './src/routes/index.js';
 
 const app = express();
 
@@ -19,29 +21,27 @@ const allowedOrigins = new Set(
   ENV.CORS_ACCESS ? ENV.CORS_ACCESS.split(',') : [],
 );
 
-interface CorsCallback {
-  (err: Error | null, allow: boolean): void;
-}
+type CorsCallback = (err: Error | null, allow: boolean) => void;
 
 const corsOptions = {
+  allowedHeaders: ['Content-Type', 'Authorization'],
+
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
   origin: function (origin: string | undefined, callback: CorsCallback) {
     if (!origin || allowedOrigins.has(origin)) {
       callback(null, true);
     } else {
       callback(
         new UnauthorizedError('Not allowed by CORS', {
-          layer: 'cors',
           code: 'CORS_NOT_ALLOWED',
           context: { origin },
+          layer: 'cors',
         }),
         false,
       );
     }
   },
-
-  credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
@@ -55,10 +55,10 @@ app.use(
 app.use(apiLimiter);
 app.use('/api/v1', routes);
 
-app.get('/', (req: Request, res: Response, _next: NextFunction) => {
+app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
-    success: true,
     message: 'API is working',
+    success: true,
   });
 });
 

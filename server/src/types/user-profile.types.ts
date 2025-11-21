@@ -1,70 +1,70 @@
 // src/types/user/user-profile.types.ts (additions)
 import { Role, Status } from '@/prisma/index.js';
 
-export interface IUserCreator {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  role: Role;
-}
-
 export interface IUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  status: Status;
-  profilePicture?: string | null;
-  role: Role;
   createdAt: Date;
-  updatedAt: Date;
   creator: IUserCreator | null;
+  email: null | string;
+  firstName: string;
+  id: string;
+  lastName: string;
+  phone: null | string;
+  profilePicture?: null | string;
+  role: Role;
+  status: Status;
+  updatedAt: Date;
 }
 
-export interface IUsersPaginatedResponse {
-  message: string;
-  data: IUser[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
-export interface IUserResponse {
-  success: string;
-  message: string;
-  data: IUser;
+export interface IUserCreator {
+  email: null | string;
+  firstName: string;
+  id: string;
+  lastName: string;
+  phone: null | string;
+  role: Role;
 }
 
 export interface IUserQueryFilters {
-  role?: Role;
-  status?: Status;
-  search?: string;
   emailVerified?: boolean;
   phoneVerified?: boolean;
+  role?: Role;
+  search?: string;
+  status?: Status;
 }
 
 export interface IUserQueryOptions {
-  page?: number;
   limit?: number;
-  sortBy?: 'createdAt' | 'updatedAt' | 'firstName' | 'lastName' | 'email';
+  page?: number;
+  sortBy?: 'createdAt' | 'email' | 'firstName' | 'lastName' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface IUserUpdateInput {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  status?: Status;
-  role?: Role;
+export interface IUserResponse {
+  data: IUser;
+  message: string;
+  success: string;
 }
 
 export interface IUserRoleUpdateInput {
   role: Role;
+}
+
+export interface IUsersPaginatedResponse {
+  data: IUser[];
+  message: string;
+  meta: {
+    limit: number;
+    page: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface IUserUpdateInput {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  role?: Role;
+  status?: Status;
 }

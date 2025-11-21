@@ -15,6 +15,9 @@
     // "types": ["node"],
     // and npm install -D @types/node
 
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
@@ -41,15 +44,11 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
 
-
-     "baseUrl": ".",
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*", "./generated/*"]
     }
   },
-   "include": [
-    "server.ts",
-    "app.ts",
-    "./src/**/*"
-  ], "exclude": ["node_modules", "build", ".env"]
+  "include": ["server.ts", "app.ts", "./src/**/*"],
+  "exclude": ["node_modules", "build", ".env"]
 }
