@@ -1,9 +1,9 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
+    "noEmit": true,
     "rootDir": "./"
   },
   "include": ["**/*.ts"],
-  "exclude": ["dist"]
+  "exclude": ["build", "dist", "node_modules"]
 }
