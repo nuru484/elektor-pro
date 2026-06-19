@@ -3,8 +3,12 @@ import PDFDocument from 'pdfkit';
 
 import { computeResults, type ElectionResults } from './results.service.js';
 
+// Neutralize spreadsheet formula injection: cells starting with a
+// formula-triggering character are prefixed with a single quote.
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
 const csvEscape = (value: number | string): string => {
-  const s = String(value);
+  let s = String(value);
+  if (FORMULA_PREFIX.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
