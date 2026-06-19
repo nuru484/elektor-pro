@@ -54,6 +54,26 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ["Portfolio", "ChangeRequest", "Election"],
       query: (body) => ({ body, method: "POST", url: "/portfolios" }),
     }),
+    createVoter: build.mutation<unknown, Record<string, unknown>>({
+      invalidatesTags: ["Voter", "ChangeRequest", "Dashboard"],
+      query: (body) => ({ body, method: "POST", url: "/voters" }),
+    }),
+    listAuditLogs: build.query<
+      PaginatedResponse<{
+        action: string;
+        actor: null | { firstName: string; lastName: string; role: string };
+        createdAt: string;
+        entity: string;
+        id: string;
+      }>,
+      ListQuery
+    >({
+      providesTags: ["AuditLog"],
+      query: (params) => `/audit-logs${qs(params)}`,
+    }),
+    verifyAudit: build.query<ApiResponse<{ brokenAt?: number; total: number; valid: boolean }>, void>({
+      query: () => "/audit-logs/verify",
+    }),
     getDashboard: build.query<ApiResponse<DashboardData>, void>({
       providesTags: ["Dashboard"],
       query: () => "/dashboard/admin",
@@ -94,12 +114,15 @@ export const {
   useCreateCandidateMutation,
   useCreateElectionMutation,
   useCreatePortfolioMutation,
+  useCreateVoterMutation,
   useGetDashboardQuery,
   useGetElectionQuery,
+  useListAuditLogsQuery,
   useListCandidatesQuery,
   useListChangeRequestsQuery,
   useListElectionsQuery,
   useListVotersQuery,
   useRejectChangeMutation,
   useSetElectionStatusMutation,
+  useVerifyAuditQuery,
 } = adminApi;
