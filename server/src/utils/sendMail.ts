@@ -1,23 +1,24 @@
 import ejs from 'ejs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
 import { createEmailTransporter } from './email-transporter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 interface EmailOptions {
+  data?: Record<string, unknown>;
   email: string;
   subject: string;
   template?: string;
-  data?: { [key: string]: unknown };
   text?: string;
 }
 
 const transporter = createEmailTransporter();
 
 const sendMail = async (options: EmailOptions): Promise<void> => {
-  const { email, subject, template, data, text } = options;
+  const { data, email, subject, template, text } = options;
 
   let html = '';
 
@@ -28,10 +29,10 @@ const sendMail = async (options: EmailOptions): Promise<void> => {
 
   const mailOptions = {
     from: process.env.SMTP_MAIL,
-    to: email,
-    subject,
     html: html || undefined,
+    subject,
     text: text || undefined,
+    to: email,
   };
 
   await transporter.sendMail(mailOptions);

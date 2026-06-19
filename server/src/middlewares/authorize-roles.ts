@@ -1,7 +1,8 @@
 // src/middlewares/authorize-roles.ts
-import type { Request, Response, NextFunction } from 'express';
-import { asyncHandler, ForbiddenError } from './error-handler.js';
+import type { NextFunction, Request, Response } from 'express';
+
 import { Role } from '../../generated/prisma/client.js';
+import { asyncHandler, ForbiddenError } from './error-handler.js';
 
 export const authorizeRole = (allowedRoles: Role[]) =>
   asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -16,7 +17,7 @@ export const authorizeRole = (allowedRoles: Role[]) =>
     }
 
     // Check if user has required role
-    if (!allowedRoles.includes(req.user.role as Role)) {
+    if (!allowedRoles.includes(req.user.role)) {
       throw new ForbiddenError();
     }
 

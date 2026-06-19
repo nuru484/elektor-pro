@@ -6,13 +6,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 const logger = pino({
   level: isProduction ? 'info' : 'debug',
   transport: {
-    target: 'pino-pretty',
     options: {
       colorize: true,
-      translateTime: true,
-      singleLine: false,
       ignore: '',
+      singleLine: false,
+      translateTime: true,
     },
+    target: 'pino-pretty',
   },
 });
 

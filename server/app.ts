@@ -48,11 +48,11 @@ const corsOptions = {
 
 app.set('trust proxy', true);
 app.use(helmet());
-app.use(compression() as express.RequestHandler);
+app.use(compression());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser() as express.RequestHandler);
+app.use(cookieParser());
 app.use(requestContext);
 app.use(
   morgan(':method :url :status :response-time ms - :req[x-request-id]') as express.RequestHandler,

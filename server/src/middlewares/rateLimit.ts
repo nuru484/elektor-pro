@@ -1,15 +1,17 @@
 // src/middlewares/rateLimit.ts
-import type { Request, Response, NextFunction } from 'express';
-import rateLimit, { type RateLimitRequestHandler, ipKeyGenerator } from 'express-rate-limit';
+import type { NextFunction, Request, Response } from 'express';
+
+import rateLimit, { ipKeyGenerator, type RateLimitRequestHandler } from 'express-rate-limit';
+
 import { CustomError, ErrorSeverity } from './error-handler.js';
 
 // Custom rate limit exceeded error
 export class RateLimitExceededError extends CustomError {
   constructor(message = 'Rate limit exceeded') {
     super(429, message, {
+      code: 'RATE_LIMIT_EXCEEDED',
       layer: 'middleware',
       severity: ErrorSeverity.MEDIUM,
-      code: 'RATE_LIMIT_EXCEEDED',
     });
   }
 }
@@ -17,29 +19,25 @@ export class RateLimitExceededError extends CustomError {
 // Create enhanced memory-based rate limiter
 export const createRateLimiter = (
   windowMs: number = 15 * 60 * 1000,
-  maxRequests: number = 100,
-  message: string = 'Too many requests, please try again later.',
+  maxRequests = 100,
+  message = 'Too many requests, please try again later.',
 ): RateLimitRequestHandler => {
   return rateLimit({
-    windowMs,
-    max: maxRequests,
-    message,
-    standardHeaders: true,
-    legacyHeaders: false,
-
-    // Advanced key generation - combine IP with user ID when available
-    keyGenerator: (req: Request): string => {
-      const ipKey = ipKeyGenerator(req.ip ?? ''); // Use ipKeyGenerator for normalized IP
-      const userId = req.user?.id ? `-user-${req.user.id}` : '';
-      return `${ipKey}${userId}`;
-    },
-
     // Custom handler for rate limit exceeded
     handler: (_req: Request, res: Response, next: NextFunction) => {
       const retryAfter = Math.ceil(windowMs / 1000);
       res.set('Retry-After', String(retryAfter));
       next(new RateLimitExceededError(message));
     },
+    // Advanced key generation - combine IP with user ID when available
+    keyGenerator: (req: Request): string => {
+      const ipKey = ipKeyGenerator(req.ip ?? ''); // Use ipKeyGenerator for normalized IP
+      const userId = req.user?.id ? `-user-${req.user.id}` : '';
+      return `${ipKey}${userId}`;
+    },
+    legacyHeaders: false,
+    max: maxRequests,
+    message,
 
     // Skip rate limiting for certain requests
     skip: (req: Request) => {
@@ -50,6 +48,10 @@ export const createRateLimiter = (
       const bypassToken = req.get('X-Rate-Limit-Bypass');
       return bypassToken === process.env.RATE_LIMIT_BYPASS_SECRET;
     },
+
+    standardHeaders: true,
+
+    windowMs,
   });
 };
 

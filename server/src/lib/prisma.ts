@@ -2,8 +2,8 @@
 // Single shared Prisma client for the whole app. Imported everywhere — never `new PrismaClient()`.
 import { PrismaPg } from '@prisma/adapter-pg';
 
-import ENV from '../config/env.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
+import ENV from '../config/env.js';
 
 const adapter = new PrismaPg({ connectionString: ENV.DATABASE_URL });
 
@@ -12,24 +12,24 @@ const adapter = new PrismaPg({ connectionString: ENV.DATABASE_URL });
  * Keys are the camelCase Prisma model accessors.
  */
 const SOFT_DELETE_MODELS = new Set<string>([
-  'user',
-  'election',
-  'portfolio',
+  'agentAssignment',
   'candidate',
-  'voter',
   'college',
   'department',
-  'programme',
+  'election',
   'hall',
-  'agentAssignment',
+  'portfolio',
+  'programme',
+  'user',
+  'voter',
 ]);
 
 const READ_OPERATIONS = new Set<string>([
-  'findMany',
+  'aggregate',
+  'count',
   'findFirst',
   'findFirstOrThrow',
-  'count',
-  'aggregate',
+  'findMany',
   'groupBy',
 ]);
 
@@ -65,14 +65,14 @@ function withSoftDelete(base: PrismaClient) {
           const typedArgs = args as { where?: Record<string, unknown> };
 
           if (operation === 'delete') {
-            return delegates[accessor]!.update({
+            return delegates[accessor].update({
               data: { deletedAt: new Date() },
               where: typedArgs.where,
             });
           }
 
           if (operation === 'deleteMany') {
-            return delegates[accessor]!.updateMany({
+            return delegates[accessor].updateMany({
               data: { deletedAt: new Date() },
               where: typedArgs.where ?? {},
             });

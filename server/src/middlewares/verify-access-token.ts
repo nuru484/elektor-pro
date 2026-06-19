@@ -1,15 +1,16 @@
 // src/middlewares/verify-access-token.ts
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+
 import ENV from '../config/env.js';
-import { verifyJwtToken } from '../utils/verify-jwt-token.js';
 import { CookieManager } from '../utils/CookieManager.js';
 import logger from '../utils/logger.js';
+import { verifyJwtToken } from '../utils/verify-jwt-token.js';
 
 export const verifyAccessToken = async (req: Request, res: Response, next: NextFunction) => {
   const accessToken = CookieManager.getAccessToken(req);
 
   if (!accessToken) {
-    return next();
+    next(); return;
   }
 
   try {

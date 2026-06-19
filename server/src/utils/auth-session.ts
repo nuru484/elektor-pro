@@ -2,7 +2,7 @@
 import type { Request, Response } from 'express';
 
 import { CookieManager } from './CookieManager.js';
-import { signAccessToken, signRefreshToken, type AccessPayload } from './jwt.js';
+import { type AccessPayload, signAccessToken, signRefreshToken } from './jwt.js';
 
 /** Sign access + refresh tokens and set them as http-only cookies. */
 export const issueSession = (res: Response, payload: AccessPayload): void => {

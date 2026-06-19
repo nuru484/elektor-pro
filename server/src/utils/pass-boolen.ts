@@ -1,5 +1,5 @@
 // src/utils/passBooleans.ts
-export const parseBoolean = (value: string | boolean | number | null | undefined): boolean => {
+export const parseBoolean = (value: boolean | null | number | string | undefined): boolean => {
   if (typeof value === 'boolean') {
     return value;
   }

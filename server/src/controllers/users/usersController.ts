@@ -1,28 +1,30 @@
 // src/controllers/users/usersController.ts
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import prisma from '../../config/prismaClient.js';
-import validationMiddleware from '../../middlewares/validation.js';
-import { updateUserValidation } from '../../validations/users/user-validation.js';
-import { cloudinaryService } from '../../config/claudinary.js';
-import {
-  asyncHandler,
-  ValidationError,
-  CustomError,
-} from '../../middlewares/error-handler.js';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+
 import type {
   IUser,
+  IUserRoleUpdateInput,
   IUsersPaginatedResponse,
   IUserUpdateInput,
-  IUserRoleUpdateInput,
 } from '../../types/user-profile.types.js';
-import conditionalCloudinaryUpload from '../../middlewares/conditional-cloudinary-upload.js';
-import multerUpload from '../../config/multer.js';
-import {
-  HTTP_STATUS_CODES,
-  CLOUDINARY_UPLOAD_OPTIONS,
-} from '../../config/constants.js';
+
 import { Role, Status } from '../../../generated/prisma/client.js';
 import { Prisma } from '../../../generated/prisma/client.js';
+import { cloudinaryService } from '../../config/claudinary.js';
+import {
+  CLOUDINARY_UPLOAD_OPTIONS,
+  HTTP_STATUS_CODES,
+} from '../../config/constants.js';
+import multerUpload from '../../config/multer.js';
+import prisma from '../../config/prismaClient.js';
+import conditionalCloudinaryUpload from '../../middlewares/conditional-cloudinary-upload.js';
+import {
+  asyncHandler,
+  CustomError,
+  ValidationError,
+} from '../../middlewares/error-handler.js';
+import validationMiddleware from '../../middlewares/validation.js';
+import { updateUserValidation } from '../../validations/users/user-validation.js';
 
 /**
  * Get all users with pagination, search, and filters
@@ -75,56 +77,56 @@ export const getAllUsers = asyncHandler(
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
         orderBy,
         select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          role: true,
-          status: true,
-          profilePicture: true,
           createdAt: true,
-          updatedAt: true,
           creator: {
             select: {
-              id: true,
-              firstName: true,
-              lastName: true,
               email: true,
+              firstName: true,
+              id: true,
+              lastName: true,
               phone: true,
               role: true,
             },
           },
+          email: true,
+          firstName: true,
+          id: true,
+          lastName: true,
+          phone: true,
+          profilePicture: true,
+          role: true,
+          status: true,
+          updatedAt: true,
         },
+        skip,
+        take: limit,
+        where: whereClause,
       }),
       prisma.user.count({ where: whereClause }),
     ]);
 
     const response: IUser[] = users.map((user) => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      createdAt: user.createdAt,
+      creator: user.creator,
       email: user.email,
+      firstName: user.firstName,
+      id: user.id,
+      lastName: user.lastName,
       phone: user.phone,
       role: user.role,
       status: user.status,
-      createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      creator: user.creator,
     }));
 
     const paginatedResponse: IUsersPaginatedResponse = {
-      message: 'Users retrieved successfully',
       data: response,
+      message: 'Users retrieved successfully',
       meta: {
-        total,
-        page,
         limit,
+        page,
+        total,
         totalPages: Math.ceil(total / limit),
       },
     };
@@ -155,29 +157,29 @@ export const getUser = asyncHandler(
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId },
       select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
-        profilePicture: true,
         createdAt: true,
-        updatedAt: true,
         creator: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
             email: true,
+            firstName: true,
+            id: true,
+            lastName: true,
             phone: true,
             role: true,
           },
         },
+        email: true,
+        firstName: true,
+        id: true,
+        lastName: true,
+        phone: true,
+        profilePicture: true,
+        role: true,
+        status: true,
+        updatedAt: true,
       },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -186,23 +188,23 @@ export const getUser = asyncHandler(
     }
 
     const responseData: IUser = {
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      createdAt: user.createdAt,
+      creator: user.creator,
       email: user.email,
+      firstName: user.firstName,
+      id: user.id,
+      lastName: user.lastName,
       phone: user.phone,
+      profilePicture: user.profilePicture,
       role: user.role,
       status: user.status,
-      profilePicture: user.profilePicture,
-      createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      creator: user.creator,
     };
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      success: true,
-      message: 'User retrieved successfully',
       data: responseData,
+      message: 'User retrieved successfully',
+      success: true,
     });
   },
 );
@@ -229,13 +231,13 @@ const handleUpdateUser = asyncHandler(
     try {
       const result = await prisma.$transaction(async (prisma) => {
         const existingUser = await prisma.user.findUnique({
-          where: { id: userId },
           select: {
-            id: true,
             email: true,
+            id: true,
             phone: true,
             role: true,
           },
+          where: { id: userId },
         });
 
         if (!existingUser) {
@@ -304,51 +306,51 @@ const handleUpdateUser = asyncHandler(
         }
 
         const updatedUser = await prisma.user.update({
-          where: { id: userId },
           data: updateData,
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            role: true,
-            status: true,
             createdAt: true,
-            updatedAt: true,
             creator: {
               select: {
-                id: true,
-                firstName: true,
-                lastName: true,
                 email: true,
+                firstName: true,
+                id: true,
+                lastName: true,
                 phone: true,
                 role: true,
               },
             },
+            email: true,
+            firstName: true,
+            id: true,
+            lastName: true,
+            phone: true,
+            role: true,
+            status: true,
+            updatedAt: true,
           },
+          where: { id: userId },
         });
 
         return updatedUser;
       });
 
       const responseData: IUser = {
-        id: result.id,
-        firstName: result.firstName,
-        lastName: result.lastName,
+        createdAt: result.createdAt,
+        creator: result.creator,
         email: result.email,
+        firstName: result.firstName,
+        id: result.id,
+        lastName: result.lastName,
         phone: result.phone,
         role: result.role,
         status: result.status,
-        createdAt: result.createdAt,
         updatedAt: result.updatedAt,
-        creator: result.creator,
       };
 
       res.status(HTTP_STATUS_CODES.OK).json({
-        success: true,
-        message: 'User updated successfully',
         data: responseData,
+        message: 'User updated successfully',
+        success: true,
       });
     } catch (error) {
       next(error);
@@ -384,13 +386,13 @@ export const updateUserRole = asyncHandler(
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
       select: {
-        id: true,
         firstName: true,
+        id: true,
         lastName: true,
         role: true,
       },
+      where: { id: userId },
     });
 
     if (!existingUser) {
@@ -399,48 +401,48 @@ export const updateUserRole = asyncHandler(
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
       data: { role },
       select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
         createdAt: true,
-        updatedAt: true,
         creator: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
             email: true,
+            firstName: true,
+            id: true,
+            lastName: true,
             phone: true,
             role: true,
           },
         },
+        email: true,
+        firstName: true,
+        id: true,
+        lastName: true,
+        phone: true,
+        role: true,
+        status: true,
+        updatedAt: true,
       },
+      where: { id: userId },
     });
 
     const responseData: IUser = {
-      id: updatedUser.id,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
+      createdAt: updatedUser.createdAt,
+      creator: updatedUser.creator,
       email: updatedUser.email,
+      firstName: updatedUser.firstName,
+      id: updatedUser.id,
+      lastName: updatedUser.lastName,
       phone: updatedUser.phone,
       role: updatedUser.role,
       status: updatedUser.status,
-      createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
-      creator: updatedUser.creator,
     };
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      success: true,
-      message: `User role updated from ${existingUser.role} to ${role} successfully`,
       data: responseData,
+      message: `User role updated from ${existingUser.role} to ${role} successfully`,
+      success: true,
     });
   },
 );
@@ -478,16 +480,16 @@ const handleUpdateUserProfilePicture = asyncHandler(
       );
     }
 
-    let oldProfilePicture: string | null = null;
+    let oldProfilePicture: null | string = null;
 
     try {
       const result = await prisma.$transaction(async (prisma) => {
         const existingUser = await prisma.user.findUnique({
-          where: { id: userId },
           select: {
             id: true,
             profilePicture: true,
           },
+          where: { id: userId },
         });
 
         if (!existingUser) {
@@ -505,30 +507,30 @@ const handleUpdateUserProfilePicture = asyncHandler(
         oldProfilePicture = existingUser.profilePicture;
 
         const updatedUser = await prisma.user.update({
-          where: { id: userId },
           data: { profilePicture: uploadedImageUrl },
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            role: true,
-            status: true,
-            profilePicture: true,
             createdAt: true,
-            updatedAt: true,
             creator: {
               select: {
-                id: true,
-                firstName: true,
-                lastName: true,
                 email: true,
+                firstName: true,
+                id: true,
+                lastName: true,
                 phone: true,
                 role: true,
               },
             },
+            email: true,
+            firstName: true,
+            id: true,
+            lastName: true,
+            phone: true,
+            profilePicture: true,
+            role: true,
+            status: true,
+            updatedAt: true,
           },
+          where: { id: userId },
         });
 
         return updatedUser;
@@ -543,23 +545,23 @@ const handleUpdateUserProfilePicture = asyncHandler(
       }
 
       const responseData: IUser = {
-        id: result.id,
-        firstName: result.firstName,
-        lastName: result.lastName,
+        createdAt: result.createdAt,
+        creator: result.creator,
         email: result.email,
+        firstName: result.firstName,
+        id: result.id,
+        lastName: result.lastName,
         phone: result.phone,
+        profilePicture: result.profilePicture,
         role: result.role,
         status: result.status,
-        profilePicture: result.profilePicture,
-        createdAt: result.createdAt,
         updatedAt: result.updatedAt,
-        creator: result.creator,
       };
 
       res.status(HTTP_STATUS_CODES.OK).json({
-        success: true,
-        message: 'Profile picture updated successfully',
         data: responseData,
+        message: 'Profile picture updated successfully',
+        success: true,
       });
     } catch (error) {
       if (uploadedImageUrl) {
@@ -605,14 +607,14 @@ export const deleteUser = asyncHandler(
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
       select: {
-        id: true,
-        firstName: true,
-        lastName: true,
         email: true,
+        firstName: true,
+        id: true,
+        lastName: true,
         profilePicture: true,
       },
+      where: { id: userId },
     });
 
     if (!existingUser) {
@@ -658,24 +660,24 @@ export const deleteAllUsers = asyncHandler(
     }
 
     const usersToDelete = await prisma.user.findMany({
+      select: {
+        email: true,
+        firstName: true,
+        id: true,
+        lastName: true,
+        profilePicture: true,
+      },
       where: {
         id: {
           not: currentUserId!,
         },
       },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        profilePicture: true,
-      },
     });
 
     if (usersToDelete.length === 0) {
       res.status(HTTP_STATUS_CODES.OK).json({
-        message: 'No users to delete',
         deletedCount: 0,
+        message: 'No users to delete',
       });
       return;
     }
@@ -719,8 +721,8 @@ export const deleteAllUsers = asyncHandler(
     }
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: `Successfully deleted ${deleteResult.count} users (excluding yourself)`,
       deletedCount: deleteResult.count,
+      message: `Successfully deleted ${deleteResult.count} users (excluding yourself)`,
     });
   },
 );

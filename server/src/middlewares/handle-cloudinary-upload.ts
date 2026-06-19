@@ -1,9 +1,11 @@
 // src/middlewares/handle-cloudinary-upload.ts
-import type { Request, Response, NextFunction } from 'express';
-import { ValidationError, asyncHandler } from './error-handler.js';
+import type { NextFunction, Request, Response } from 'express';
+
 import type { ICloudinaryUploadOptions, ICloudinaryUploadResult } from '../types/cloudinary.types.js';
+
 import { cloudinaryService } from '../config/claudinary.js';
 import { isValidBase64Image } from '../utils/validate-base64-image.js';
+import { asyncHandler, ValidationError } from './error-handler.js';
 
 export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUploadOptions> = {}, uploadedResultsName: string) => {
   return asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -18,14 +20,14 @@ export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUpload
       if (req.file) {
         const result = await cloudinaryService.uploadImage({ ...req.file }, options);
         req.body[uploadedResultsName] = result.secure_url;
-        return next();
+        next(); return;
       }
 
       // Case 2: Multiple file uploads as array
       if (req.files && Array.isArray(req.files) && req.files.length > 0) {
         const results = await Promise.all(req.files.map((file) => cloudinaryService.uploadImage({ ...file }, options)));
         req.body[uploadedResultsName] = results.map((result: { secure_url: string }) => result.secure_url);
-        return next();
+        next(); return;
       }
 
       // Case 3: Multiple file uploads as object (for fields)
@@ -45,7 +47,7 @@ export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUpload
             Object.entries(results).map(([field, uploads]) => [field, uploads.map((upload) => upload.secure_url)]),
           );
 
-          return next();
+          next(); return;
         }
       }
 
@@ -53,13 +55,13 @@ export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUpload
       if (req.body.image && typeof req.body.image === 'string' && isValidBase64Image(req.body.image)) {
         const result = await cloudinaryService.uploadImage(req.body.image, options);
         req.body[uploadedResultsName] = result.secure_url;
-        return next();
+        next(); return;
       }
 
       // No valid files found
-      return next(new ValidationError('No valid files found for upload'));
+      next(new ValidationError('No valid files found for upload')); return;
     } catch (error) {
-      return next(error);
+      next(error); return;
     }
   });
 };

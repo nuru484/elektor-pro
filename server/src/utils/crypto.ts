@@ -30,8 +30,8 @@ export const stableStringify = (value: unknown): string => {
   const seen = new WeakSet();
   const normalize = (input: unknown): unknown => {
     if (input === null || typeof input !== 'object') return input;
-    if (seen.has(input as object)) return undefined;
-    seen.add(input as object);
+    if (seen.has(input)) return undefined;
+    seen.add(input);
     if (Array.isArray(input)) return input.map(normalize);
     return Object.keys(input as Record<string, unknown>)
       .sort()

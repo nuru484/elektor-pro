@@ -1,9 +1,10 @@
+import { Role, Status } from '../../../generated/prisma/client.js';
+import { MAX_FAILED_LOGIN_ATTEMPTS } from '../../config/constants.js';
+import ENV from '../../config/env.js';
 // src/services/auth/auth.service.ts
 // Staff/candidate authentication: password login with lockout, TOTP 2FA,
 // super-admin unlock, password change/reset, and 2FA enrollment.
 import prisma from '../../lib/prisma.js';
-import ENV from '../../config/env.js';
-import { MAX_FAILED_LOGIN_ATTEMPTS } from '../../config/constants.js';
 import {
   BadRequestError,
   ConflictError,
@@ -29,13 +30,12 @@ import {
   generateTotpSecret,
   verifyTotp,
 } from './totp.service.js';
-import { Role, Status } from '../../../generated/prisma/client.js';
 
 const PASSWORD_LOGIN_ROLES = new Set<Role>([
-  Role.SUPER_ADMIN,
   Role.ADMIN,
   Role.AGENT,
   Role.CANDIDATE,
+  Role.SUPER_ADMIN,
 ]);
 
 const RECOVERY_CODE_COUNT = 10;
@@ -98,7 +98,7 @@ export const authenticateStaff = async (
   password: string,
   ctx: RequestContext,
 ): Promise<
-  | { status: 'authenticated'; userId: string; role: Role }
+  | { role: Role; status: 'authenticated'; userId: string; }
   | { status: 'two_factor_required'; userId: string }
 > => {
   const user = await findByIdentifier(emailOrPhone);

@@ -1,25 +1,27 @@
 // src/config/claudinary.ts
-import { v2 as cloudinaryBase, type UploadApiResponse, type UploadApiErrorResponse } from 'cloudinary';
-import logger from '../utils/logger.js';
-import ENV from './env.js';
-import { ValidationError, InternalServerError, CustomError } from '../middlewares/error-handler.js';
-import { isValidBase64Image } from '../utils/validate-base64-image.js';
+import { v2 as cloudinaryBase, type UploadApiErrorResponse, type UploadApiResponse } from 'cloudinary';
+
 import type {
-  ICloudinaryUploadService,
-  IUploadedFile,
   ICloudinaryConfig,
+  ICloudinaryDeletionResponse,
   ICloudinaryUploadOptions,
   ICloudinaryUploadResult,
-  ICloudinaryDeletionResponse,
+  ICloudinaryUploadService,
+  IUploadedFile,
 } from '../types/cloudinary.types.js';
+
+import { CustomError, InternalServerError, ValidationError } from '../middlewares/error-handler.js';
+import logger from '../utils/logger.js';
+import { isValidBase64Image } from '../utils/validate-base64-image.js';
+import ENV from './env.js';
 
 const MAX_UPLOAD_RETRIES = 3;
 const RETRY_DELAY_MS = 300;
 
 export const defaultCloudinaryConfig: ICloudinaryConfig = {
-  cloud_name: ENV.CLOUDINARY_CLOUD_NAME,
   api_key: ENV.CLOUDINARY_API_KEY,
   api_secret: ENV.CLOUDINARY_API_SECRET,
+  cloud_name: ENV.CLOUDINARY_CLOUD_NAME,
 };
 
 export const extractPublicIdFromUrl = (url: string): string => {
@@ -89,7 +91,7 @@ const createCloudinaryInstance = (config: ICloudinaryConfig) => {
   return cloudinaryInstance;
 };
 
-const isRetryableError = (error: UploadApiErrorResponse | Error): boolean => {
+const isRetryableError = (error: Error | UploadApiErrorResponse): boolean => {
   const msg = error.message || '';
   const httpCode = 'http_code' in error && typeof error.http_code === 'number' ? error.http_code : null;
 
@@ -114,7 +116,7 @@ export const uploadToCloudinary = async (
     if (!isValidBase64Image(file)) {
       throw new ValidationError('Invalid Base64 image format.');
     }
-  } else if (!file || !file.buffer) {
+  } else if (!file?.buffer) {
     throw new ValidationError('Invalid file object. Ensure it has a buffer property.');
   }
 
@@ -152,11 +154,11 @@ export const uploadToCloudinary = async (
 
       logger.debug(`File uploaded successfully: ${result.public_id}`);
       return {
-        public_id: result.public_id,
-        secure_url: result.secure_url,
         asset_id: result.asset_id,
         format: result.format,
+        public_id: result.public_id,
         resource_type: result.resource_type,
+        secure_url: result.secure_url,
       };
     } catch (error: unknown) {
       attempts++;
@@ -208,7 +210,7 @@ export const deleteFromCloudinary = async (identifier: string, config: ICloudina
 
       logger.debug(`Cloudinary raw deletion response: ${JSON.stringify(result)}`);
 
-      if (!result || result.result !== 'ok') {
+      if (result?.result !== 'ok') {
         throw new Error(`Deletion failed. Cloudinary response: ${JSON.stringify(result)}`);
       }
 
@@ -260,12 +262,12 @@ export const uploadMultipleToCloudinary = async (
 export class CloudinaryUploadService implements ICloudinaryUploadService {
   constructor(private config: ICloudinaryConfig) {}
 
-  async uploadImage(image: string | IUploadedFile, options: Partial<ICloudinaryUploadOptions> = {}): Promise<ICloudinaryUploadResult> {
-    return uploadToCloudinary(image, options, this.config);
-  }
-
   async deleteImage(publicId: string): Promise<ICloudinaryDeletionResponse> {
     return deleteFromCloudinary(publicId, this.config);
+  }
+
+  async uploadImage(image: IUploadedFile | string, options: Partial<ICloudinaryUploadOptions> = {}): Promise<ICloudinaryUploadResult> {
+    return uploadToCloudinary(image, options, this.config);
   }
 }
 

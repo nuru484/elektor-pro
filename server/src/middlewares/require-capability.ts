@@ -1,9 +1,10 @@
 // src/middlewares/require-capability.ts
 import type { NextFunction, Request, Response } from 'express';
 
+import type { Capability } from '../../generated/prisma/client.js';
+
 import { hasCapability } from '../services/authorization/capability.service.js';
 import { asyncHandler, ForbiddenError, UnauthorizedError } from './error-handler.js';
-import type { Capability } from '../../generated/prisma/client.js';
 
 /**
  * Guard a route by capability. Optionally scope the check to an election id

@@ -1,5 +1,6 @@
 // src/routes/users/index.ts
 import { Router } from 'express';
+
 import usersRouter from './usersRoutes.js';
 
 const usersRoutes = Router();

@@ -1,38 +1,50 @@
 // src/middlewares/error-handler.ts
-import type { Request, Response, NextFunction } from 'express';
-import logger from '../utils/logger.js';
+import type { NextFunction, Request, Response } from 'express';
+
 import ENV from '../config/env.js';
+import logger from '../utils/logger.js';
 
 /**
  * Error severity levels for better logging and monitoring
  */
 export enum ErrorSeverity {
+  CRITICAL = 'critical',
+  HIGH = 'high',
   LOW = 'low',
   MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical',
 }
 
 /**
  * Enhanced CustomError class with additional context for better debugging
  */
 
+/**
+ * Error response interface for consistent API responses
+ */
+interface ErrorResponse {
+  code?: string;
+  details?: Record<string, unknown>;
+  errorId?: string;
+  message: string;
+  status: string;
+}
+
 export class CustomError extends Error {
-  readonly status: number;
-  readonly layer: string;
-  readonly severity: ErrorSeverity;
-  readonly timestamp: Date;
   readonly code?: string | undefined;
   readonly context?: Record<string, unknown> | undefined;
+  readonly layer: string;
+  readonly severity: ErrorSeverity;
+  readonly status: number;
+  readonly timestamp: Date;
 
   constructor(
     status: number,
     message: string,
     options: {
-      layer?: string;
-      severity?: ErrorSeverity;
       code?: string;
       context?: Record<string, unknown>;
+      layer?: string;
+      severity?: ErrorSeverity;
     } = {},
   ) {
     super(message);
@@ -48,17 +60,6 @@ export class CustomError extends Error {
       Error.captureStackTrace(this, this.constructor);
     }
   }
-}
-
-/**
- * Error response interface for consistent API responses
- */
-interface ErrorResponse {
-  status: string;
-  message: string;
-  errorId?: string;
-  code?: string;
-  details?: Record<string, unknown>;
 }
 
 /**
@@ -113,7 +114,7 @@ const normalizeError = (error: unknown): Error => {
       case 'P2002':
         return new ConflictError('A record with these details already exists', {
           code,
-          context: { target: meta?.['target'] },
+          context: { target: meta?.target },
           layer: 'database',
         });
       case 'P2003':
@@ -134,7 +135,7 @@ const normalizeError = (error: unknown): Error => {
 /**
  * Error handler middleware with better typing and security
  */
-export const errorHandler = (rawError: Error | CustomError, req: Request, res: Response, _next: NextFunction): void => {
+export const errorHandler = (rawError: CustomError | Error, req: Request, res: Response, _next: NextFunction): void => {
   const error = normalizeError(rawError);
   const isProduction = ENV.NODE_ENV === 'production';
   const errorId = generateErrorId();
@@ -149,20 +150,20 @@ export const errorHandler = (rawError: Error | CustomError, req: Request, res: R
 
   // Prepare error details for logging
   const logDetails = {
-    errorId,
-    message: error.message,
-    path: req.path,
-    method: req.method,
-    ip: req.ip,
     body: sanitizedBody,
+    code: isCustomError ? error.code : undefined,
+    context: isCustomError ? error.context : undefined,
+    errorId,
+    ip: req.ip,
+    layer: isCustomError ? error.layer : 'unknown',
+    message: error.message,
+    method: req.method,
     params: req.params,
+    path: req.path,
     query: req.query,
     severity,
     stack: !isProduction ? error.stack : undefined,
     timestamp: new Date().toISOString(),
-    layer: isCustomError ? error.layer : 'unknown',
-    code: isCustomError ? error.code : undefined,
-    context: isCustomError ? error.context : undefined,
   };
 
   // Log the error with appropriate level based on severity
@@ -171,11 +172,11 @@ export const errorHandler = (rawError: Error | CustomError, req: Request, res: R
     case ErrorSeverity.HIGH:
       logger.error(logDetails);
       break;
-    case ErrorSeverity.MEDIUM:
-      logger.warn(logDetails);
-      break;
     case ErrorSeverity.LOW:
       logger.info(logDetails);
+      break;
+    case ErrorSeverity.MEDIUM:
+      logger.warn(logDetails);
       break;
     default:
       logger.error(logDetails);
@@ -183,8 +184,8 @@ export const errorHandler = (rawError: Error | CustomError, req: Request, res: R
 
   // Prepare client response
   const errorResponse: ErrorResponse = {
-    status: 'error',
     message: isProduction && status === 500 ? 'Internal Server Error' : error.message || 'Internal Server Error',
+    status: 'error',
   };
 
   // Add additional error details for non-production environments
@@ -215,32 +216,15 @@ export const asyncHandler = <T>(fn: (req: Request, res: Response, next: NextFunc
   };
 };
 
-/**
- * Create specific error types for common use cases
- */
-export class NotFoundError extends CustomError {
-  constructor(
-    message = 'Resource not found',
-    options?: {
-      layer?: string;
-      code?: string;
-      context?: Record<string, unknown>;
-    },
-  ) {
-    super(404, message, { ...options, severity: ErrorSeverity.LOW });
+export class BadRequestError extends CustomError {
+  constructor(message = 'Bad request', options?: { code?: string; context?: Record<string, unknown>; layer?: string; }) {
+    super(400, message, { ...options, severity: ErrorSeverity.LOW });
   }
 }
 
-export class UnauthorizedError extends CustomError {
-  constructor(
-    message = 'Unauthorized access',
-    options?: {
-      layer?: string;
-      code?: string;
-      context?: Record<string, unknown>;
-    },
-  ) {
-    super(401, message, { ...options, severity: ErrorSeverity.MEDIUM });
+export class ConflictError extends CustomError {
+  constructor(message = 'Conflict detected', options?: { code?: string; context?: Record<string, unknown>; layer?: string; }) {
+    super(409, message, { ...options, severity: ErrorSeverity.MEDIUM });
   }
 }
 
@@ -248,25 +232,12 @@ export class ForbiddenError extends CustomError {
   constructor(
     message = 'Access forbidden, You are not allowed to access this resource',
     options?: {
-      layer?: string;
       code?: string;
       context?: Record<string, unknown>;
+      layer?: string;
     },
   ) {
     super(403, message, { ...options, severity: ErrorSeverity.MEDIUM });
-  }
-}
-
-export class ValidationError extends CustomError {
-  constructor(
-    message = 'Validation failed',
-    options?: {
-      layer?: string;
-      code?: string;
-      context?: Record<string, unknown>;
-    },
-  ) {
-    super(400, message, { ...options, severity: ErrorSeverity.LOW });
   }
 }
 
@@ -274,41 +245,71 @@ export class InternalServerError extends CustomError {
   constructor(
     message = 'Internal server error',
     options?: {
-      layer?: string;
       code?: string;
       context?: Record<string, unknown>;
+      layer?: string;
     },
   ) {
     super(500, message, { ...options, severity: ErrorSeverity.HIGH });
   }
 }
 
-export class ConflictError extends CustomError {
-  constructor(message = 'Conflict detected', options?: { layer?: string; code?: string; context?: Record<string, unknown> }) {
-    super(409, message, { ...options, severity: ErrorSeverity.MEDIUM });
-  }
-}
-
-export class BadRequestError extends CustomError {
-  constructor(message = 'Bad request', options?: { layer?: string; code?: string; context?: Record<string, unknown> }) {
-    super(400, message, { ...options, severity: ErrorSeverity.LOW });
-  }
-}
-
 export class MethodNotAllowedError extends CustomError {
-  constructor(message = 'Method not allowed', options?: { layer?: string; code?: string; context?: Record<string, unknown> }) {
+  constructor(message = 'Method not allowed', options?: { code?: string; context?: Record<string, unknown>; layer?: string; }) {
     super(405, message, { ...options, severity: ErrorSeverity.MEDIUM });
   }
 }
 
-export class TooManyRequestsError extends CustomError {
-  constructor(message = 'Too many requests', options?: { layer?: string; code?: string; context?: Record<string, unknown> }) {
-    super(429, message, { ...options, severity: ErrorSeverity.MEDIUM });
+/**
+ * Create specific error types for common use cases
+ */
+export class NotFoundError extends CustomError {
+  constructor(
+    message = 'Resource not found',
+    options?: {
+      code?: string;
+      context?: Record<string, unknown>;
+      layer?: string;
+    },
+  ) {
+    super(404, message, { ...options, severity: ErrorSeverity.LOW });
   }
 }
 
 export class TokenExpiredError extends CustomError {
-  constructor(message = 'Authentication token expired', options?: { layer?: string; code?: string; context?: Record<string, unknown> }) {
+  constructor(message = 'Authentication token expired', options?: { code?: string; context?: Record<string, unknown>; layer?: string; }) {
     super(401, message, { ...options, severity: ErrorSeverity.MEDIUM });
+  }
+}
+
+export class TooManyRequestsError extends CustomError {
+  constructor(message = 'Too many requests', options?: { code?: string; context?: Record<string, unknown>; layer?: string; }) {
+    super(429, message, { ...options, severity: ErrorSeverity.MEDIUM });
+  }
+}
+
+export class UnauthorizedError extends CustomError {
+  constructor(
+    message = 'Unauthorized access',
+    options?: {
+      code?: string;
+      context?: Record<string, unknown>;
+      layer?: string;
+    },
+  ) {
+    super(401, message, { ...options, severity: ErrorSeverity.MEDIUM });
+  }
+}
+
+export class ValidationError extends CustomError {
+  constructor(
+    message = 'Validation failed',
+    options?: {
+      code?: string;
+      context?: Record<string, unknown>;
+      layer?: string;
+    },
+  ) {
+    super(400, message, { ...options, severity: ErrorSeverity.LOW });
   }
 }

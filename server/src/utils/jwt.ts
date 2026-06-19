@@ -1,10 +1,11 @@
 // src/utils/jwt.ts
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
+import type { Role } from '../../generated/prisma/client.js';
+
 import ENV from '../config/env.js';
 import { UnauthorizedError } from '../middlewares/error-handler.js';
 import { sha256 } from './crypto.js';
-import type { Role } from '../../generated/prisma/client.js';
 
 export interface AccessPayload {
   id: string;
@@ -59,8 +60,8 @@ export const verifyTwoFactorChallenge = (
   } catch {
     throw new UnauthorizedError('Invalid or expired two-factor challenge');
   }
-  if (decoded['purpose'] !== 'two_factor' || typeof decoded['id'] !== 'string') {
+  if (decoded.purpose !== 'two_factor' || typeof decoded.id !== 'string') {
     throw new UnauthorizedError('Invalid two-factor challenge');
   }
-  return { id: decoded['id'], purpose: 'two_factor' };
+  return { id: decoded.id, purpose: 'two_factor' };
 };

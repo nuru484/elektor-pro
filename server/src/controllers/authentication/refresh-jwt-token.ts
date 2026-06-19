@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 
 import jwt from 'jsonwebtoken';
 
+import type { AccessPayload } from '../../utils/jwt.js';
+
 import ENV from '../../config/env.js';
 import {
   asyncHandler,
@@ -13,7 +15,6 @@ import { getProfile } from '../../services/auth/auth.service.js';
 import { issueSession } from '../../utils/auth-session.js';
 import { CookieManager } from '../../utils/CookieManager.js';
 import { verifyJwtToken } from '../../utils/verify-jwt-token.js';
-import type { AccessPayload } from '../../utils/jwt.js';
 
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {

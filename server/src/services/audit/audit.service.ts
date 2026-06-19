@@ -1,8 +1,10 @@
+import type { Prisma, Role } from '../../../generated/prisma/client.js';
+
 // src/services/audit/audit.service.ts
 // Append-only, tamper-evident (hash-chained) audit trail.
 import { GENESIS_HASH } from '../../config/constants.js';
+import prisma from '../../lib/prisma.js';
 import { chainHash } from '../../utils/crypto.js';
-import type { Role } from '../../../generated/prisma/client.js';
 
 export interface AuditEntryInput {
   action: string;
@@ -11,27 +13,21 @@ export interface AuditEntryInput {
   entity: string;
   entityId?: null | string;
   ipAddress?: null | string;
-  metadata?: Record<string, unknown> | null;
+  metadata?: null | Record<string, unknown>;
   userAgent?: null | string;
 }
 
-/**
- * Minimal structural client so this works with both the root client and a
- * `$transaction` client without fighting Prisma's extension generics.
- */
-interface AuditClient {
-  auditLog: {
-    create: (args: unknown) => Promise<unknown>;
-    findFirst: (args: unknown) => Promise<null | { hash: string }>;
-  };
-}
+/** Accepts both the root client and a `$transaction` client. */
+type DbClient =
+  | Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+  | typeof prisma;
 
 /**
  * Append an entry to the audit chain. Pass the surrounding `$transaction`
  * client when the audit must be atomic with the change it records.
  */
 export const appendAudit = async (
-  client: AuditClient,
+  client: DbClient,
   entry: AuditEntryInput,
 ): Promise<void> => {
   const last = await client.auditLog.findFirst({
@@ -60,7 +56,7 @@ export const appendAudit = async (
       entityId: entry.entityId ?? null,
       hash,
       ipAddress: entry.ipAddress ?? null,
-      metadata: (entry.metadata ?? undefined) as never,
+      metadata: (entry.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       prevHash,
       userAgent: entry.userAgent ?? null,
     },
@@ -73,22 +69,14 @@ export const appendAudit = async (
  */
 export const verifyAuditChain = (
   entries: {
-    action: string;
-    actorId: null | string;
-    actorRole: null | Role;
-    createdAt: Date;
-    entity: string;
-    entityId: null | string;
     hash: string;
-    metadata: unknown;
     prevHash: string;
     sequence: number;
   }[],
 ): { brokenAt?: number; valid: boolean } => {
-  // entries must be ordered by sequence asc
   for (let i = 0; i < entries.length; i += 1) {
-    const entry = entries[i]!;
-    const expectedPrev = i === 0 ? GENESIS_HASH : entries[i - 1]!.hash;
+    const entry = entries[i];
+    const expectedPrev = i === 0 ? GENESIS_HASH : entries[i - 1].hash;
     if (entry.prevHash !== expectedPrev) {
       return { brokenAt: entry.sequence, valid: false };
     }

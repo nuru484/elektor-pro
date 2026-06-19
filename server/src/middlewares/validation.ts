@@ -1,13 +1,15 @@
 // src/middlewares/validation-middleware.ts
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+
 import { ZodError, type ZodType } from 'zod';
+
 import { ValidationError as CustomValidationError } from './error-handler.js';
 
 /**
  * Middleware factory for Zod validation
  */
 export const validateRequest =
-  <T extends ZodType>(schema: T, target: 'body' | 'query' | 'params' = 'body') =>
+  <T extends ZodType>(schema: T, target: 'body' | 'params' | 'query' = 'body') =>
   (req: Request, res: Response, next: NextFunction): void => {
     try {
       schema.parse(req[target]);
@@ -19,12 +21,12 @@ export const validateRequest =
           message: issue.message,
         }));
         const validationError = new CustomValidationError('Validation Error', {
-          layer: 'Request Validation',
           context: {
             errors: formattedErrors,
           },
+          layer: 'Request Validation',
         });
-        return next(validationError);
+        next(validationError); return;
       }
       next(err);
     }
@@ -34,10 +36,10 @@ export const validateRequest =
  * Middleware factory for common CRUD operations using Zod
  */
 export const validationMiddleware = {
-  create: <T extends ZodType>(schema: T, target: 'body' | 'query' | 'params' = 'body') => [validateRequest(schema, target)],
-  update: <T extends ZodType>(schema: T, target: 'body' | 'query' | 'params' = 'body') => [validateRequest(schema, target)],
-  delete: <T extends ZodType>(schema: T, target: 'body' | 'query' | 'params' = 'body') => [validateRequest(schema, target)],
-  custom: <T extends ZodType>(schema: T, target: 'body' | 'query' | 'params' = 'body') => [validateRequest(schema, target)],
+  create: <T extends ZodType>(schema: T, target: 'body' | 'params' | 'query' = 'body') => [validateRequest(schema, target)],
+  custom: <T extends ZodType>(schema: T, target: 'body' | 'params' | 'query' = 'body') => [validateRequest(schema, target)],
+  delete: <T extends ZodType>(schema: T, target: 'body' | 'params' | 'query' = 'body') => [validateRequest(schema, target)],
+  update: <T extends ZodType>(schema: T, target: 'body' | 'params' | 'query' = 'body') => [validateRequest(schema, target)],
 };
 
 export default validationMiddleware;

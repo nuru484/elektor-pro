@@ -1,6 +1,7 @@
 // src/routes/authentication/index.ts
 import { Router } from 'express';
 
+import { Role } from '../../../generated/prisma/client.js';
 import {
   activateTwoFactorController,
   changePasswordController,
@@ -21,7 +22,6 @@ import {
   authRateLimiter,
   passwordResetLimiter,
 } from '../../middlewares/rateLimit.js';
-import { Role } from '../../../generated/prisma/client.js';
 
 const authRoutes = Router();
 

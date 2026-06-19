@@ -1,13 +1,12 @@
+import { Capability, Role } from '../../../generated/prisma/client.js';
 // src/services/authorization/capability.service.ts
 // Authorization = role defaults + per-user (optionally per-election) grants.
 import prisma from '../../lib/prisma.js';
-import { Capability, Role } from '../../../generated/prisma/client.js';
 
 const ALL_CAPABILITIES = Object.values(Capability);
 
 /** Default capabilities granted purely by role. */
 const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
-  [Role.SUPER_ADMIN]: ALL_CAPABILITIES,
   [Role.ADMIN]: [
     Capability.MANAGE_ELECTIONS,
     Capability.MANAGE_PORTFOLIOS,
@@ -21,6 +20,7 @@ const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
   ],
   [Role.AGENT]: [Capability.VIEW_RESULTS],
   [Role.CANDIDATE]: [],
+  [Role.SUPER_ADMIN]: ALL_CAPABILITIES,
   [Role.VOTER]: [],
 };
 
@@ -51,6 +51,7 @@ export const hasCapability = async (
 
   const now = new Date();
   const grant = await prisma.accessGrant.findFirst({
+    select: { id: true },
     where: {
       AND: [
         { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
@@ -62,7 +63,6 @@ export const hasCapability = async (
       revokedAt: null,
       userId: user.id,
     },
-    select: { id: true },
   });
 
   return Boolean(grant);
