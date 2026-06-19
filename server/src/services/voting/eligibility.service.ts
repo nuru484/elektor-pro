@@ -1,7 +1,7 @@
+import { PortfolioEligibilityMode } from '../../../generated/prisma/client.js';
 // src/services/voting/eligibility.service.ts
 // Resolves which portfolios a given voter may vote in a given election.
 import prisma from '../../lib/prisma.js';
-import { PortfolioEligibilityMode } from '../../../generated/prisma/client.js';
 
 export interface EligiblePortfolio {
   allowAbstain: boolean;

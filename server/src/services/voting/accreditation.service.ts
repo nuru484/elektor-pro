@@ -1,8 +1,9 @@
+import type { Role } from '../../../generated/prisma/client.js';
+
 // src/services/voting/accreditation.service.ts
 import prisma from '../../lib/prisma.js';
 import { NotFoundError } from '../../middlewares/error-handler.js';
 import { appendAudit } from '../audit/audit.service.js';
-import type { Role } from '../../../generated/prisma/client.js';
 
 /** Mark a voter accredited (checked-in) for an election. */
 export const accreditVoter = async (

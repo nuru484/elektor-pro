@@ -708,7 +708,7 @@ export const deleteAllUsers = asyncHandler(
         },
       );
 
-      Promise.allSettled(cleanupPromises).then((results) => {
+      void Promise.allSettled(cleanupPromises).then((results) => {
         const failed = results.filter(
           (result) => result.status === 'rejected',
         ).length;

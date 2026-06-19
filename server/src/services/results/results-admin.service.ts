@@ -1,3 +1,8 @@
+import {
+  ElectionStatus,
+  type Prisma,
+  type Role,
+} from '../../../generated/prisma/client.js';
 // src/services/results/results-admin.service.ts
 import prisma from '../../lib/prisma.js';
 import {
@@ -5,19 +10,14 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../../middlewares/error-handler.js';
-import { sha256, stableStringify } from '../../utils/crypto.js';
 import { emitElectionUpdate } from '../../realtime/io.js';
+import { sha256, stableStringify } from '../../utils/crypto.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { canApproveChanges } from '../authorization/capability.service.js';
 import { computeResults } from './results.service.js';
-import {
-  ElectionStatus,
-  type Prisma,
-  type Role,
-} from '../../../generated/prisma/client.js';
 
-type Actor = { id: string; role: Role };
-type Ctx = { ipAddress?: string; userAgent?: string };
+interface Actor { id: string; role: Role }
+interface Ctx { ipAddress?: string; userAgent?: string }
 
 const requireCertifier = (actor: Actor): void => {
   if (!canApproveChanges(actor.role)) {

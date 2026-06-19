@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { Role } from '../../generated/prisma/client.js';
 import {
   api,
   createElectionFixture,
@@ -8,7 +9,6 @@ import {
   prisma,
   resetDb,
 } from '../helpers.js';
-import { Role } from '../../generated/prisma/client.js';
 
 describe('maker-checker governance', () => {
   beforeEach(resetDb);

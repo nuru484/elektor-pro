@@ -1,6 +1,7 @@
 // src/routes/dashboard/index.ts
 import { Router } from 'express';
 
+import { Role } from '../../../generated/prisma/client.js';
 import {
   adminDashboardController,
   agentDashboardController,
@@ -10,7 +11,6 @@ import {
 } from '../../controllers/dashboard.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
-import { Role } from '../../../generated/prisma/client.js';
 
 const dashboardRoutes = Router();
 

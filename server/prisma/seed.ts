@@ -1,12 +1,3 @@
-// prisma/seed.ts
-// Idempotent seed: organization, a super-admin + one of each role, optional
-// voter groups, and a live demo election with portfolios, candidates, voters,
-// and a batch of cast ballots so dashboards/results look alive.
-import ENV from '../src/config/env.js';
-import prisma from '../src/lib/prisma.js';
-import { resolveEligiblePortfolios } from '../src/services/voting/eligibility.service.js';
-import { castBallot, type BallotSelection } from '../src/services/voting/voting.service.js';
-import { hashPassword } from '../src/utils/password.js';
 import {
   BallotEntryType,
   ElectionStatus,
@@ -15,32 +6,17 @@ import {
   Role,
   VotingMethod,
 } from '../generated/prisma/client.js';
+// prisma/seed.ts
+// Idempotent seed: organization, a super-admin + one of each role, optional
+// voter groups, and a live demo election with portfolios, candidates, voters,
+// and a batch of cast ballots so dashboards/results look alive.
+import ENV from '../src/config/env.js';
+import prisma from '../src/lib/prisma.js';
+import { resolveEligiblePortfolios } from '../src/services/voting/eligibility.service.js';
+import { type BallotSelection, castBallot } from '../src/services/voting/voting.service.js';
+import { hashPassword } from '../src/utils/password.js';
 
-const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]!;
-
-async function upsertUser(
-  email: string,
-  firstName: string,
-  lastName: string,
-  role: Role,
-  password: string,
-  phone: string,
-) {
-  return prisma.user.upsert({
-    create: {
-      email,
-      firstName,
-      lastName,
-      password: await hashPassword(password),
-      phone,
-      role,
-      status: 'ACTIVE',
-    },
-    select: { id: true },
-    update: { firstName, lastName, role },
-    where: { email },
-  });
-}
+const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 async function main() {
   // --- Organization (singleton) ---
@@ -218,7 +194,7 @@ async function main() {
     const portfolios = await resolveEligiblePortfolios(voter.id, election.id);
     const selections: BallotSelection[] = portfolios.map((p) => {
       if (p.votingMethod === VotingMethod.YES_NO) {
-        return { approve: Math.random() > 0.4, candidateIds: [p.candidates[0]!.id], portfolioId: p.id };
+        return { approve: Math.random() > 0.4, candidateIds: [p.candidates[0].id], portfolioId: p.id };
       }
       if (p.votingMethod === VotingMethod.MULTI_SELECT) {
         const shuffled = [...p.candidates].sort(() => Math.random() - 0.5).slice(0, p.maxSelections);
@@ -243,6 +219,30 @@ async function main() {
   console.log('  Admin: admin@elektorpro.com / Password123!');
   console.log('  Agent: agent@elektorpro.com / Password123!');
   console.log('  Voter login: use any voterId like STU1001 (OTP printed to server log in mock mode)');
+}
+
+async function upsertUser(
+  email: string,
+  firstName: string,
+  lastName: string,
+  role: Role,
+  password: string,
+  phone: string,
+) {
+  return prisma.user.upsert({
+    create: {
+      email,
+      firstName,
+      lastName,
+      password: await hashPassword(password),
+      phone,
+      role,
+      status: 'ACTIVE',
+    },
+    select: { id: true },
+    update: { firstName, lastName, role },
+    where: { email },
+  });
 }
 
 main()

@@ -130,9 +130,9 @@ export const uploadToCloudinary = async (
     try {
       const result: UploadApiResponse = await new Promise((resolve, reject) => {
         if (typeof file === 'string') {
-          cloudinary.uploader.upload(file, uploadOptions, (error?: UploadApiErrorResponse, uploadResult?: UploadApiResponse) => {
+          void cloudinary.uploader.upload(file, uploadOptions, (error?: UploadApiErrorResponse, uploadResult?: UploadApiResponse) => {
             if (error || !uploadResult) {
-              reject(error ?? new Error('Upload failed'));
+              reject(new Error(error?.message ?? 'Upload failed'));
             } else {
               resolve(uploadResult);
             }
@@ -142,7 +142,7 @@ export const uploadToCloudinary = async (
             uploadOptions,
             (error?: UploadApiErrorResponse, uploadResult?: UploadApiResponse) => {
               if (error || !uploadResult) {
-                reject(error ?? new Error('Upload failed'));
+                reject(new Error(error?.message ?? 'Upload failed'));
               } else {
                 resolve(uploadResult);
               }

@@ -1,6 +1,7 @@
 // src/routes/results/index.ts
 import { Router } from 'express';
 
+import { Capability } from '../../../generated/prisma/client.js';
 import {
   certifyResultsController,
   exportResultsController,
@@ -11,7 +12,6 @@ import {
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { optionalAuth } from '../../middlewares/optional-auth.js';
 import { requireCapability } from '../../middlewares/require-capability.js';
-import { Capability } from '../../../generated/prisma/client.js';
 
 const resultsRoutes = Router();
 

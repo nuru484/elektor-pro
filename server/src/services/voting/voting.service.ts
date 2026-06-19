@@ -1,3 +1,11 @@
+import type { TxClient } from '../../types/prisma.types.js';
+
+import {
+  BallotEntryType,
+  ElectionStatus,
+  EligibilityMode,
+  VotingMethod,
+} from '../../../generated/prisma/client.js';
 // src/services/voting/voting.service.ts
 // Secret-ballot casting. Ballots are anonymous (never linked to the voter);
 // turnout/one-person-one-vote is tracked separately on VoterElection. Each
@@ -10,16 +18,9 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../../middlewares/error-handler.js';
-import { chainHash, generateReceiptCode } from '../../utils/crypto.js';
 import { emitElectionUpdate } from '../../realtime/io.js';
+import { chainHash, generateReceiptCode } from '../../utils/crypto.js';
 import { resolveEligiblePortfolios } from './eligibility.service.js';
-import {
-  BallotEntryType,
-  ElectionStatus,
-  EligibilityMode,
-  VotingMethod,
-} from '../../../generated/prisma/client.js';
-import type { TxClient } from '../../types/prisma.types.js';
 
 export interface BallotSelection {
   approve?: boolean;
@@ -126,7 +127,7 @@ const normalizeSelection = (
     return [
       {
         approve: selection.approve,
-        candidateId: candidateIds[0]!,
+        candidateId: candidateIds[0],
         portfolioId: selection.portfolioId,
         type,
       },
@@ -238,7 +239,7 @@ export const castBallot = async (
   }
 
   // Retry on the (rare) ballot-sequence race.
-  let result: { receiptCode: string } | undefined;
+  let result: undefined | { receiptCode: string };
   for (let attempt = 0; attempt < 3 && !result; attempt += 1) {
     try {
       result = await prisma.$transaction(async (tx) => {

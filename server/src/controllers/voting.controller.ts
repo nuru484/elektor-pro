@@ -1,6 +1,7 @@
 // src/controllers/voting.controller.ts
 import type { Request, RequestHandler, Response } from 'express';
 
+import { Role } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import { asyncHandler, UnauthorizedError } from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
@@ -13,20 +14,19 @@ import {
   verifyVoterOtp,
 } from '../services/voting/voter-auth.service.js';
 import {
+  type BallotSelection,
   castBallot,
   getVoterBallot,
   verifyReceipt,
-  type BallotSelection,
 } from '../services/voting/voting.service.js';
 import { issueSession, requestContextOf } from '../utils/auth-session.js';
 import { sendOk } from '../utils/http.js';
-import { actorOf } from './proposal-response.js';
-import { Role } from '../../generated/prisma/client.js';
 import {
   castBallotSchema,
   otpRequestSchema,
   otpVerifySchema,
 } from '../validations/voting-validation.js';
+import { actorOf } from './proposal-response.js';
 
 const voterId = (req: Request): string => {
   if (!req.user) throw new UnauthorizedError('Authentication required');

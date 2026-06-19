@@ -49,7 +49,6 @@ import {
   createGroupSchema,
   createPortfolioSchema,
   createVoterSchema,
-  electionQuerySchema,
   electionStatusSchema,
   reviewChangeSchema,
   updateCandidateSchema,

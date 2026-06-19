@@ -3,8 +3,6 @@ import type { NextFunction, Request, Response } from 'express';
 
 import jwt from 'jsonwebtoken';
 
-import type { ITokenPayload } from '../types/auth.types.js';
-
 import ENV from '../config/env.js';
 import { CookieManager } from '../utils/CookieManager.js';
 import { verifyJwtToken } from '../utils/verify-jwt-token.js';

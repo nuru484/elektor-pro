@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { GENESIS_HASH } from '../../src/config/constants.js';
+import { verifyAuditChain } from '../../src/services/audit/audit.service.js';
 import {
   chainHash,
   decryptSecret,
@@ -9,8 +11,6 @@ import {
   safeEqual,
   sha256,
 } from '../../src/utils/crypto.js';
-import { verifyAuditChain } from '../../src/services/audit/audit.service.js';
-import { GENESIS_HASH } from '../../src/config/constants.js';
 
 describe('crypto utils', () => {
   it('sha256 is deterministic', () => {

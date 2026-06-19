@@ -1,6 +1,7 @@
 // src/routes/voting/index.ts
 import { Router } from 'express';
 
+import { Capability, Role } from '../../../generated/prisma/client.js';
 import {
   accreditVoterController,
   castBallotController,
@@ -12,9 +13,8 @@ import {
 } from '../../controllers/voting.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
-import { requireCapability } from '../../middlewares/require-capability.js';
 import { authRateLimiter } from '../../middlewares/rateLimit.js';
-import { Capability, Role } from '../../../generated/prisma/client.js';
+import { requireCapability } from '../../middlewares/require-capability.js';
 
 const votingRoutes = Router();
 

@@ -1,8 +1,3 @@
-// src/services/results/results.service.ts
-// Tally computation and results-visibility rules.
-import prisma from '../../lib/prisma.js';
-import { ForbiddenError, NotFoundError } from '../../middlewares/error-handler.js';
-import { hasCapability } from '../authorization/capability.service.js';
 import {
   BallotEntryType,
   Capability,
@@ -11,6 +6,11 @@ import {
   ResultsPolicy,
   Role,
 } from '../../../generated/prisma/client.js';
+// src/services/results/results.service.ts
+// Tally computation and results-visibility rules.
+import prisma from '../../lib/prisma.js';
+import { ForbiddenError, NotFoundError } from '../../middlewares/error-handler.js';
+import { hasCapability } from '../authorization/capability.service.js';
 
 export interface ResultsViewer {
   id: string;

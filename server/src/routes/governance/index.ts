@@ -1,6 +1,7 @@
 // src/routes/governance/index.ts
 import { Router } from 'express';
 
+import { Capability, Role } from '../../../generated/prisma/client.js';
 import {
   assignAgentController,
   createStaffUserController,
@@ -14,7 +15,6 @@ import {
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
 import { requireCapability } from '../../middlewares/require-capability.js';
-import { Capability, Role } from '../../../generated/prisma/client.js';
 
 const governanceRoutes = Router();
 

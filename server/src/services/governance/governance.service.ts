@@ -1,3 +1,7 @@
+import {
+  type Capability,
+  Role,
+} from '../../../generated/prisma/client.js';
 // src/services/governance/governance.service.ts
 // Staff/agent/candidate account creation, agent assignments, and capability
 // grants. These account-level actions are super-admin / capability gated and
@@ -12,13 +16,9 @@ import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { hashPassword } from '../../utils/password.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { canApproveChanges } from '../authorization/capability.service.js';
-import {
-  type Capability,
-  Role,
-} from '../../../generated/prisma/client.js';
 
-type Actor = { id: string; role: Role };
-type Ctx = { ipAddress?: string; userAgent?: string };
+interface Actor { id: string; role: Role }
+interface Ctx { ipAddress?: string; userAgent?: string }
 
 const STAFF_ROLES = new Set<Role>([Role.ADMIN, Role.AGENT, Role.CANDIDATE]);
 
@@ -119,7 +119,7 @@ export const assignAgent = async (
     select: { role: true },
     where: { id: input.userId },
   });
-  if (!user || user.role !== Role.AGENT) {
+  if (user?.role !== Role.AGENT) {
     throw new BadRequestError('User is not an agent');
   }
   const assignment = await prisma.agentAssignment.create({

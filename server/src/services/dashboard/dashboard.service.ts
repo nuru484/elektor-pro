@@ -1,10 +1,10 @@
-// src/services/dashboard/dashboard.service.ts
-import prisma from '../../lib/prisma.js';
 import {
   ChangeStatus,
   ElectionStatus,
   Role,
 } from '../../../generated/prisma/client.js';
+// src/services/dashboard/dashboard.service.ts
+import prisma from '../../lib/prisma.js';
 
 /** Aggregate counts + recent activity for the admin dashboard. */
 export const getAdminDashboard = async () => {

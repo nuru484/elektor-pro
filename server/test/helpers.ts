@@ -2,9 +2,9 @@
 import request from 'supertest';
 
 import app from '../app.js';
+import { Role } from '../generated/prisma/client.js';
 import prisma from '../src/lib/prisma.js';
 import { hashPassword } from '../src/utils/password.js';
-import { Role } from '../generated/prisma/client.js';
 
 export { app, prisma };
 export const api = () => request(app);
@@ -41,7 +41,7 @@ export const createUser = async (
  * keeping the last value (browser override semantics) and drops cleared cookies,
  * since issueSession emits a clear + a set for each token.
  */
-export const toCookieHeader = (setCookie: string[] | string | undefined): string => {
+export const toCookieHeader = (setCookie: string | string[] | undefined): string => {
   const arr = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
   const map = new Map<string, string>();
   for (const cookie of arr) {

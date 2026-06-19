@@ -1,8 +1,9 @@
+import type { Prisma } from '../../../generated/prisma/client.js';
+
 // src/services/audit/audit-read.service.ts
 import prisma from '../../lib/prisma.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { verifyAuditChain } from './audit.service.js';
-import type { Prisma } from '../../../generated/prisma/client.js';
 
 const AUDIT_INCLUDE = {
   actor: { select: { firstName: true, id: true, lastName: true, role: true } },

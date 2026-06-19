@@ -1,6 +1,7 @@
 // src/controllers/governance.controller.ts
 import type { Request, RequestHandler, Response } from 'express';
 
+import { type Capability, type Role } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import { asyncHandler } from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
@@ -17,13 +18,12 @@ import {
 } from '../services/governance/governance.service.js';
 import { requestContextOf } from '../utils/auth-session.js';
 import { parsePagination, sendCreated, sendList, sendOk } from '../utils/http.js';
-import { actorOf } from './proposal-response.js';
-import { type Capability, type Role } from '../../generated/prisma/client.js';
 import {
   assignAgentSchema,
   createStaffUserSchema,
   grantSchema,
 } from '../validations/governance-validation.js';
+import { actorOf } from './proposal-response.js';
 
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.length > 0 ? v : undefined;

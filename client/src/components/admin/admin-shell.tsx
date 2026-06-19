@@ -45,8 +45,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (!isLoading && (isError || (user && !isStaff))) router.replace("/login");
   }, [isError, isLoading, isStaff, router, user]);
 
-  useEffect(() => setOpen(false), [pathname]);
-
   if (isLoading || !user || !isStaff) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
@@ -75,6 +73,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               )}
               href={item.href}
               key={item.href}
+              onClick={() => setOpen(false)}
             >
               <item.icon className="size-4" />
               {item.label}

@@ -1,7 +1,8 @@
+import { OtpPurpose, Role } from '../../../generated/prisma/client.js';
+import ENV from '../../config/env.js';
 // src/services/voting/voter-auth.service.ts
 // Voter authentication via phone OTP (mock-logged in dev, FROG SMS in live).
 import prisma from '../../lib/prisma.js';
-import ENV from '../../config/env.js';
 import {
   BadRequestError,
   NotFoundError,
@@ -11,7 +12,6 @@ import {
 import { generateNumericCode, safeEqual, sha256 } from '../../utils/crypto.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { sendSms } from '../notifications/sms.service.js';
-import { OtpPurpose, Role } from '../../../generated/prisma/client.js';
 
 const MAX_OTP_ATTEMPTS = 5;
 const OTP_RESEND_WINDOW_MS = 60 * 1000;
