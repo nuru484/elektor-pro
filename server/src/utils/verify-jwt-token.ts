@@ -1,5 +1,5 @@
 // src/utils/verify-jwt-token.ts
-import type { ITokenPayload } from '@/types/auth.types.js';
+import type { ITokenPayload } from '../types/auth.types.js';
 import jwt, { type VerifyErrors } from 'jsonwebtoken';
 
 export const verifyJwtToken = <T = ITokenPayload>(token: string, secret: string): Promise<T> => {

@@ -1,62 +1,59 @@
-// src/routes/authentication/register.ts
+// src/routes/users/usersRoutes.ts
 import { Router } from 'express';
+
+import { Role } from '../../../generated/prisma/client.js';
 import {
+  deleteAllUsers,
+  deleteUser,
   getAllUsers,
   getUser,
   updateUser,
-  updateUserRole,
   updateUserProfilePicture,
-  deleteUser,
-  deleteAllUsers,
+  updateUserRole,
 } from '../../controllers/users/index.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
-import { Role } from '../../../generated/prisma/index.js';
 
 const usersRouter = Router();
 
-usersRouter.get('/', authenticateJWT, authorizeRole([Role.ADMIN]), getAllUsers);
+// Listing and hard administrative actions are super-admin only.
+usersRouter.get('/', authenticateJWT, authorizeRole([Role.SUPER_ADMIN]), getAllUsers);
 
 usersRouter.get(
   '/user/:userId',
   authenticateJWT,
-  authorizeRole([Role.ADMIN, Role.CLIENT, Role.LAWYER]),
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
   getUser,
 );
 
 usersRouter.put(
   '/user/:userId',
   authenticateJWT,
-  authorizeRole([Role.ADMIN, Role.CLIENT, Role.LAWYER]),
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
   ...updateUser,
 );
 
 usersRouter.patch(
   '/user/:userId/role',
   authenticateJWT,
-  authorizeRole([Role.ADMIN, Role.LAWYER, Role.CLIENT]),
+  authorizeRole([Role.SUPER_ADMIN]),
   updateUserRole,
 );
 
 usersRouter.patch(
-  '/user/:userId/profilePicture',
+  '/user/:userId/profile-picture',
   authenticateJWT,
-  authorizeRole([Role.ADMIN, Role.LAWYER, Role.CLIENT]),
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
   ...updateUserProfilePicture,
 );
 
 usersRouter.delete(
   '/user/:userId',
   authenticateJWT,
-  authorizeRole([Role.ADMIN]),
+  authorizeRole([Role.SUPER_ADMIN]),
   deleteUser,
 );
 
-usersRouter.delete(
-  '/',
-  authenticateJWT,
-  authorizeRole([Role.ADMIN]),
-  deleteAllUsers,
-);
+usersRouter.delete('/', authenticateJWT, authorizeRole([Role.SUPER_ADMIN]), deleteAllUsers);
 
 export default usersRouter;

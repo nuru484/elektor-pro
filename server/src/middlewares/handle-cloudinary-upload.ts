@@ -1,7 +1,7 @@
 // src/middlewares/handle-cloudinary-upload.ts
 import type { Request, Response, NextFunction } from 'express';
 import { ValidationError, asyncHandler } from './error-handler.js';
-import type { ICloudinaryUploadOptions, ICloudinaryUploadResult } from '@/types/cloudinary.types.js';
+import type { ICloudinaryUploadOptions, ICloudinaryUploadResult } from '../types/cloudinary.types.js';
 import { cloudinaryService } from '../config/claudinary.js';
 import { isValidBase64Image } from '../utils/validate-base64-image.js';
 

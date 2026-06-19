@@ -1,5 +1,5 @@
 // src/types/auth.types.ts
-import { Role } from '@/prisma/index.js';
+import { Role } from '../../generated/prisma/client.js';
 
 export interface IRefreshTokenPayload {
   id: string;

@@ -21,7 +21,7 @@ import {
   HTTP_STATUS_CODES,
   CLOUDINARY_UPLOAD_OPTIONS,
 } from '../../config/constants.js';
-import { Role, Status } from '../../../generated/prisma/index.js';
+import { Role, Status } from '../../../generated/prisma/client.js';
 import { Prisma } from '../../../generated/prisma/client.js';
 
 /**
@@ -146,7 +146,7 @@ export const getUser = asyncHandler(
       throw new ValidationError('Valid user ID is required');
     }
 
-    if (currentUserId !== userId && currentUserRole !== 'ADMIN') {
+    if (currentUserId !== userId && currentUserRole !== 'SUPER_ADMIN') {
       res.status(HTTP_STATUS_CODES.FORBIDDEN);
       throw new CustomError(
         HTTP_STATUS_CODES.FORBIDDEN,
@@ -242,14 +242,14 @@ const handleUpdateUser = asyncHandler(
           throw new CustomError(HTTP_STATUS_CODES.NOT_FOUND, 'User not found');
         }
 
-        if (currentUserId !== userId && currentUserRole !== 'ADMIN') {
+        if (currentUserId !== userId && currentUserRole !== 'SUPER_ADMIN') {
           throw new CustomError(
             HTTP_STATUS_CODES.FORBIDDEN,
             'You can only update your own profile',
           );
         }
 
-        if (currentUserId === userId && currentUserRole !== 'ADMIN') {
+        if (currentUserId === userId && currentUserRole !== 'SUPER_ADMIN') {
           if (
             userDetails.role !== undefined ||
             userDetails.status !== undefined
@@ -495,7 +495,7 @@ const handleUpdateUserProfilePicture = asyncHandler(
         }
 
         // Permission check
-        if (currentUserId !== userId && currentUserRole !== 'ADMIN') {
+        if (currentUserId !== userId && currentUserRole !== 'SUPER_ADMIN') {
           throw new CustomError(
             HTTP_STATUS_CODES.FORBIDDEN,
             'You can only update your own profile picture',

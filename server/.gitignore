@@ -14,3 +14,8 @@
 
 # Test coverage
 /coverage
+# Prisma generated client (regenerated on install/build)
+/generated
+
+# Build output
+/build

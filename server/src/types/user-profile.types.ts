@@ -1,5 +1,5 @@
 // src/types/user/user-profile.types.ts (additions)
-import { Role, Status } from '@/prisma/index.js';
+import { Role, Status } from '../../generated/prisma/client.js';
 
 export interface IUser {
   createdAt: Date;
