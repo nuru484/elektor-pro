@@ -96,9 +96,46 @@ const sanitizeErrorData = (data: unknown): unknown => {
 };
 
 /**
+ * Map a Prisma known-request error to a typed CustomError so the central
+ * handler formats it consistently (detected structurally to avoid importing the
+ * generated client here).
+ */
+const normalizeError = (error: unknown): Error => {
+  if (error instanceof CustomError) return error;
+  if (
+    error instanceof Error &&
+    error.name === 'PrismaClientKnownRequestError' &&
+    'code' in error
+  ) {
+    const code = (error as { code: string }).code;
+    const meta = (error as { meta?: Record<string, unknown> }).meta;
+    switch (code) {
+      case 'P2002':
+        return new ConflictError('A record with these details already exists', {
+          code,
+          context: { target: meta?.['target'] },
+          layer: 'database',
+        });
+      case 'P2003':
+        return new BadRequestError('Related record does not exist', {
+          code,
+          layer: 'database',
+        });
+      case 'P2025':
+        return new NotFoundError('Record not found', { code, layer: 'database' });
+      default:
+        return new BadRequestError('Database request error', { code, layer: 'database' });
+    }
+  }
+  if (error instanceof Error) return error;
+  return new InternalServerError('Unknown error');
+};
+
+/**
  * Error handler middleware with better typing and security
  */
-export const errorHandler = (error: Error | CustomError, req: Request, res: Response, _next: NextFunction): void => {
+export const errorHandler = (rawError: Error | CustomError, req: Request, res: Response, _next: NextFunction): void => {
+  const error = normalizeError(rawError);
   const isProduction = ENV.NODE_ENV === 'production';
   const errorId = generateErrorId();
 

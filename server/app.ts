@@ -1,34 +1,37 @@
+// app.ts
 import type { NextFunction, Request, Response } from 'express';
 
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-// app.ts
 import express from 'express';
+import helmet from 'helmet';
 import morgan from 'morgan';
 
 import ENV from './src/config/env.js';
 import {
   errorHandler,
+  NotFoundError,
   UnauthorizedError,
 } from './src/middlewares/error-handler.js';
-import { NotFoundError } from './src/middlewares/error-handler.js';
 import { apiLimiter } from './src/middlewares/rateLimit.js';
+import { requestContext } from './src/middlewares/request-context.js';
+import healthRoutes from './src/routes/health.js';
 import routes from './src/routes/index.js';
 
 const app = express();
 
 const allowedOrigins = new Set(
-  ENV.CORS_ACCESS ? ENV.CORS_ACCESS.split(',') : [],
+  ENV.CORS_ACCESS ? ENV.CORS_ACCESS.split(',').map((o) => o.trim()) : [],
 );
 
-type CorsCallback = (err: Error | null, allow: boolean) => void;
+type CorsCallback = (err: Error | null, allow?: boolean) => void;
 
 const corsOptions = {
-  allowedHeaders: ['Content-Type', 'Authorization'],
-
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
-  origin: function (origin: string | undefined, callback: CorsCallback) {
+  origin(origin: string | undefined, callback: CorsCallback) {
     if (!origin || allowedOrigins.has(origin)) {
       callback(null, true);
     } else {
@@ -38,35 +41,34 @@ const corsOptions = {
           context: { origin },
           layer: 'cors',
         }),
-        false,
       );
     }
   },
 };
 
+app.set('trust proxy', true);
+app.use(helmet());
+app.use(compression() as express.RequestHandler);
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser() as express.RequestHandler);
-app.set('trust proxy', true); // Enable trust proxy for proper IP handling behind proxies
+app.use(requestContext);
 app.use(
-  morgan(':method :url :status :response-time ms') as express.RequestHandler,
+  morgan(':method :url :status :response-time ms - :req[x-request-id]') as express.RequestHandler,
 );
+
+// Health/readiness are not rate-limited.
+app.use('/', healthRoutes);
+
 app.use(apiLimiter);
 app.use('/api/v1', routes);
 
-app.get('/', (req: Request, res: Response) => {
-  res.status(200).json({
-    message: 'API is working',
-    success: true,
-  });
+// Unknown route
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  next(new NotFoundError(`Route ${req.originalUrl} not found`));
 });
 
-// Unknown route
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const error = new NotFoundError(`Route ${req.originalUrl} not found`);
-  next(error);
-});
 app.use(errorHandler);
 
 export default app;
