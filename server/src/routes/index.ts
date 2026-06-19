@@ -4,6 +4,7 @@ import express from 'express';
 import authenticationRoutes from './authentication/index.js';
 import dashboardRoutes from './dashboard/index.js';
 import domainRoutes from './domain/index.js';
+import governanceRoutes from './governance/index.js';
 import resultsRoutes from './results/index.js';
 import usersRoutes from './users/index.js';
 import votingRoutes from './voting/index.js';
@@ -15,6 +16,7 @@ routes.use('/', domainRoutes);
 routes.use('/', votingRoutes);
 routes.use('/', resultsRoutes);
 routes.use('/', dashboardRoutes);
+routes.use('/', governanceRoutes);
 routes.use('/users', usersRoutes);
 
 export default routes;
