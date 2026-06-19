@@ -1,0 +1,29 @@
+// src/middlewares/optional-auth.ts
+import type { NextFunction, Request, Response } from 'express';
+
+import ENV from '../config/env.js';
+import { verifyJwtToken } from '../utils/verify-jwt-token.js';
+import type { ITokenPayload } from '../types/auth.types.js';
+
+/**
+ * Attach req.user if a valid access token is present, but never reject — used by
+ * endpoints that are public but richer when authenticated (e.g. results).
+ */
+export const optionalAuth = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const token = req.cookies?.accessToken as string | undefined;
+  if (token) {
+    try {
+      req.user = await verifyJwtToken<ITokenPayload>(
+        token,
+        ENV.ACCESS_TOKEN_SECRET,
+      );
+    } catch {
+      // ignore — treat as anonymous
+    }
+  }
+  next();
+};
