@@ -40,7 +40,7 @@ const loadElectionForResults = async (idOrSlug: string) => {
 
 export const getResultsController = asyncHandler(
   async (req: Request, res: Response) => {
-    const election = await loadElectionForResults(req.params['electionId'] ?? '');
+    const election = await loadElectionForResults(req.params.electionId);
     await assertCanViewResults(viewerOf(req), election);
     sendOk(res, 'Results retrieved', await computeResults(election.id));
   },
@@ -48,9 +48,9 @@ export const getResultsController = asyncHandler(
 
 export const exportResultsController = asyncHandler(
   async (req: Request, res: Response) => {
-    const election = await loadElectionForResults(req.params['electionId'] ?? '');
+    const election = await loadElectionForResults(req.params.electionId);
     await assertCanViewResults(viewerOf(req), election);
-    const format = req.query['format'] === 'pdf' ? 'pdf' : 'csv';
+    const format = req.query.format === 'pdf' ? 'pdf' : 'csv';
 
     if (format === 'pdf') {
       const pdf = await exportResultsPdf(election.id);
@@ -70,7 +70,7 @@ export const publishResultsController = asyncHandler(
   async (req: Request, res: Response) => {
     const data = await publishResults(
       actorOf(req),
-      req.params['electionId'] ?? '',
+      req.params.electionId,
       requestContextOf(req),
     );
     sendOk(res, 'Results published', data);
@@ -81,7 +81,7 @@ export const certifyResultsController = asyncHandler(
   async (req: Request, res: Response) => {
     const data = await certifyResults(
       actorOf(req),
-      req.params['electionId'] ?? '',
+      req.params.electionId,
       requestContextOf(req),
     );
     sendOk(res, 'Results certified', data);
@@ -90,7 +90,7 @@ export const certifyResultsController = asyncHandler(
 
 export const getCertificationController = asyncHandler(
   async (req: Request, res: Response) => {
-    const data = await getCertification(req.params['electionId'] ?? '');
+    const data = await getCertification(req.params.electionId);
     sendOk(res, 'Certification retrieved', data);
   },
 );

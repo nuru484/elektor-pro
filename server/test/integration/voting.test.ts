@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   api,
+  bodyOf,
   createElectionFixture,
   createVoterFixture,
   prisma,
@@ -13,7 +14,7 @@ const voterLogin = async (identifier: string): Promise<string> => {
   const reqRes = await api()
     .post('/api/v1/voter/otp/request')
     .send({ identifier });
-  const code = reqRes.body.data.devCode as string;
+  const code = bodyOf<{ data: { devCode: string } }>(reqRes).data.devCode;
   const verifyRes = await api()
     .post('/api/v1/voter/otp/verify')
     .send({ code, identifier });
@@ -34,8 +35,9 @@ describe('voter OTP + secret ballot voting', () => {
       .get(`/api/v1/voter/elections/${election.id}/ballot`)
       .set('Cookie', cookie);
     expect(ballotRes.status).toBe(200);
-    expect(ballotRes.body.data.portfolios).toHaveLength(1);
-    expect(ballotRes.body.data.hasVoted).toBe(false);
+    const ballotBody = bodyOf<{ data: { hasVoted: boolean; portfolios: unknown[] } }>(ballotRes);
+    expect(ballotBody.data.portfolios).toHaveLength(1);
+    expect(ballotBody.data.hasVoted).toBe(false);
 
     const castRes = await api()
       .post(`/api/v1/voter/elections/${election.id}/ballot`)
@@ -44,7 +46,7 @@ describe('voter OTP + secret ballot voting', () => {
         selections: [{ candidateIds: [candidates[0].id], portfolioId: portfolio.id }],
       });
     expect(castRes.status).toBe(201);
-    const receipt = castRes.body.data.receiptCode as string;
+    const receipt = bodyOf<{ data: { receiptCode: string } }>(castRes).data.receiptCode;
     expect(receipt).toBeTruthy();
 
     // Receipt verifies and proves chain integrity.
@@ -52,8 +54,11 @@ describe('voter OTP + secret ballot voting', () => {
       `/api/v1/elections/${election.id}/receipts/${receipt}`,
     );
     expect(receiptRes.status).toBe(200);
-    expect(receiptRes.body.data.integrityValid).toBe(true);
-    expect(receiptRes.body.data.choices[0].candidate).toBe('Alice');
+    const receiptBody = bodyOf<{
+      data: { choices: { candidate: null | string }[]; integrityValid: boolean };
+    }>(receiptRes);
+    expect(receiptBody.data.integrityValid).toBe(true);
+    expect(receiptBody.data.choices[0].candidate).toBe('Alice');
   });
 
   it('enforces one person, one vote', async () => {

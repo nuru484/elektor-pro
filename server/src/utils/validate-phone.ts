@@ -21,7 +21,7 @@ export const validateAndFormatPhone = (phoneInput: string, defaultCountry: Count
     const phoneNumber = parsePhoneNumberWithError(phoneInput, defaultCountry);
 
     return {
-      countryCode: phoneNumber.country || defaultCountry,
+      countryCode: phoneNumber.country ?? defaultCountry,
       e164Format: phoneNumber.format('E.164'),
       nationalFormat: phoneNumber.formatNational(),
     };

@@ -59,7 +59,7 @@ export const listVoterElectionsController = asyncHandler(
 
 export const getBallotController = asyncHandler(
   async (req: Request, res: Response) => {
-    const data = await getVoterBallot(voterId(req), req.params['electionId'] ?? '');
+    const data = await getVoterBallot(voterId(req), req.params.electionId);
     sendOk(res, 'Ballot retrieved', data);
   },
 );
@@ -70,7 +70,7 @@ export const castBallotController: RequestHandler[] = [
     const { selections } = req.body as { selections: BallotSelection[] };
     const result = await castBallot(
       voterId(req),
-      req.params['electionId'] ?? '',
+      req.params.electionId,
       selections,
     );
     res.status(HTTP_STATUS_CODES.CREATED).json({
@@ -84,8 +84,8 @@ export const castBallotController: RequestHandler[] = [
 export const verifyReceiptController = asyncHandler(
   async (req: Request, res: Response) => {
     const data = await verifyReceipt(
-      req.params['electionId'] ?? '',
-      req.params['code'] ?? '',
+      req.params.electionId,
+      req.params.code,
     );
     sendOk(res, 'Receipt verified', data);
   },
@@ -95,8 +95,8 @@ export const accreditVoterController = asyncHandler(
   async (req: Request, res: Response) => {
     const data = await accreditVoter(
       actorOf(req),
-      req.params['electionId'] ?? '',
-      req.params['voterId'] ?? '',
+      req.params.electionId,
+      req.params.voterId,
       requestContextOf(req),
     );
     sendOk(res, 'Voter accredited', data);

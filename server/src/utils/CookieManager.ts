@@ -1,4 +1,8 @@
 // src/utils/CookieManager.ts
+//
+// Typed access to the auth cookies (httpOnly access + refresh tokens). A plain
+// object of functions rather than a static-only class; call sites keep the
+// `CookieManager.x()` shape.
 import type { Request, Response } from 'express';
 
 import ENV from '../config/env.js';
@@ -13,87 +17,101 @@ export interface CookieOptions {
   secure?: boolean;
 }
 
-export class CookieManager {
-  // Default options that apply to all cookies
-  private static defaultOptions: CookieOptions = {
-    domain: ENV.COOKIE_DOMAIN || undefined,
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    secure: ENV.NODE_ENV === 'production',
-  };
+// Default options that apply to all cookies
+const defaultOptions: CookieOptions = {
+  domain: ENV.COOKIE_DOMAIN || undefined,
+  httpOnly: true,
+  path: '/',
+  sameSite: 'lax',
+  secure: ENV.NODE_ENV === 'production',
+};
 
-  // Specific configurations for different token types
-  private static tokenConfigs = {
-    accessToken: {
-      ...CookieManager.defaultOptions,
-    },
-    refreshToken: {
-      ...CookieManager.defaultOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    },
-  };
+// Specific configurations for different token types
+const tokenConfigs = {
+  accessToken: {
+    ...defaultOptions,
+  },
+  refreshToken: {
+    ...defaultOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
+} as const satisfies Record<string, CookieOptions>;
 
-  public static clearAllTokens(res: Response): void {
-    this.clearToken(res, 'accessToken');
-    this.clearToken(res, 'refreshToken');
+/** cookie-parser puts string values on req.cookies; type the lookup once. */
+const cookieOf = (req: Request, name: string): string | undefined => {
+  const cookies = req.cookies as Record<string, string | undefined> | undefined;
+  return cookies?.[name];
+};
+
+const setCookie = (res: Response, name: string, value: string, options: CookieOptions = {}): void => {
+  res.cookie(name, value, {
+    ...defaultOptions,
+    ...options,
+  });
+};
+
+const clearToken = (res: Response, tokenName: 'accessToken' | 'refreshToken'): void => {
+  setCookie(res, tokenName, '', {
+    ...defaultOptions,
+    maxAge: 0,
+  });
+};
+
+const clearAllTokens = (res: Response): void => {
+  clearToken(res, 'accessToken');
+  clearToken(res, 'refreshToken');
+};
+
+const getAccessToken = (req: Request): string => {
+  const token = cookieOf(req, 'accessToken');
+  if (!token) {
+    throw new UnauthorizedError('Access token not found. Please login', {
+      code: 'MISSING_TOKEN',
+      layer: 'jwt',
+    });
   }
+  return token;
+};
 
-  public static clearToken(res: Response, tokenName: 'accessToken' | 'refreshToken'): void {
-    this.setCookie(res, tokenName, '', {
-      ...this.defaultOptions,
-      maxAge: 0,
+const getRefreshToken = (req: Request): string => {
+  const token = cookieOf(req, 'refreshToken');
+  if (!token) {
+    throw new UnauthorizedError('Refresh token not found. Please login', {
+      code: 'MISSING_TOKEN',
+      layer: 'jwt',
+    });
+  }
+  return token;
+};
+
+const getCookie = (req: Request, name: string, required = false): null | string => {
+  const value = cookieOf(req, name) ?? null;
+
+  if (required && !value) {
+    throw new UnauthorizedError(`Cookie ${name} not found`, {
+      code: 'MISSING_COOKIE',
+      context: { cookieName: name },
+      layer: 'cookie',
     });
   }
 
-  public static getAccessToken(req: Request): string {
-    if (!req.cookies?.accessToken) {
-      throw new UnauthorizedError('Access token not found. Please login', {
-        code: 'MISSING_TOKEN',
-        context: { token: null },
-        layer: 'jwt',
-      });
-    }
-    return req.cookies.accessToken;
-  }
+  return value;
+};
 
-  public static getCookie(req: Request, name: string, required = false): null | string {
-    const value = req.cookies?.[name] || null;
+const setAccessToken = (res: Response, token: string): void => {
+  setCookie(res, 'accessToken', token, tokenConfigs.accessToken);
+};
 
-    if (required && !value) {
-      throw new UnauthorizedError(`Cookie ${name} not found`, {
-        code: 'MISSING_COOKIE',
-        context: { cookieName: name },
-        layer: 'cookie',
-      });
-    }
+const setRefreshToken = (res: Response, token: string): void => {
+  setCookie(res, 'refreshToken', token, tokenConfigs.refreshToken);
+};
 
-    return value;
-  }
-
-  public static getRefreshToken(req: Request): string {
-    if (!req.cookies?.refreshToken) {
-      throw new UnauthorizedError('Refresh token not found. Please login', {
-        code: 'MISSING_TOKEN',
-        context: { token: null },
-        layer: 'jwt',
-      });
-    }
-    return req.cookies.refreshToken;
-  }
-
-  public static setAccessToken(res: Response, token: string): void {
-    this.setCookie(res, 'accessToken', token, this.tokenConfigs.accessToken);
-  }
-
-  public static setRefreshToken(res: Response, token: string): void {
-    this.setCookie(res, 'refreshToken', token, this.tokenConfigs.refreshToken);
-  }
-
-  private static setCookie(res: Response, name: string, value: string, options: CookieOptions = {}): void {
-    res.cookie(name, value, {
-      ...this.defaultOptions,
-      ...options,
-    });
-  }
-}
+export const CookieManager = {
+  clearAllTokens,
+  clearToken,
+  getAccessToken,
+  getCookie,
+  getRefreshToken,
+  setAccessToken,
+  setRefreshToken,
+};

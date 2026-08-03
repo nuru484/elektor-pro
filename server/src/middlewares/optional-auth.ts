@@ -1,8 +1,6 @@
 // src/middlewares/optional-auth.ts
 import type { NextFunction, Request, Response } from 'express';
 
-import type { ITokenPayload } from '../types/auth.types.js';
-
 import ENV from '../config/env.js';
 import { verifyJwtToken } from '../utils/verify-jwt-token.js';
 
@@ -15,13 +13,11 @@ export const optionalAuth = async (
   _res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const token = req.cookies?.accessToken as string | undefined;
+  const cookies = req.cookies as Record<string, string | undefined> | undefined;
+  const token = cookies?.accessToken;
   if (token) {
     try {
-      req.user = await verifyJwtToken<ITokenPayload>(
-        token,
-        ENV.ACCESS_TOKEN_SECRET,
-      );
+      req.user = await verifyJwtToken(token, ENV.ACCESS_TOKEN_SECRET);
     } catch {
       // ignore — treat as anonymous
     }

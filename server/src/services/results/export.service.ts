@@ -47,7 +47,7 @@ export const exportResultsPdf = async (electionId: string): Promise<Buffer> => {
 
   return new Promise((resolve, reject) => {
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('end', () => { resolve(Buffer.concat(chunks)); });
     doc.on('error', reject);
 
     doc.fontSize(20).text(results.election.name, { align: 'center' });

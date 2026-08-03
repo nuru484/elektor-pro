@@ -40,9 +40,9 @@ export const listAuditLogsController = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await listAuditLogs(
       {
-        action: str(req.query['action']),
-        actorId: str(req.query['actorId']),
-        entity: str(req.query['entity']),
+        action: str(req.query.action),
+        actorId: str(req.query.actorId),
+        entity: str(req.query.entity),
       },
       parsePagination(req.query),
     );

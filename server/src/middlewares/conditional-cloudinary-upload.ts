@@ -7,19 +7,17 @@ const conditionalCloudinaryUpload = (options: Parameters<typeof handleCloudinary
   const uploadMiddleware = handleCloudinaryUpload(options, fieldName);
 
   return (req: Request, res: Response, next: NextFunction) => {
+    const fieldFiles = !req.files || Array.isArray(req.files) ? undefined : req.files[fieldName];
     const hasFile =
-      !!req.file || // single file
+      Boolean(req.file) || // single file
       (Array.isArray(req.files) && req.files.length > 0) ||
-      (req.files &&
-        typeof req.files === 'object' &&
-        Array.isArray((req.files as Record<string, Express.Multer.File[]>)[fieldName]) &&
-        ((req.files as Record<string, Express.Multer.File[]>)[fieldName]?.length ?? 0) > 0);
+      (Array.isArray(fieldFiles) && fieldFiles.length > 0);
 
     if (hasFile) {
       return uploadMiddleware(req, res, next);
-    } else {
-      next(); return;
     }
+    next();
+    return;
   };
 };
 

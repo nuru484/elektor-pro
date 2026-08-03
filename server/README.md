@@ -23,7 +23,8 @@ src/
   routes/        feature routers mounted under /api/v1
   middlewares/   auth (JWT cookie), capability guard, validation (Zod), errors
   realtime/      Socket.IO server (live results)
-  lib/prisma.ts  single client with soft-delete extension
+  jobs/          BullMQ scaffolding (Redis connection, lifecycle registry)
+  lib/           prisma client (soft-delete extension), clock, error reporting
 prisma/          schema, migrations, idempotent seed
 test/            Vitest + Supertest (unit + integration)
 ```
@@ -69,4 +70,4 @@ npm run lint         # eslint (perfectionist)
 | Results   | `GET /elections/:id/results`, `POST /elections/:id/results/certify` |
 | Receipts  | `GET /elections/:id/receipts/:code`                 |
 | Audit     | `GET /audit-logs`, `GET /audit-logs/verify`         |
-| Health    | `GET /health`, `GET /ready`                         |
+| Health    | `GET /health`, `GET /health/ready`, `GET /health/db` |

@@ -37,7 +37,7 @@ const ensureVoterUser = async (voter: {
   const [firstName, ...rest] = voter.name.trim().split(/\s+/);
   const user = await prisma.user.create({
     data: {
-      firstName: firstName ?? voter.name,
+      firstName,
       lastName: rest.join(' ') || '-',
       phone: voter.phoneNumber,
       role: Role.VOTER,

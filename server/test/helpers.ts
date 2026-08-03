@@ -9,6 +9,10 @@ import { hashPassword } from '../src/utils/password.js';
 export { app, prisma };
 export const api = () => request(app);
 
+/** Typed view of a supertest JSON body (supertest types `body` as any). */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- deliberate cast helper; the single-use generic IS the ergonomic point
+export const bodyOf = <T>(res: { body: unknown }): T => res.body as T;
+
 /** Truncate every table between tests. */
 export const resetDb = async (): Promise<void> => {
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`

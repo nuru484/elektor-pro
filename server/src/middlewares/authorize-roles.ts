@@ -10,9 +10,6 @@ export const authorizeRole =
     if (!req.user) {
       throw new ForbiddenError('Unauthorized: User not authenticated');
     }
-    if (!req.user.role) {
-      throw new ForbiddenError('Unauthorized: User role not defined');
-    }
     if (!allowedRoles.includes(req.user.role)) {
       throw new ForbiddenError();
     }

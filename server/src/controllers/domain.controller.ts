@@ -88,9 +88,9 @@ export const updateElectionStatusController: RequestHandler[] = [
       {
         action: ChangeAction.UPDATE,
         entity: ChangeEntity.ELECTION,
-        entityId: req.params.id ?? '',
+        entityId: req.params.id,
         payload: { status: (req.body as { status: ElectionStatus }).status },
-        summary: `Set election status to ${String((req.body as { status: string }).status)}`,
+        summary: `Set election status to ${(req.body as { status: string }).status}`,
       },
       ctxOf(req),
     );
@@ -224,7 +224,7 @@ export const listChangeRequestsController = asyncHandler(async (req, res) => {
 });
 
 export const getChangeRequestController = asyncHandler(async (req, res) => {
-  sendOk(res, 'Change request retrieved', await getChangeRequest(req.params.id ?? ''));
+  sendOk(res, 'Change request retrieved', await getChangeRequest(req.params.id));
 });
 
 export const approveChangeRequestController: RequestHandler[] = [
@@ -232,7 +232,7 @@ export const approveChangeRequestController: RequestHandler[] = [
   asyncHandler(async (req, res) => {
     const result = await approveChangeRequest(
       actorOf(req),
-      req.params.id ?? '',
+      req.params.id,
       (req.body as { note?: string }).note,
       ctxOf(req),
     );
@@ -249,7 +249,7 @@ export const rejectChangeRequestController: RequestHandler[] = [
   asyncHandler(async (req, res) => {
     await rejectChangeRequest(
       actorOf(req),
-      req.params.id ?? '',
+      req.params.id,
       (req.body as { note?: string }).note,
       ctxOf(req),
     );
@@ -259,7 +259,7 @@ export const rejectChangeRequestController: RequestHandler[] = [
 
 export const cancelChangeRequestController = asyncHandler(
   async (req: Request, res) => {
-    await cancelChangeRequest(actorOf(req), req.params.id ?? '');
+    await cancelChangeRequest(actorOf(req), req.params.id);
     sendOk(res, 'Change request cancelled', { id: req.params.id });
   },
 );

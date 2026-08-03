@@ -10,13 +10,13 @@ import type {
 
 import { Role, Status } from '../../../generated/prisma/client.js';
 import { Prisma } from '../../../generated/prisma/client.js';
-import { cloudinaryService } from '../../config/claudinary.js';
+import { cloudinaryService } from '../../config/cloudinary.js';
 import {
   CLOUDINARY_UPLOAD_OPTIONS,
   HTTP_STATUS_CODES,
 } from '../../config/constants.js';
 import multerUpload from '../../config/multer.js';
-import prisma from '../../config/prismaClient.js';
+import prisma from '../../lib/prisma.js';
 import conditionalCloudinaryUpload from '../../middlewares/conditional-cloudinary-upload.js';
 import {
   asyncHandler,
@@ -39,8 +39,8 @@ export const getAllUsers = asyncHandler(
     const role = req.query.role as Role | undefined;
     const status = req.query.status as Status | undefined;
     const search = req.query.search as string | undefined;
-    const sortBy = (req.query.sortBy as string) || 'createdAt';
-    const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+    const sortBy = (req.query.sortBy as string | undefined) ?? 'createdAt';
+    const sortOrder = (req.query.sortOrder as 'asc' | 'desc' | undefined) ?? 'desc';
 
     // Build where clause
     const whereClause: Prisma.UserWhereInput = {};
@@ -456,12 +456,10 @@ const handleUpdateUserProfilePicture = asyncHandler(
     const currentUserId = req.user?.id;
     const currentUserRole = req.user?.role;
 
+    const body = req.body as Record<string, unknown>;
     let uploadedImageUrl: string | undefined;
-    if (
-      req.body.profilePicture &&
-      typeof req.body.profilePicture === 'string'
-    ) {
-      uploadedImageUrl = req.body.profilePicture;
+    if (typeof body.profilePicture === 'string' && body.profilePicture) {
+      uploadedImageUrl = body.profilePicture;
     }
 
     if (!userId) {
@@ -480,10 +478,8 @@ const handleUpdateUserProfilePicture = asyncHandler(
       );
     }
 
-    let oldProfilePicture: null | string = null;
-
     try {
-      const result = await prisma.$transaction(async (prisma) => {
+      const { oldProfilePicture, result } = await prisma.$transaction(async (prisma) => {
         const existingUser = await prisma.user.findUnique({
           select: {
             id: true,
@@ -504,7 +500,7 @@ const handleUpdateUserProfilePicture = asyncHandler(
           );
         }
 
-        oldProfilePicture = existingUser.profilePicture;
+        const oldPicture = existingUser.profilePicture;
 
         const updatedUser = await prisma.user.update({
           data: { profilePicture: uploadedImageUrl },
@@ -533,7 +529,7 @@ const handleUpdateUserProfilePicture = asyncHandler(
           where: { id: userId },
         });
 
-        return updatedUser;
+        return { oldProfilePicture: oldPicture, result: updatedUser };
       });
 
       if (oldProfilePicture && oldProfilePicture !== uploadedImageUrl) {
@@ -648,8 +644,12 @@ export const deleteUser = asyncHandler(
  */
 export const deleteAllUsers = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
-    const { confirmDelete } = req.body;
+    const { confirmDelete } = req.body as { confirmDelete?: string };
     const currentUserId = req.user?.id;
+
+    if (!currentUserId) {
+      throw new CustomError(HTTP_STATUS_CODES.UNAUTHORIZED, 'Authentication required');
+    }
 
     if (!confirmDelete || confirmDelete !== 'DELETE_ALL_USERS') {
       res.status(HTTP_STATUS_CODES.BAD_REQUEST);
@@ -669,7 +669,7 @@ export const deleteAllUsers = asyncHandler(
       },
       where: {
         id: {
-          not: currentUserId!,
+          not: currentUserId,
         },
       },
     });
@@ -683,13 +683,13 @@ export const deleteAllUsers = asyncHandler(
     }
 
     const profilePicturesToDelete = usersToDelete
-      .filter((user) => user.profilePicture)
-      .map((user) => user.profilePicture!);
+      .map((user) => user.profilePicture)
+      .filter((picture): picture is string => Boolean(picture));
 
     const deleteResult = await prisma.user.deleteMany({
       where: {
         id: {
-          not: currentUserId!,
+          not: currentUserId,
         },
       },
     });

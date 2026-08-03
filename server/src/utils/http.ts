@@ -46,22 +46,22 @@ export const buildMeta = (
   totalPages: Math.max(1, Math.ceil(total / limit)),
 });
 
-export const sendOk = <T>(res: Response, message: string, data: T): void => {
+export const sendOk = (res: Response, message: string, data: unknown): void => {
   res.status(HTTP_STATUS_CODES.OK).json({ data, message, success: true });
 };
 
-export const sendCreated = <T>(
+export const sendCreated = (
   res: Response,
   message: string,
-  data: T,
+  data: unknown,
 ): void => {
   res.status(HTTP_STATUS_CODES.CREATED).json({ data, message, success: true });
 };
 
-export const sendList = <T>(
+export const sendList = (
   res: Response,
   message: string,
-  data: T[],
+  data: unknown[],
   meta: PaginationMeta,
   summary?: Record<string, unknown>,
 ): void => {

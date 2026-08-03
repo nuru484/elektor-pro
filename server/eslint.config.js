@@ -9,7 +9,7 @@ export default tseslint.config(
     ignores: ["**/*.js", "generated/**", "build/**", "dist/**"],
   },
   eslint.configs.recommended,
-  tseslint.configs.recommendedTypeChecked,
+  tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
   {
     languageOptions: {
@@ -21,17 +21,9 @@ export default tseslint.config(
   },
   perfectionist.configs["recommended-natural"],
   {
-    // Pragmatic relaxations for a dynamic Express + Prisma API: request bodies,
-    // query params, and JSON columns cross typed/untyped boundaries, and we use
-    // bracket access deliberately (TS noPropertyAccessFromIndexSignature).
     rules: {
-      "@typescript-eslint/dot-notation": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-return": "off",
-      // Underscore-prefixed names are an intentional "unused" marker.
+      // Underscore-prefixed names are an intentional "unused" marker
+      // (same convention as dms-backend / website-backend).
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -40,11 +32,8 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
-      // `||` on strings/booleans is often a deliberate empty-is-falsy fallback.
-      "@typescript-eslint/prefer-nullish-coalescing": [
-        "error",
-        { ignorePrimitives: { boolean: true, string: true } },
-      ],
+      // Interpolating numbers into strings is safe and idiomatic (ports,
+      // counts, percentages); only genuinely lossy types stay forbidden.
       "@typescript-eslint/restrict-template-expressions": [
         "error",
         { allowNumber: true },
@@ -52,7 +41,8 @@ export default tseslint.config(
     },
   },
   {
-    files: ["test/**", "prisma/**", "*.config.ts"],
+    // Test scaffolding may assert non-null on fixtures it just created.
+    files: ["test/**", "*.config.ts"],
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
     },

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Role } from '../../generated/prisma/client.js';
 import {
   api,
+  bodyOf,
   createElectionFixture,
   createUser,
   loginCookie,
@@ -25,7 +26,7 @@ describe('maker-checker governance', () => {
       .send({ electionId: election.id, name: 'Pending Person', portfolioId: portfolio.id });
     // 202 Accepted — staged, not applied
     expect(created.status).toBe(202);
-    expect(created.body.pending).toBe(true);
+    expect(bodyOf<{ pending: boolean }>(created).pending).toBe(true);
 
     // Not yet a real candidate
     expect(await prisma.candidate.count({ where: { name: 'Pending Person' } })).toBe(0);
@@ -34,8 +35,9 @@ describe('maker-checker governance', () => {
     const queue = await api()
       .get('/api/v1/change-requests?status=PENDING')
       .set('Cookie', superCookie);
-    expect(queue.body.data).toHaveLength(1);
-    const changeId = queue.body.data[0].id as string;
+    const queueBody = bodyOf<{ data: { id: string }[] }>(queue);
+    expect(queueBody.data).toHaveLength(1);
+    const changeId = queueBody.data[0].id;
 
     const approve = await api()
       .post(`/api/v1/change-requests/${changeId}/approve`)

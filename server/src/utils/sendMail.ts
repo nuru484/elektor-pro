@@ -29,9 +29,9 @@ const sendMail = async (options: EmailOptions): Promise<void> => {
 
   const mailOptions = {
     from: process.env.SMTP_MAIL,
-    html: html || undefined,
+    html: html === '' ? undefined : html,
     subject,
-    text: text || undefined,
+    text: text === '' ? undefined : text,
     to: email,
   };
 

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { Role } from '../../generated/prisma/client.js';
 import { MAX_FAILED_LOGIN_ATTEMPTS } from '../../src/config/constants.js';
-import { api, createUser, prisma, resetDb } from '../helpers.js';
+import { api, bodyOf, createUser, prisma, resetDb, toCookieHeader } from '../helpers.js';
 
 describe('staff authentication', () => {
   beforeEach(resetDb);
@@ -13,8 +13,8 @@ describe('staff authentication', () => {
       .post('/api/v1/auth/login')
       .send({ emailOrPhone: 'sa@test.com', password: 'Password123!' });
     expect(res.status).toBe(200);
-    expect(res.body.data.role).toBe('SUPER_ADMIN');
-    expect(String(res.headers['set-cookie'])).toContain('accessToken');
+    expect(bodyOf<{ data: { role: string } }>(res).data.role).toBe('SUPER_ADMIN');
+    expect(toCookieHeader(res.headers['set-cookie'])).toContain('accessToken');
   });
 
   it('rejects an invalid password', async () => {

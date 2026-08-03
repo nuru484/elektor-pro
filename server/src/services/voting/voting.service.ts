@@ -16,6 +16,7 @@ import {
   BadRequestError,
   ConflictError,
   ForbiddenError,
+  InternalServerError,
   NotFoundError,
 } from '../../middlewares/error-handler.js';
 import { emitElectionUpdate } from '../../realtime/io.js';
@@ -266,8 +267,15 @@ export const castBallot = async (
     }
   }
 
+  if (!result) {
+    // Unreachable: the loop either sets result or throws. Kept as a typed
+    // guard so the compiler (and a future refactor) can't silently return
+    // undefined from a vote cast.
+    throw new InternalServerError('Ballot could not be recorded');
+  }
+
   emitElectionUpdate(electionId, 'results:invalidate', { electionId });
-  return result!;
+  return result;
 };
 
 /** Verify a ballot by its receipt code, proving inclusion + chain integrity. */

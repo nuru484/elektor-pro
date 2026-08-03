@@ -1,4 +1,4 @@
-// src/config/claudinary.ts
+// src/config/cloudinary.ts
 import { v2 as cloudinaryBase, type UploadApiErrorResponse, type UploadApiResponse } from 'cloudinary';
 
 import type {
@@ -48,8 +48,7 @@ export const extractPublicIdFromUrl = (url: string): string => {
     const lastPart = publicIdParts[publicIdParts.length - 1];
 
     // Remove file extension from the last part
-    const lastPartWithoutExt = lastPart?.split('.')[0];
-    publicIdParts[publicIdParts.length - 1] = lastPartWithoutExt ?? '';
+    publicIdParts[publicIdParts.length - 1] = lastPart.split('.')[0];
 
     return publicIdParts.join('/');
   } catch (error) {
@@ -64,12 +63,14 @@ export const extractPublicIdFromUrl = (url: string): string => {
 
     let startIndex = uploadIndex + 1;
     // Skip version if present
-    if (segments[startIndex] && /^v\d+$/.test(segments[startIndex] ?? '')) {
+    const maybeVersionSegment: string | undefined = segments[startIndex];
+    if (maybeVersionSegment && /^v\d+$/.test(maybeVersionSegment)) {
       startIndex++;
     }
 
     const publicIdSegments = segments.slice(startIndex);
-    const fileName = publicIdSegments[publicIdSegments.length - 1];
+    // .at() is genuinely string | undefined (the slice may be empty).
+    const fileName = publicIdSegments.at(-1);
     publicIdSegments[publicIdSegments.length - 1] = fileName?.split('.')[0] ?? '';
 
     return publicIdSegments.join('/');
@@ -116,7 +117,7 @@ export const uploadToCloudinary = async (
     if (!isValidBase64Image(file)) {
       throw new ValidationError('Invalid Base64 image format.');
     }
-  } else if (!file?.buffer) {
+  } else if (!file.buffer.length) {
     throw new ValidationError('Invalid file object. Ensure it has a buffer property.');
   }
 
@@ -154,7 +155,7 @@ export const uploadToCloudinary = async (
 
       logger.debug(`File uploaded successfully: ${result.public_id}`);
       return {
-        asset_id: result.asset_id,
+        asset_id: typeof result.asset_id === 'string' ? result.asset_id : undefined,
         format: result.format,
         public_id: result.public_id,
         resource_type: result.resource_type,
@@ -163,8 +164,9 @@ export const uploadToCloudinary = async (
     } catch (error: unknown) {
       attempts++;
 
-      if (error instanceof Error || (error as UploadApiErrorResponse)?.message) {
-        const typedError = (error as UploadApiErrorResponse) || (error as Error);
+      const maybeMessage = (error as null | Partial<UploadApiErrorResponse>)?.message;
+      if (error instanceof Error || typeof maybeMessage === 'string') {
+        const typedError = error as Error | UploadApiErrorResponse;
         const errorMessage = typedError.message;
 
         if (!isRetryableError(typedError)) {
@@ -203,19 +205,19 @@ export const deleteFromCloudinary = async (identifier: string, config: ICloudina
 
   while (attempts < MAX_UPLOAD_RETRIES) {
     try {
-      const result = await cloudinary.uploader.destroy(publicId, {
+      const result = (await cloudinary.uploader.destroy(publicId, {
         resource_type: 'image',
         type: 'upload',
-      });
+      })) as ICloudinaryDeletionResponse;
 
       logger.debug(`Cloudinary raw deletion response: ${JSON.stringify(result)}`);
 
-      if (result?.result !== 'ok') {
+      if (result.result !== 'ok') {
         throw new Error(`Deletion failed. Cloudinary response: ${JSON.stringify(result)}`);
       }
 
       logger.info(`Cloudinary deletion successful: ${publicId}`);
-      return result as ICloudinaryDeletionResponse;
+      return result;
     } catch (error) {
       attempts++;
       const errorMessage = (error as Error).message || JSON.stringify(error) || 'Unknown error';
@@ -238,7 +240,7 @@ export const uploadMultipleToCloudinary = async (
   options: Partial<ICloudinaryUploadOptions> = {},
   config: ICloudinaryConfig,
 ): Promise<ICloudinaryUploadResult[]> => {
-  if (!files || !Array.isArray(files) || files.length === 0) {
+  if (files.length === 0) {
     throw new ValidationError('No valid files provided for upload');
   }
 

@@ -43,7 +43,7 @@ export const createStaffUserController: RequestHandler[] = [
 export const listStaffUsersController = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await listStaffUsers(
-      { role: str(req.query['role']) as Role | undefined, search: str(req.query['search']) },
+      { role: str(req.query.role) as Role | undefined, search: str(req.query.search) },
       parsePagination(req.query),
     );
     sendList(res, 'Users retrieved', result.data, result.meta);
@@ -64,14 +64,14 @@ export const assignAgentController: RequestHandler[] = [
 
 export const listAgentAssignmentsController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'Assignments retrieved', await listAgentAssignments(str(req.query['electionId'])));
+    sendOk(res, 'Assignments retrieved', await listAgentAssignments(str(req.query.electionId)));
   },
 );
 
 export const removeAgentAssignmentController = asyncHandler(
   async (req: Request, res: Response) => {
-    await removeAgentAssignment(actorOf(req), req.params['id'] ?? '');
-    sendOk(res, 'Assignment removed', { id: req.params['id'] });
+    await removeAgentAssignment(actorOf(req), req.params.id);
+    sendOk(res, 'Assignment removed', { id: req.params.id });
   },
 );
 
@@ -90,15 +90,15 @@ export const grantController: RequestHandler[] = [
 export const listGrantsController = asyncHandler(
   async (req: Request, res: Response) => {
     sendOk(res, 'Grants retrieved', await listGrants({
-      electionId: str(req.query['electionId']),
-      userId: str(req.query['userId']),
+      electionId: str(req.query.electionId),
+      userId: str(req.query.userId),
     }));
   },
 );
 
 export const revokeGrantController = asyncHandler(
   async (req: Request, res: Response) => {
-    await revokeGrant(actorOf(req), req.params['id'] ?? '');
-    sendOk(res, 'Grant revoked', { id: req.params['id'] });
+    await revokeGrant(actorOf(req), req.params.id);
+    sendOk(res, 'Grant revoked', { id: req.params.id });
   },
 );

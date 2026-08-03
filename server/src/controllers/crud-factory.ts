@@ -45,7 +45,7 @@ export const makeCrud = <F>(opts: CrudOptions<F>) => {
   });
 
   const getOne = asyncHandler(async (req, res) => {
-    const data = await opts.get(req.params.id ?? '');
+    const data = await opts.get(req.params.id);
     sendOk(res, `${opts.label} retrieved`, data);
   });
 
@@ -74,7 +74,7 @@ export const makeCrud = <F>(opts: CrudOptions<F>) => {
         {
           action: ChangeAction.UPDATE,
           entity: opts.entity,
-          entityId: req.params.id ?? '',
+          entityId: req.params.id,
           payload: req.body,
         },
         ctxOf(req),
@@ -89,7 +89,7 @@ export const makeCrud = <F>(opts: CrudOptions<F>) => {
       {
         action: ChangeAction.DELETE,
         entity: opts.entity,
-        entityId: req.params.id ?? '',
+        entityId: req.params.id,
         payload: {},
       },
       ctxOf(req),
