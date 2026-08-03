@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 
 import rateLimit, { ipKeyGenerator, type RateLimitRequestHandler } from 'express-rate-limit';
 
+import ENV from '../config/env.js';
 import { CustomError, ErrorSeverity } from './error-handler.js';
 
 // Custom rate limit exceeded error
@@ -44,9 +45,12 @@ export const createRateLimiter = (
       // Skip health checks
       if (req.path === '/health' || req.path === '/ping') return true;
 
-      // Skip for internal requests with secret header
-      const bypassToken = req.get('X-Rate-Limit-Bypass');
-      return bypassToken === process.env.RATE_LIMIT_BYPASS_SECRET;
+      // Skip for internal requests presenting the configured secret. Only
+      // honour the bypass when a secret is actually set - otherwise an unset
+      // env var would make `undefined === undefined` true and disable all
+      // rate limiting for every request.
+      const secret = ENV.RATE_LIMIT_BYPASS_SECRET;
+      return Boolean(secret) && req.get('X-Rate-Limit-Bypass') === secret;
     },
 
     standardHeaders: true,

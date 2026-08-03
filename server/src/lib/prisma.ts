@@ -5,21 +5,23 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../generated/prisma/client.js';
 import ENV from '../config/env.js';
 
-const adapter = new PrismaPg({ connectionString: ENV.DATABASE_URL });
+// Explicit pool cap (pg defaults to 10). The API and the in-process BullMQ
+// workers share this one pool, so the cap must exceed the workers' combined
+// fan-out or a busy job queues every API request behind it.
+const adapter = new PrismaPg({ connectionString: ENV.DATABASE_URL, max: ENV.DB_POOL_MAX });
 
 /**
  * Models that carry a `deletedAt` column and participate in soft deletes.
- * Keys are the camelCase Prisma model accessors.
+ * Keys are the camelCase Prisma model accessors. Must stay in sync with
+ * `deletedAt` fields in schema.prisma.
  */
 const SOFT_DELETE_MODELS = new Set<string>([
   'agentAssignment',
   'candidate',
-  'college',
-  'department',
   'election',
-  'hall',
+  'group',
+  'groupCategory',
   'portfolio',
-  'programme',
   'user',
   'voter',
 ]);
