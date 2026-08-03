@@ -1,6 +1,8 @@
 // test/helpers.ts
 import request from 'supertest';
 
+import type { AppDeps } from '../src/services/deps.js';
+
 import app from '../app.js';
 import { Role } from '../generated/prisma/client.js';
 import prisma from '../src/lib/prisma.js';
@@ -106,4 +108,91 @@ export const createVoterFixture = async (voterId: string, phone: string) => {
     data: { name: `Voter ${voterId}`, phoneNumber: phone, userId: user.id, voterId },
   });
   return { user, voter };
+};
+
+// --- Fake-deps builder for factory-service tests -------------------------
+
+export interface CapturedMail {
+  email: string;
+  subject: string;
+  text?: string;
+}
+
+export interface CapturedSms {
+  message: string;
+  to: string;
+}
+
+/**
+ * Deps for service-level tests: the REAL test-DB prisma client, a mutable
+ * clock, and capturing sms/mail/cloudinary fakes. Extract OTP codes from the
+ * captured messages with `codeFrom()`.
+ */
+export const makeTestDeps = () => {
+  let nowMs = Date.now();
+  const sentSms: CapturedSms[] = [];
+  const sentMail: CapturedMail[] = [];
+  const uploaded: string[] = [];
+  const deleted: string[] = [];
+
+  return {
+    advanceClock: (ms: number) => {
+      nowMs += ms;
+    },
+    deleted,
+    // Structural fakes stand in for the pino/cloudinary surfaces; the cast is
+    // safe because services only touch the methods provided here.
+    deps: {
+      clock: {
+        now: () => new Date(nowMs),
+        timestamp: () => nowMs,
+      },
+      cloudinary: {
+        deleteImage: (publicId: string) => {
+          deleted.push(publicId);
+          return Promise.resolve({ result: 'ok' });
+        },
+        uploadImage: () => {
+          const url = `https://res.cloudinary.com/test/upload/pic-${uploaded.length + 1}.png`;
+          uploaded.push(url);
+          return Promise.resolve({ public_id: `pic-${uploaded.length}`, secure_url: url });
+        },
+      },
+      config: {
+        FRONTEND_URL: 'http://localhost:3000',
+        OTP_LENGTH: 6,
+        OTP_MODE: 'mock' as const,
+        OTP_TTL_MINUTES: 10,
+      },
+      logger: {
+        debug: () => undefined,
+        error: () => undefined,
+        info: () => undefined,
+        warn: () => undefined,
+      },
+      mail: {
+        send: (options: CapturedMail) => {
+          sentMail.push(options);
+          return Promise.resolve();
+        },
+      },
+      prisma,
+      sms: {
+        send: (to: string, message: string) => {
+          sentSms.push({ message, to });
+          return Promise.resolve({ delivered: true, provider: 'mock' as const });
+        },
+      },
+    } as unknown as AppDeps,
+    sentMail,
+    sentSms,
+    uploaded,
+  };
+};
+
+/** Pull the 6-digit code out of a captured SMS/email body. */
+export const codeFrom = (text: string | undefined): string => {
+  const match = /\b(\d{6})\b/.exec(text ?? '');
+  if (!match) throw new Error(`No OTP code found in: ${text ?? '<empty>'}`);
+  return match[1];
 };
