@@ -1,10 +1,16 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
+function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="skeleton"
+      className={cn("animate-pulse rounded-md bg-accent", className)}
+      {...props}
+    />
+  )
 }
 
-export function TableRowsSkeleton({ cols = 4, rows = 6 }: { cols?: number; rows?: number }) {
+function TableRowsSkeleton({ cols = 4, rows = 6 }: { cols?: number; rows?: number }) {
   return (
     <div className="divide-y divide-border">
       {Array.from({ length: rows }).map((_, r) => (
@@ -15,15 +21,17 @@ export function TableRowsSkeleton({ cols = 4, rows = 6 }: { cols?: number; rows?
         </div>
       ))}
     </div>
-  );
+  )
 }
 
-export function CardGridSkeleton({ count = 4 }: { count?: number }) {
+function CardGridSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
         <Skeleton className="h-28 rounded-xl" key={i} />
       ))}
     </div>
-  );
+  )
 }
+
+export { CardGridSkeleton, Skeleton, TableRowsSkeleton }

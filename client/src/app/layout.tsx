@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
@@ -19,9 +20,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: next-themes mutates the <html> class before
+    // hydration to apply the persisted/system theme.
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
-        <ReduxProvider>{children}</ReduxProvider>
+        <ThemeProvider>
+          <ReduxProvider>{children}</ReduxProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
