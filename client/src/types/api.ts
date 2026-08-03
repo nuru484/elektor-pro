@@ -26,7 +26,7 @@ export interface ListQuery {
   search?: string;
 }
 
-export type Role = "ADMIN" | "AGENT" | "CANDIDATE" | "SUPER_ADMIN" | "VOTER";
+export type Role = "ACCREDITOR" | "ADMIN" | "AGENT" | "CANDIDATE" | "SUPER_ADMIN" | "VOTER";
 export type Status = "ACTIVE" | "INACTIVE" | "LOCKED" | "SUSPENDED";
 export type ElectionStatus =
   | "ARCHIVED"
@@ -45,16 +45,30 @@ export type ChangeStatus =
   | "PENDING"
   | "REJECTED";
 
+export type TwoFactorMethod = "EMAIL" | "TOTP";
+
 export interface CurrentUser {
   email: null | string;
   firstName: string;
   id: string;
+  lastLoginAt?: null | string;
   lastName: string;
   phone: null | string;
   profilePicture?: null | string;
   role: Role;
   status: Status;
   twoFactorEnabled: boolean;
+  twoFactorMethod?: null | TwoFactorMethod;
+}
+
+/** A signed-in device from GET /auth/sessions. */
+export interface SessionView {
+  createdAt: string;
+  current: boolean;
+  id: string;
+  ipAddress: null | string;
+  lastUsedAt: string;
+  userAgent: null | string;
 }
 
 export interface Election {

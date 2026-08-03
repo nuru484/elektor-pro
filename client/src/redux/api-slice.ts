@@ -111,6 +111,7 @@ export const apiSlice = createApi({
     "Organization",
     "Portfolio",
     "Results",
+    "Sessions",
     "StaffUser",
     "Voter",
   ],

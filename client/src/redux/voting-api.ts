@@ -50,7 +50,12 @@ export const votingApi = apiSlice.injectEndpoints({
       query: () => "/voter/elections",
     }),
     requestOtp: build.mutation<
-      ApiResponse<{ devCode?: string; phoneMasked: string }>,
+      ApiResponse<{
+        channel: "email" | "sms";
+        destinationMasked: string;
+        devCode?: string;
+        expiresInMinutes: number;
+      }>,
       { identifier: string }
     >({
       query: (body) => ({ body, method: "POST", url: "/voter/otp/request" }),
