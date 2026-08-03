@@ -1,0 +1,6 @@
+# Root-level local files (each package has its own .gitignore too)
+.env
+.env.*
+!.env.example
+.next/
+node_modules/
