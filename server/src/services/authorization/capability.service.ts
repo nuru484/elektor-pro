@@ -7,6 +7,7 @@ const ALL_CAPABILITIES = Object.values(Capability);
 
 /** Default capabilities granted purely by role. */
 const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
+  [Role.ACCREDITOR]: [Capability.ACCREDIT_VOTERS],
   [Role.ADMIN]: [
     Capability.MANAGE_ELECTIONS,
     Capability.MANAGE_PORTFOLIOS,
