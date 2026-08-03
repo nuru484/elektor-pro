@@ -23,6 +23,7 @@ enum Role {
   AGENT
   CANDIDATE
   VOTER
+  ACCREDITOR // election-day official: accreditation desk only
 }
 
 enum Status {
@@ -69,6 +70,15 @@ enum VotingMethod {
 
 enum OtpPurpose {
   VOTER_LOGIN
+  STAFF_LOGIN // email-OTP second factor at staff login
+  EMAIL_CHANGE // confirm ownership of a new email address
+  PHONE_CHANGE // confirm ownership of a new phone number
+  TWO_FACTOR_EMAIL_ENABLE // confirm email before enabling email 2FA
+}
+
+enum TwoFactorMethod {
+  TOTP // authenticator app (RFC 6238)
+  EMAIL // one-time code sent to the account email
 }
 
 enum BallotEntryType {
@@ -160,9 +170,14 @@ model User {
   emailVerifiedAt DateTime?
   phoneVerifiedAt DateTime?
 
-  // Two-factor (TOTP)
-  twoFactorEnabled Boolean @default(false)
+  // Two-factor
+  twoFactorEnabled Boolean          @default(false)
+  twoFactorMethod  TwoFactorMethod? // set while 2FA is enabled
   totpSecret       String? // encrypted at rest
+
+  // Pending contact changes awaiting OTP confirmation
+  pendingEmail String?
+  pendingPhone String?
 
   // Lockout / login hardening
   failedLoginAttempts Int       @default(0)
@@ -194,6 +209,7 @@ model User {
   recoveryCodes      TwoFactorRecoveryCode[]
   passwordResets     PasswordResetToken[]
   otps               Otp[]
+  sessions           Session[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -240,6 +256,28 @@ model Otp {
   expiresAt  DateTime
   consumedAt DateTime?
   attempts   Int        @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// A refresh-token session (one per signed-in device). The refresh JWT carries
+// the session id; its current token's hash is stored here and ROTATED on every
+// refresh, so a stolen older refresh token is dead on arrival and users can
+// see and revoke their signed-in devices.
+model Session {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId     String
+  tokenHash  String    @unique
+  ipAddress  String?
+  userAgent  String?
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
