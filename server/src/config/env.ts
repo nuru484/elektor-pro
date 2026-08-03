@@ -53,9 +53,13 @@ interface IENV {
   COOKIE_DOMAIN: string;
   CORS_ACCESS: string;
   DATABASE_URL: string;
+  /** Max connections in the shared pg pool (API + in-process workers). */
+  DB_POOL_MAX: number;
   FROG_API_KEY: string;
   FROG_SENDER_ID: string;
   FROG_USERNAME: string;
+  /** Client origin used in emailed links (password reset, invitations). */
+  FRONTEND_URL: string;
   GMAIL_PASSWORD: string;
   GMAIL_USER: string;
   NODE_ENV: string;
@@ -63,8 +67,14 @@ interface IENV {
   OTP_MODE: 'live' | 'mock';
   OTP_TTL_MINUTES: number;
   PORT: number;
+  /** Internal callers presenting this via X-Rate-Limit-Bypass skip rate limits. */
+  RATE_LIMIT_BYPASS_SECRET: string;
+  /** BullMQ connection; empty disables background queues (dev without Redis). */
+  REDIS_URL: string;
   REFRESH_TOKEN_EXPIRY: string;
   REFRESH_TOKEN_SECRET: string;
+  /** Error-tracker DSN; empty disables reporting (dev, CI, tests). */
+  SENTRY_DSN: string;
   SMTP_HOST: string;
   SMTP_MAIL: string;
   SMTP_PORT: number;
@@ -85,9 +95,11 @@ const ENV: IENV = {
   COOKIE_DOMAIN: envOptional('COOKIE_DOMAIN'),
   CORS_ACCESS: envOptional('CORS_ACCESS', 'http://localhost:3000'),
   DATABASE_URL: envRequired('DATABASE_URL'),
+  DB_POOL_MAX: envNumber('DB_POOL_MAX', 20),
   FROG_API_KEY: envOptional('FROG_API_KEY'),
   FROG_SENDER_ID: envOptional('FROG_SENDER_ID'),
   FROG_USERNAME: envOptional('FROG_USERNAME'),
+  FRONTEND_URL: envOptional('FRONTEND_URL', 'http://localhost:3000'),
   GMAIL_PASSWORD: envOptional('GMAIL_PASSWORD'),
   GMAIL_USER: envOptional('GMAIL_USER'),
   NODE_ENV: process.env.NODE_ENV ?? 'development',
@@ -95,8 +107,11 @@ const ENV: IENV = {
   OTP_MODE: envEnum('OTP_MODE', ['live', 'mock'] as const, isProduction ? 'live' : 'mock'),
   OTP_TTL_MINUTES: envNumber('OTP_TTL_MINUTES', 10),
   PORT: envNumber('PORT', 4000),
+  RATE_LIMIT_BYPASS_SECRET: envOptional('RATE_LIMIT_BYPASS_SECRET'),
+  REDIS_URL: envOptional('REDIS_URL'),
   REFRESH_TOKEN_EXPIRY: envOptional('REFRESH_TOKEN_EXPIRY', '7d'),
   REFRESH_TOKEN_SECRET: envRequired('REFRESH_TOKEN_SECRET'),
+  SENTRY_DSN: envOptional('SENTRY_DSN'),
   SMTP_HOST: envOptional('SMTP_HOST'),
   SMTP_MAIL: envOptional('SMTP_MAIL'),
   SMTP_PORT: envNumber('SMTP_PORT', 587),

@@ -2,6 +2,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
 import ENV from '../config/env.js';
+import { reportError } from '../lib/error-reporting.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -26,6 +27,7 @@ interface ErrorResponse {
   details?: Record<string, unknown>;
   errorId?: string;
   message: string;
+  requestId?: string;
   status: string;
 }
 
@@ -50,15 +52,13 @@ export class CustomError extends Error {
     super(message);
     this.name = this.constructor.name;
     this.status = status;
-    this.layer = options.layer || 'unknown';
-    this.severity = options.severity || ErrorSeverity.MEDIUM;
+    this.layer = options.layer ?? 'unknown';
+    this.severity = options.severity ?? ErrorSeverity.MEDIUM;
     this.timestamp = new Date();
     this.code = options.code;
     this.context = options.context;
 
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 
@@ -72,16 +72,26 @@ const generateErrorId = (): string => {
 /**
  * Sanitize error data for safe logging and response
  */
-const sanitizeErrorData = (data: unknown): unknown => {
+export const sanitizeErrorData = (data: unknown): unknown => {
   if (!data) return data;
 
-  if (typeof data === 'object' && data !== null) {
+  // Preserve array shape (mapping entries through the sanitizer); treating an
+  // array as a generic object would turn it into { "0": ..., "1": ... }.
+  if (Array.isArray(data)) return data.map(sanitizeErrorData);
+
+  if (typeof data === 'object') {
     const sanitized: Record<string, unknown> = {};
 
     // Deep copy and sanitize object properties
     Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
-      // Skip sensitive fields
-      if (['password', 'token', 'secret', 'auth', 'key', 'credit', 'ssn'].some((k) => key.toLowerCase().includes(k))) {
+      // Skip sensitive fields. Substring matches catch the long credential
+      // names; the exact-name list covers short fields the substring list
+      // can't safely include: `code` carries OTP/2FA guesses and receipt
+      // codes, `otp`/`pin` are credentials wherever they appear.
+      if (
+        ['password', 'token', 'secret', 'auth', 'key', 'credit', 'ssn'].some((k) => key.toLowerCase().includes(k)) ||
+        ['code', 'otp', 'pin'].includes(key.toLowerCase())
+      ) {
         sanitized[key] = '[REDACTED]';
       } else if (typeof value === 'object' && value !== null) {
         sanitized[key] = sanitizeErrorData(value);
@@ -95,6 +105,15 @@ const sanitizeErrorData = (data: unknown): unknown => {
 
   return data;
 };
+
+/**
+ * Error codes whose `code` + `context` drive a client-side UX flow (field
+ * validation and similar). These carry no sensitive server internals, so
+ * unlike generic errors they must reach the client in EVERY environment
+ * (production strips code/details for everything else). Add a code here only
+ * when the frontend genuinely branches on it.
+ */
+const CLIENT_ACTIONABLE_CODES = new Set(['VALIDATION_ERROR']);
 
 /**
  * Map a Prisma known-request error to a typed CustomError so the central
@@ -140,27 +159,34 @@ export const errorHandler = (rawError: CustomError | Error, req: Request, res: R
   const isProduction = ENV.NODE_ENV === 'production';
   const errorId = generateErrorId();
 
-  // Sanitize request body for logging
+  // Bodies and query strings can both carry credentials (login payloads, a
+  // callback `?token=`, a reset link), so both get the sanitizer.
   const sanitizedBody = sanitizeErrorData(req.body);
+  const sanitizedQuery = sanitizeErrorData(req.query);
 
   // Custom error with appropriate HTTP status and detailed info
   const isCustomError = error instanceof CustomError;
   const status = isCustomError ? error.status : 500;
   const severity = isCustomError ? error.severity : ErrorSeverity.HIGH;
+  const layer = isCustomError ? error.layer : 'unknown';
+  const code = isCustomError ? error.code : undefined;
+  const context = isCustomError ? error.context : undefined;
+  const sanitizedContext = sanitizeErrorData(context) as Record<string, unknown> | undefined;
 
   // Prepare error details for logging
   const logDetails = {
     body: sanitizedBody,
-    code: isCustomError ? error.code : undefined,
-    context: isCustomError ? error.context : undefined,
+    code,
+    context: sanitizedContext,
     errorId,
     ip: req.ip,
-    layer: isCustomError ? error.layer : 'unknown',
+    layer,
     message: error.message,
     method: req.method,
     params: req.params,
     path: req.path,
-    query: req.query,
+    query: sanitizedQuery,
+    requestId: req.requestId,
     severity,
     stack: !isProduction ? error.stack : undefined,
     timestamp: new Date().toISOString(),
@@ -171,6 +197,22 @@ export const errorHandler = (rawError: CustomError | Error, req: Request, res: R
     case ErrorSeverity.CRITICAL:
     case ErrorSeverity.HIGH:
       logger.error(logDetails);
+      // Only HIGH/CRITICAL reach the tracker: expected 4xx noise (validation,
+      // auth, not-found) stays in logs. Payload is the already-sanitized set.
+      reportError(error, {
+        code,
+        details: {
+          body: sanitizedBody,
+          context: sanitizedContext,
+          query: sanitizedQuery,
+        },
+        errorId,
+        layer,
+        method: req.method,
+        path: req.path,
+        requestId: req.requestId,
+        severity,
+      });
       break;
     case ErrorSeverity.LOW:
       logger.info(logDetails);
@@ -188,19 +230,23 @@ export const errorHandler = (rawError: CustomError | Error, req: Request, res: R
     status: 'error',
   };
 
-  // Add additional error details for non-production environments
+  // Client-actionable codes surface their code + context in every environment
+  // (they drive UX flows and carry no server internals).
+  if (code && CLIENT_ACTIONABLE_CODES.has(code)) {
+    errorResponse.code = code;
+    if (sanitizedContext) errorResponse.details = sanitizedContext;
+  }
+
+  // Always expose the correlation ids - production included. Without them a
+  // user-reported failure cannot be traced to a log line or tracker event.
+  // They are opaque values and leak nothing about internals.
+  errorResponse.errorId = errorId;
+  if (req.requestId) errorResponse.requestId = req.requestId;
+
+  // Outside production, additionally expose code/details for debugging.
   if (!isProduction) {
-    errorResponse.errorId = errorId;
-
-    if (isCustomError) {
-      if (error.code !== undefined) {
-        errorResponse.code = error.code;
-      }
-
-      if (error.context) {
-        errorResponse.details = error.context;
-      }
-    }
+    if (code) errorResponse.code = code;
+    if (sanitizedContext && !errorResponse.details) errorResponse.details = sanitizedContext;
   }
 
   // Send appropriate response

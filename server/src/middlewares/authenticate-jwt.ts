@@ -13,11 +13,9 @@ const { JsonWebTokenError, TokenExpiredError } = jwt;
 const authenticateJWT = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const token = CookieManager.getAccessToken(req);
 
-  // Check if token exists
   if (!token) {
     throw new UnauthorizedError('Access token not found', {
       code: 'MISSING_TOKEN',
-      context: { token },
       layer: 'jwt',
     });
   }
@@ -29,11 +27,11 @@ const authenticateJWT = asyncHandler(async (req: Request, res: Response, next: N
 
     next();
   } catch (tokenError) {
+    // NB: never attach the raw token to the error context - it would end up
+    // in logs / the error tracker. The message + code are enough to debug.
     if (tokenError instanceof TokenExpiredError) {
-      console.log('Hello from here');
       throw new UnauthorizedError('Access token expired.', {
         code: 'EXPIRED_TOKEN',
-        context: { token },
         layer: 'jwt',
       });
     }
@@ -41,7 +39,6 @@ const authenticateJWT = asyncHandler(async (req: Request, res: Response, next: N
     if (tokenError instanceof JsonWebTokenError) {
       throw new UnauthorizedError('Invalid access token. Please login again', {
         code: 'INVALID_TOKEN',
-        context: { token },
         layer: 'jwt',
       });
     }
