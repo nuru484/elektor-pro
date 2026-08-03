@@ -71,7 +71,9 @@ export default function VotePage() {
     try {
       const res = await requestOtp({ identifier }).unwrap();
       setStage("verify");
-      toast.success(`Code sent to ${res.data.phoneMasked}`);
+      toast.success(
+        `Code ${res.data.channel === "email" ? "emailed" : "sent"} to ${res.data.destinationMasked}`,
+      );
       if (res.data.devCode) toast.info(`Dev code: ${res.data.devCode}`);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Could not send code"));
@@ -112,7 +114,7 @@ export default function VotePage() {
         </CardTitle>
         <CardDescription>
           {stage === "identify"
-            ? "Enter your voter ID. We'll text a one-time code to the phone on record."
+            ? "Enter your voter ID. We'll send a one-time code to the phone or email on record."
             : "We sent a one-time code to your phone. Enter it below."}
         </CardDescription>
       </CardHeader>

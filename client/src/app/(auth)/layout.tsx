@@ -4,8 +4,8 @@ import { Logo } from "@/components/brand/logo";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-muted/30">
-      <header className="border-b border-border bg-background">
+    <div className="bg-ambient flex min-h-dvh flex-col">
+      <header className="border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Logo />
           <Link className="text-sm text-muted-foreground transition-colors hover:text-foreground" href="/">

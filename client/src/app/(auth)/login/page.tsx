@@ -2,64 +2,83 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
+import type { TwoFactorMethod } from "@/types/api";
+
+import { homeForRole } from "@/components/console/nav-config";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { useLoginMutation, useVerifyTwoFactorMutation } from "@/redux/auth-api";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
+import {
+  loginSchema,
+  type LoginValues,
+  otpCodeSchema,
+  type OtpCodeValues,
+} from "@/validations/auth-validation";
 
-// Mirrors the backend loginSchema.
-const loginSchema = z.object({
-  emailOrPhone: z.string().min(1, "Email or phone is required"),
-  password: z.string().min(4, "Password is too short"),
-});
-type LoginValues = z.infer<typeof loginSchema>;
+interface Challenge {
+  method: TwoFactorMethod;
+  token: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [login, { isLoading }] = useLoginMutation();
   const [verify, { isLoading: verifying }] = useVerifyTwoFactorMutation();
-  const [challengeToken, setChallengeToken] = useState<null | string>(null);
-  const [code, setCode] = useState("");
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
 
   const form = useForm<LoginValues>({
     defaultValues: { emailOrPhone: "", password: "" },
     resolver: zodResolver(loginSchema),
+  });
+  const codeForm = useForm<OtpCodeValues>({
+    defaultValues: { code: "" },
+    resolver: zodResolver(otpCodeSchema),
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       const res = await login(values).unwrap();
       if (res.requiresTwoFactor && "challengeToken" in res.data) {
-        setChallengeToken(res.data.challengeToken);
-        toast.info("Enter your authenticator code to continue");
+        setChallenge({
+          method: (res.data as { method?: TwoFactorMethod }).method ?? "TOTP",
+          token: res.data.challengeToken,
+        });
         return;
       }
-      toast.success("Welcome back");
-      router.push("/admin");
+      if (!("challengeToken" in res.data)) {
+        toast.success("Welcome back");
+        router.push(homeForRole(res.data.role));
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Login failed"));
     }
   });
 
-  const onVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!challengeToken) return;
+  const onVerify = codeForm.handleSubmit(async (values) => {
+    if (!challenge) return;
     try {
-      await verify({ challengeToken, code }).unwrap();
+      const res = await verify({ challengeToken: challenge.token, code: values.code }).unwrap();
       toast.success("Welcome back");
-      router.push("/admin");
+      router.push(homeForRole(res.data.role));
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Invalid code"));
     }
-  };
+  });
 
   return (
     <Card>
@@ -68,30 +87,40 @@ export default function LoginPage() {
           <ShieldCheck className="size-5" />
         </span>
         <CardTitle className="text-lg">
-          {challengeToken ? "Two-factor verification" : "Administrator sign in"}
+          {challenge ? "Two-factor verification" : "Staff sign in"}
         </CardTitle>
         <CardDescription>
-          {challengeToken
-            ? "Enter the 6-digit code from your authenticator app."
+          {challenge
+            ? challenge.method === "EMAIL"
+              ? "Enter the sign-in code we just sent to your email (or a recovery code)."
+              : "Enter the 6-digit code from your authenticator app (or a recovery code)."
             : "Sign in to manage elections. Voters should use the voter portal."}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {challengeToken ? (
+        {challenge ? (
           <form className="space-y-4" onSubmit={onVerify}>
-            <Field label="Authentication code">
+            <Field error={codeForm.formState.errors.code?.message} label="Authentication code">
               <Input
                 autoFocus
                 inputMode="numeric"
-                maxLength={8}
-                onChange={(e) => setCode(e.target.value)}
                 placeholder="123456"
-                value={code}
+                {...codeForm.register("code")}
               />
             </Field>
             <Button className="w-full" loading={verifying} type="submit" variant="brand">
               Verify and continue
             </Button>
+            <button
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setChallenge(null);
+                codeForm.reset();
+              }}
+              type="button"
+            >
+              Back to sign in
+            </button>
           </form>
         ) : (
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -104,6 +133,15 @@ export default function LoginPage() {
             <Button className="w-full" loading={isLoading} type="submit" variant="brand">
               Sign in
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              <Link className="hover:text-foreground" href="/forgot-password">
+                Forgot your password?
+              </Link>
+              <span className="mx-2">·</span>
+              <Link className="hover:text-foreground" href="/vote">
+                Voter portal
+              </Link>
+            </p>
           </form>
         )}
       </CardContent>
