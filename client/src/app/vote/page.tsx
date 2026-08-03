@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 import {
   useListVoterElectionsQuery,
   useRequestOtpMutation,

@@ -10,7 +10,7 @@ import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { useCastBallotMutation, useGetVoterBallotQuery } from "@/redux/voting-api";
 
 type Selection = { approve?: boolean; candidateIds: string[]; type: "ABSTAIN" | "VOTE" };

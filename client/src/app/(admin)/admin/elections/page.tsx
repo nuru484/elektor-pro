@@ -14,7 +14,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { TableRowsSkeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { useCreateElectionMutation, useListElectionsQuery, useSetElectionStatusMutation } from "@/redux/admin-api";
 
 const STATUSES = ["", "DRAFT", "SCHEDULED", "IN_PROGRESS", "PAUSED", "ENDED", "CANCELLED"];

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { cn } from "@/lib/utils";
 
 describe("cn", () => {
@@ -15,7 +15,7 @@ describe("cn", () => {
 
 describe("getApiErrorMessage", () => {
   it("extracts the backend message", () => {
-    expect(getApiErrorMessage({ data: { message: "Nope" } })).toBe("Nope");
+    expect(getApiErrorMessage({ data: { message: "Nope" }, status: 400 })).toBe("Nope");
   });
   it("falls back when no message", () => {
     expect(getApiErrorMessage(undefined, "fallback")).toBe("fallback");

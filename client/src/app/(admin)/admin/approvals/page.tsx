@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { TableRowsSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { useApproveChangeMutation, useListChangeRequestsQuery, useRejectChangeMutation } from "@/redux/admin-api";
 
 export default function ApprovalsPage() {

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { useElectionSocket } from "@/hooks/use-election-socket";
 import { useGetResultsQuery } from "@/redux/voting-api";
 import type { PortfolioResult } from "@/types/api";
