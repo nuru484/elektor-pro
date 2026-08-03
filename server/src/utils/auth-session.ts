@@ -1,14 +1,38 @@
 // src/utils/auth-session.ts
 import type { Request, Response } from 'express';
 
-import { CookieManager } from './CookieManager.js';
-import { type AccessPayload, signAccessToken, signRefreshToken } from './jwt.js';
+import type { Role } from '../../generated/prisma/client.js';
 
-/** Sign access + refresh tokens and set them as http-only cookies. */
-export const issueSession = (res: Response, payload: AccessPayload): void => {
+import { makeSessionService } from '../services/auth/session.service.js';
+import { defaultDeps } from '../services/deps.js';
+import { CookieManager } from './CookieManager.js';
+
+const sessions = makeSessionService(defaultDeps);
+
+/**
+ * Start a persisted session for a fresh login and set the token pair as
+ * http-only cookies. Every login path (staff password, 2FA completion, voter
+ * OTP) goes through here so a device always shows up on the sessions page.
+ */
+export const issueSession = async (
+  req: Request,
+  res: Response,
+  user: { id: string; role: Role },
+): Promise<void> => {
+  const issued = await sessions.createSession(user, requestContextOf(req));
   CookieManager.clearAllTokens(res);
-  CookieManager.setAccessToken(res, signAccessToken(payload));
-  CookieManager.setRefreshToken(res, signRefreshToken(payload));
+  CookieManager.setAccessToken(res, issued.accessToken);
+  CookieManager.setRefreshToken(res, issued.refreshToken);
+};
+
+/** Set an already-rotated token pair (the refresh path). */
+export const setSessionCookies = (
+  res: Response,
+  tokens: { accessToken: string; refreshToken: string },
+): void => {
+  CookieManager.clearAllTokens(res);
+  CookieManager.setAccessToken(res, tokens.accessToken);
+  CookieManager.setRefreshToken(res, tokens.refreshToken);
 };
 
 export const requestContextOf = (

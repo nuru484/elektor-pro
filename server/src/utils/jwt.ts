@@ -1,5 +1,6 @@
-// src/utils/jwt.ts
 import jwt, { type SignOptions } from 'jsonwebtoken';
+// src/utils/jwt.ts
+import { randomUUID } from 'node:crypto';
 
 import type { Role } from '../../generated/prisma/client.js';
 
@@ -10,6 +11,13 @@ import { sha256 } from './crypto.js';
 export interface AccessPayload {
   id: string;
   role: Role;
+  /** Present for session-backed logins; used to mark the current session. */
+  sessionId?: string;
+}
+
+/** Refresh tokens additionally carry the persisted session they belong to. */
+export interface RefreshPayload extends AccessPayload {
+  sessionId: string;
 }
 
 export interface TwoFactorChallengePayload {
@@ -27,10 +35,21 @@ export const signAccessToken = (payload: AccessPayload): string =>
     expiresIn: ENV.ACCESS_TOKEN_EXPIRY,
   } as SignOptions);
 
-export const signRefreshToken = (payload: AccessPayload): string =>
-  jwt.sign(payload, ENV.REFRESH_TOKEN_SECRET, {
+export const signRefreshToken = (payload: RefreshPayload): string =>
+  // jti guarantees uniqueness: two rotations inside the same second would
+  // otherwise sign byte-identical tokens, making the rotation a no-op.
+  jwt.sign({ ...payload, jti: randomUUID() }, ENV.REFRESH_TOKEN_SECRET, {
     expiresIn: ENV.REFRESH_TOKEN_EXPIRY,
   } as SignOptions);
+
+/** Decode (without verifying) a JWT's exp claim as a Date; null when absent. */
+export const decodeTokenExpiry = (token: string): Date | null => {
+  const decoded = jwt.decode(token);
+  if (decoded && typeof decoded === 'object' && typeof decoded.exp === 'number') {
+    return new Date(decoded.exp * 1000);
+  }
+  return null;
+};
 
 export const signTwoFactorChallenge = (userId: string): string =>
   jwt.sign(
@@ -49,6 +68,17 @@ export const verifyAccessToken = (token: string): AccessPayload => {
     throw new UnauthorizedError('Invalid token');
   }
   return decoded as unknown as AccessPayload;
+};
+
+export const verifyRefreshToken = (token: string): RefreshPayload => {
+  const decoded = jwt.verify(token, ENV.REFRESH_TOKEN_SECRET) as Record<
+    string,
+    unknown
+  >;
+  if (typeof decoded.id !== 'string' || typeof decoded.sessionId !== 'string') {
+    throw new UnauthorizedError('Invalid refresh token');
+  }
+  return decoded as unknown as RefreshPayload;
 };
 
 export const verifyTwoFactorChallenge = (
