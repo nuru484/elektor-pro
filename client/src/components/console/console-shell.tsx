@@ -165,7 +165,7 @@ export function ConsoleShell({
 
   if (isLoading || !user || !allowed) {
     return (
-      <div className="flex min-h-dvh flex-col gap-4 p-6 lg:grid lg:grid-cols-[264px_1fr] lg:gap-0 lg:p-0">
+      <div className="flex min-h-dvh flex-col gap-4 bg-background p-6 lg:grid lg:grid-cols-[264px_1fr] lg:gap-0 lg:p-0">
         <Skeleton className="hidden h-dvh lg:block" />
         <div className="space-y-4 lg:p-8">
           <Skeleton className="h-8 w-56" />
@@ -192,7 +192,7 @@ export function ConsoleShell({
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
+    <div className="min-h-dvh bg-background lg:grid lg:grid-cols-[264px_1fr]">
       {/* Desktop sidebar */}
       <aside className="hidden border-r border-sidebar-border bg-sidebar lg:block">
         <div className="sticky top-0 h-dvh">{sidebar}</div>

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Urbanist } from "next/font/google";
 
+import { SiteBackground } from "@/components/site-background";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
 
-const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const urbanist = Urbanist({ display: "swap", subsets: ["latin"], variable: "--font-urbanist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
@@ -23,8 +24,9 @@ export default function RootLayout({
     // suppressHydrationWarning: next-themes mutates the <html> class before
     // hydration to apply the persisted/system theme.
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
+      <body className={`${urbanist.variable} ${geistMono.variable} font-sans`}>
         <ThemeProvider>
+          <SiteBackground />
           <ReduxProvider>{children}</ReduxProvider>
         </ThemeProvider>
       </body>

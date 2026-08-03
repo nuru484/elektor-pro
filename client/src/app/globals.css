@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-urbanist);
   --font-mono: var(--font-geist-mono);
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -97,31 +97,31 @@
 }
 
 .dark {
-  /* Soft, grayish charcoal — not pure black. Surfaces step lighter than the
-     page background to create separation. */
-  --background: oklch(0.16 0.004 285);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.2 0.006 285);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.2 0.006 285);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.97 0 0);
-  --primary-foreground: oklch(0.2 0.006 285);
-  --secondary: oklch(0.26 0.006 286);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.26 0.006 286);
-  --muted-foreground: oklch(0.68 0.014 286);
-  --accent: oklch(0.27 0.006 286);
-  --accent-foreground: oklch(0.97 0 0);
+  /* Soft, grayish charcoal - not pure black (portfolio palette). Surfaces
+     step lighter than the page background to create separation. */
+  --background: oklch(0.22 0 0);
+  --foreground: oklch(0.965 0 0);
+  --card: oklch(0.26 0 0);
+  --card-foreground: oklch(0.965 0 0);
+  --popover: oklch(0.26 0 0);
+  --popover-foreground: oklch(0.965 0 0);
+  --primary: oklch(0.92 0 0);
+  --primary-foreground: oklch(0.22 0 0);
+  --secondary: oklch(0.29 0 0);
+  --secondary-foreground: oklch(0.965 0 0);
+  --muted: oklch(0.29 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.32 0 0);
+  --accent-foreground: oklch(0.965 0 0);
   --destructive: oklch(0.7 0.19 22);
   --success: oklch(0.7 0.14 155);
   --warning: oklch(0.78 0.16 75);
   --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.6 0.2 264);
-  --brand: oklch(0.62 0.19 264);
-  --brand-foreground: oklch(0.99 0 0);
-  --brand-muted: oklch(0.3 0.06 264);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.16 264);
+  --brand: oklch(0.7 0.16 264);
+  --brand-foreground: oklch(0.18 0 0);
+  --brand-muted: oklch(0.32 0.06 264);
   --sidebar: oklch(0.2 0.006 285);
   --sidebar-foreground: oklch(0.97 0 0);
   --sidebar-primary: oklch(0.62 0.19 264);
@@ -136,11 +136,11 @@
   --chart-4: oklch(0.7 0.19 22);
   --chart-5: oklch(0.68 0.014 286);
 
-  /* Ambient background (depth) — subtle light dots + soft brand glows. */
+  /* Ambient background (depth) - subtle light dots + soft brand glows. */
   --bg-dot: oklch(1 0 0 / 0.05);
-  --bg-glow-1: oklch(0.62 0.19 264 / 0.1);
-  --bg-glow-2: oklch(0.62 0.19 264 / 0.07);
-  --bg-fade: oklch(0.13 0 0 / 0.5);
+  --bg-glow-1: oklch(0.7 0.16 264 / 0.1);
+  --bg-glow-2: oklch(0.7 0.16 264 / 0.07);
+  --bg-fade: oklch(0.16 0 0 / 0.5);
 }
 
 @layer base {
@@ -148,12 +148,26 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    /* No opaque background here: the fixed .site-background layer paints it,
+       so the ambient depth shows through on public pages. Console/dashboard
+       shells lay their own opaque bg-background surface on top. */
+    @apply text-foreground antialiased;
+    background-color: var(--background);
     font-feature-settings: "cv11", "ss01";
     text-rendering: optimizeLegibility;
   }
+  /* Any enabled clickable control shows a pointer cursor. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  summary,
+  select:not(:disabled) {
+    @apply cursor-pointer;
+  }
+  /* Brand-tinted text selection. */
   ::selection {
-    background: var(--brand-muted);
+    background-color: var(--brand);
+    color: var(--brand-foreground);
   }
   h1, h2, h3, h4 {
     @apply tracking-tight;
@@ -161,20 +175,58 @@
   }
 }
 
-@layer utilities {
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, var(--border) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
-    background-size: 56px 56px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+/* Respect users who prefer reduced motion: cut animations/transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
-  /* Ambient dotted backdrop with brand glows (portfolio design language). */
-  .bg-ambient {
-    background-image:
-      radial-gradient(ellipse 60% 45% at 18% 0%, var(--bg-glow-1), transparent 60%),
-      radial-gradient(ellipse 55% 40% at 85% 100%, var(--bg-glow-2), transparent 60%),
-      radial-gradient(var(--bg-dot) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 22px 22px;
-  }
+}
+
+/* Ambient page background - a faint dotted grid that fades downward, two
+   soft radial glows, and a vertical fade. Monochrome and theme-aware (see
+   --bg-* tokens). Fixed behind all content; opaque dashboard surfaces cover
+   it, so it shows on public pages only. */
+.site-background {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background-color: var(--background);
+}
+
+.site-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at center,
+    var(--bg-dot) 1.2px,
+    transparent 1.7px
+  );
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 100% 70% at 50% 0%,
+    #000 35%,
+    transparent 85%
+  );
+  mask-image: radial-gradient(
+    ellipse 100% 70% at 50% 0%,
+    #000 35%,
+    transparent 85%
+  );
+}
+
+.site-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 12% 0%, var(--bg-glow-1), transparent 70%),
+    radial-gradient(50% 45% at 88% 12%, var(--bg-glow-2), transparent 70%),
+    linear-gradient(to bottom, transparent 55%, var(--bg-fade) 100%);
 }
