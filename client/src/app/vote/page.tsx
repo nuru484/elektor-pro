@@ -6,8 +6,10 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { VoterChrome } from "@/components/vote/voter-header";
 import { Input } from "@/components/ui/input";
 import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -93,30 +95,28 @@ export default function VotePage() {
 
   if (stage === "done") {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold">Your elections</h1>
-          <p className="text-sm text-muted-foreground">Choose an election to cast your ballot.</p>
+      <VoterChrome>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-xl font-semibold">Your elections</h1>
+            <p className="text-sm text-muted-foreground">Choose an election to cast your ballot.</p>
+          </div>
+          <ElectionPicker />
         </div>
-        <ElectionPicker />
-      </div>
+      </VoterChrome>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-md">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="border-b border-border px-8 pt-8 pb-6 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {stage === "identify" ? "Verify your identity" : "Enter your code"}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {stage === "identify"
-              ? "Enter your voter ID. We'll send a one-time code to the phone or email on record."
-              : "We sent a one-time code. Enter it below."}
-          </p>
-        </div>
-        <div className="px-8 py-6">
+    <AuthShell
+      subtitle={
+        stage === "identify"
+          ? "Enter your voter ID. We'll send a one-time code to the phone or email on record."
+          : "We sent a one-time code. Enter it below."
+      }
+      title={stage === "identify" ? "Verify your identity" : "Enter your code"}
+    >
+      <>
         {stage === "identify" ? (
           <form className="space-y-5" onSubmit={onRequest}>
             <Field label="Voter ID">
@@ -154,8 +154,7 @@ export default function VotePage() {
             </button>
           </form>
         )}
-        </div>
-      </div>
-    </div>
+      </>
+    </AuthShell>
   );
 }

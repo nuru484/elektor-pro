@@ -1,12 +1,11 @@
 // src/components/auth/auth-shell.tsx
 //
-// The portfolio's auth layout: a centered rounded-2xl card with a bordered
-// header (wordmark + title + subtitle), the form body below, and a slim row
-// under the card with a back link and the theme toggle.
+// The auth layout: a vertically centered rounded-2xl card with a bordered
+// wordmark header (title + subtitle), the form body below, and a back link
+// under the card. Used by every authentication surface - staff login, 2FA,
+// password flows, and the voter portal's sign-in stages.
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface AuthShellProps {
   backHref?: string;
@@ -24,7 +23,7 @@ export function AuthShell({
   title,
 }: AuthShellProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <div className="border-b border-border px-8 pt-8 pb-6 text-center">
@@ -48,14 +47,13 @@ export function AuthShell({
           <div className="px-8 py-6">{children}</div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <div className="mt-6 text-center text-sm text-muted-foreground">
           <Link
             className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
             href={backHref}
           >
             <ArrowLeft className="size-3.5" /> {backLabel}
           </Link>
-          <ThemeToggle className="size-9 border border-border text-foreground hover:bg-muted" />
         </div>
       </div>
     </div>

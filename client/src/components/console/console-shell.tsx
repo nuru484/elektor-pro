@@ -4,15 +4,14 @@
 // phones, and a slim top bar with the theme toggle + account menu. Role-aware:
 // nav items come from nav-config filtered by the signed-in user's role, and
 // the guard redirects signed-out visitors to the right login page.
-import { LogOut, Menu, ShieldCheck, UserCircle } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, ShieldCheck, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import type { Role } from "@/types/api";
 
 import { Logo } from "@/components/brand/logo";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,6 +28,12 @@ import { cn } from "@/lib/utils";
 import { useGetMeQuery, useLogoutMutation } from "@/redux/auth-api";
 
 import { sectionsForRole } from "./nav-config";
+
+const COLLAPSE_KEY = "ep-sidebar-collapsed";
+
+const emptySubscribe = () => () => {
+  // localStorage only changes through this component in this tab.
+};
 
 const ROLE_LABELS: Record<Role, string> = {
   ACCREDITOR: "Accreditor",
@@ -149,6 +154,22 @@ export function ConsoleShell({
   const { isError, isLoading } = useGetMeQuery();
   const { initialized, role, user } = useAuthRole();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Desktop sidebar collapse, remembered across visits. The stored value is
+  // read via useSyncExternalStore (false during SSR, real value after
+  // hydration - no setState-in-effect); in-session toggles override it.
+  const storedCollapsed = useSyncExternalStore(
+    emptySubscribe,
+    () => localStorage.getItem(COLLAPSE_KEY) === "1",
+    () => false,
+  );
+  const [collapsedOverride, setCollapsedOverride] = useState<boolean | null>(null);
+  const collapsed = collapsedOverride ?? storedCollapsed;
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+    setCollapsedOverride(next);
+  };
 
   const allowed = Boolean(role && (!allowedRoles || allowedRoles.includes(role)));
 
@@ -192,11 +213,18 @@ export function ConsoleShell({
   );
 
   return (
-    <div className="min-h-dvh bg-background lg:grid lg:grid-cols-[264px_1fr]">
+    <div
+      className={cn(
+        "min-h-dvh bg-background",
+        collapsed ? "lg:block" : "lg:grid lg:grid-cols-[264px_1fr]",
+      )}
+    >
       {/* Desktop sidebar */}
-      <aside className="hidden border-r border-sidebar-border bg-sidebar lg:block">
-        <div className="sticky top-0 h-dvh">{sidebar}</div>
-      </aside>
+      {!collapsed && (
+        <aside className="hidden border-r border-sidebar-border bg-sidebar lg:block">
+          <div className="sticky top-0 h-dvh">{sidebar}</div>
+        </aside>
+      )}
 
       <div className="flex min-w-0 flex-col">
         {/* Top bar */}
@@ -213,12 +241,21 @@ export function ConsoleShell({
                 {sidebar}
               </SheetContent>
             </Sheet>
-            <span className="lg:hidden">
+            {/* Desktop: collapse/expand the sidebar (DMS-style trigger). */}
+            <Button
+              aria-label={collapsed ? "Open sidebar" : "Close sidebar"}
+              className="hidden lg:inline-flex"
+              onClick={toggleCollapsed}
+              size="icon-sm"
+              variant="ghost"
+            >
+              {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
+            </Button>
+            <span className={cn(!collapsed && "lg:hidden")}>
               <Logo href="/" />
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
             <UserMenu />
           </div>
         </header>

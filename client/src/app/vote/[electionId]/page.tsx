@@ -11,16 +11,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { VoterChrome } from "@/components/vote/voter-header";
 import { useCastBallotMutation, useGetVoterBallotQuery } from "@/redux/voting-api";
 
 type Selection = { approve?: boolean; candidateIds: string[]; type: "ABSTAIN" | "VOTE" };
 
-export default function BallotPage({
-  params,
-}: {
-  params: Promise<{ electionId: string }>;
-}) {
-  const { electionId } = use(params);
+function BallotBody({ electionId }: { electionId: string }) {
   const { data, isError, isLoading } = useGetVoterBallotQuery(electionId);
   const [cast, { isLoading: casting }] = useCastBallotMutation();
   const [selections, setSelections] = useState<Record<string, Selection>>({});
@@ -236,5 +232,18 @@ export default function BallotPage({
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function BallotPage({
+  params,
+}: {
+  params: Promise<{ electionId: string }>;
+}) {
+  const { electionId } = use(params);
+  return (
+    <VoterChrome>
+      <BallotBody electionId={electionId} />
+    </VoterChrome>
   );
 }

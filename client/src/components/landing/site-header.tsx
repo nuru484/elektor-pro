@@ -1,45 +1,77 @@
 "use client";
 
-// Transparent text-first navigation in the portfolio's language: wordmark on
-// the left, semibold text links on the right, and a "Menu" text toggle (not a
-// hamburger icon) opening a full-screen overlay on phones.
+// Text-first navigation derived from the portfolio's language, but with its
+// own behavior: transparent at the top of the page, sticky with a blurred
+// hairline once scrolled. Page links sit apart from the actions - "Voter
+// portal" as a quiet text link and "Sign in" as the single pill - so the bar
+// stays airy. Mobile keeps the "Menu"/"Close" text toggle with a full-screen
+// overlay.
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const PAGE_LINKS = [
   { href: "#product", label: "Product" },
   { href: "#how-it-works", label: "How it works" },
   { href: "#security", label: "Security" },
   { href: "#faq", label: "FAQ" },
-  { href: "/vote", label: "Vote" },
-  { href: "/login", label: "Sign in" },
 ];
 
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 16);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   return (
-    <nav>
-      <div className="mx-auto max-w-6xl px-6 pt-8 pb-4 md:px-12">
-        <div className="flex items-center justify-between">
+    <header
+      className={cn(
+        "sticky top-0 z-40 transition-colors duration-300",
+        scrolled && !menuOpen && "border-b border-border bg-background/85 backdrop-blur-md",
+      )}
+    >
+      <div className="mx-auto max-w-6xl px-6 md:px-10">
+        <div className={cn("flex items-center justify-between transition-all duration-300", scrolled ? "py-3.5" : "py-6")}>
           <Link className="text-2xl font-semibold tracking-tight" href="/">
             Elektor<span className="text-brand">Pro</span>
           </Link>
 
-          <div className="hidden items-center gap-1 md:flex">
-            {NAV_ITEMS.map((item) => (
+          {/* Page links, visually separate from the actions */}
+          <div className="hidden items-center gap-6 md:flex">
+            {PAGE_LINKS.map((item) => (
               <Link
-                className="p-2 text-lg font-semibold text-foreground transition-colors hover:text-muted-foreground"
+                className="text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
                 href={item.href}
                 key={item.label}
               >
                 {item.label}
               </Link>
             ))}
-            <ThemeToggle className="ml-2 size-9 border border-border" />
+          </div>
+
+          <div className="hidden items-center gap-5 md:flex">
+            <Link
+              className="text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
+              href="/vote"
+            >
+              Voter portal
+            </Link>
+            <Link
+              className="rounded-full border border-foreground bg-foreground px-5 py-2 text-base font-medium text-background transition-colors duration-500 hover:bg-transparent hover:text-foreground"
+              href="/login"
+            >
+              Sign in
+            </Link>
           </div>
 
           <button
@@ -60,8 +92,8 @@ export function SiteHeader() {
       {/* Full-screen mobile menu */}
       {menuOpen && (
         <div className="fixed inset-0 z-40 flex flex-col bg-background md:hidden">
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-2 px-6">
-            {NAV_ITEMS.map((item) => (
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-1 px-6">
+            {PAGE_LINKS.map((item) => (
               <Link
                 className="py-2 text-3xl font-medium text-foreground transition-colors hover:text-muted-foreground"
                 href={item.href}
@@ -71,12 +103,25 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <div className="mt-6">
-              <ThemeToggle className="size-10 border border-border" />
+            <div className="mt-8 flex flex-col gap-1 border-t border-border pt-8">
+              <Link
+                className="py-2 text-3xl font-medium text-muted-foreground transition-colors hover:text-foreground"
+                href="/vote"
+                onClick={() => setMenuOpen(false)}
+              >
+                Voter portal
+              </Link>
+              <Link
+                className="py-2 text-3xl font-medium text-muted-foreground transition-colors hover:text-foreground"
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+              >
+                Sign in
+              </Link>
             </div>
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }
