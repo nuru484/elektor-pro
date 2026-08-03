@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { Cta } from "@/components/landing/cta";
 import { Faq } from "@/components/landing/faq";
 import { Features } from "@/components/landing/features";
 import { Hero } from "@/components/landing/hero";
@@ -27,7 +26,6 @@ export default function Home() {
         <Security />
         <UseCases />
         <Faq />
-        <Cta />
       </main>
       <SiteFooter />
     </div>

@@ -1,67 +1,61 @@
+"use client";
+
+// Portfolio-style footer: a large closing CTA with a muted-half heading and
+// an inversion pill button, then a slim bottom bar with links, the theme
+// toggle, and scroll-to-top.
+import { ArrowUp, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
-import { Logo } from "@/components/brand/logo";
-
-const COLUMNS = [
-  {
-    heading: "Product",
-    links: [
-      { href: "#product", label: "Features" },
-      { href: "#how-it-works", label: "How it works" },
-      { href: "#security", label: "Security" },
-      { href: "#faq", label: "FAQ" },
-    ],
-  },
-  {
-    heading: "For voters",
-    links: [
-      { href: "/vote", label: "Cast your vote" },
-      { href: "/vote", label: "Verify a receipt" },
-    ],
-  },
-  {
-    heading: "For organizers",
-    links: [
-      { href: "/login", label: "Staff sign in" },
-      { href: "/forgot-password", label: "Reset password" },
-    ],
-  },
-];
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-card/50">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))]">
-        <div className="max-w-xs">
-          <Logo />
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            The secure e-voting platform for organizations that need results
-            everyone can stand behind.
-          </p>
+    <footer className="mt-auto w-full">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-16 px-6 text-center md:px-12">
+          <h2 className="mb-6 text-3xl font-medium leading-tight md:text-4xl">
+            Run an election{" "}
+            <span className="text-muted-foreground/50">nobody can dispute</span>
+          </h2>
+          <Link href="/login">
+            <button
+              className="inline-flex items-center gap-2 rounded-full border border-foreground bg-foreground px-8 py-4 text-base font-medium text-background transition-colors duration-500 hover:bg-transparent hover:text-foreground"
+              type="button"
+            >
+              Start an election <ArrowUpRight className="size-4" />
+            </button>
+          </Link>
         </div>
-        {COLUMNS.map((column) => (
-          <nav aria-label={column.heading} key={column.heading}>
-            <p className="text-sm font-semibold">{column.heading}</p>
-            <ul className="mt-3 space-y-2">
-              {column.links.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    href={link.href}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ))}
-      </div>
-      <div className="border-t border-border">
-        <p className="mx-auto max-w-6xl px-4 py-5 text-xs text-muted-foreground sm:px-6">
-          © {new Date().getFullYear()} Elektor Pro. Every ballot secret, every
-          result provable.
-        </p>
+
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-7 text-center md:px-12">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-muted-foreground">
+              © {new Date().getFullYear()} Elektor Pro
+            </p>
+            <Link
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              href="/vote"
+            >
+              Voter portal
+            </Link>
+            <Link
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              href="/login"
+            >
+              Staff sign in
+            </Link>
+          </div>
+          <div className="mx-auto flex items-center gap-3 md:mx-0">
+            <ThemeToggle className="size-9 border border-border" />
+            <button
+              className="flex items-center gap-2 transition-colors hover:text-muted-foreground"
+              onClick={() => window.scrollTo({ behavior: "smooth", top: 0 })}
+              type="button"
+            >
+              Scroll to top <ArrowUp className="size-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </footer>
   );

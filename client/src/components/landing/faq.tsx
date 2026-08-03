@@ -1,5 +1,4 @@
-import { ChevronDown } from "lucide-react";
-
+// Minimal bordered-row FAQ (native details/summary, plus/minus marker).
 const FAQS = [
   {
     answer:
@@ -8,7 +7,7 @@ const FAQS = [
   },
   {
     answer:
-      "After you vote, you get a private receipt code. Entering it on the verification page confirms your ballot is in the count and untampered - without revealing your choices to anyone, including you-standing-next-to-someone.",
+      "After you vote, you get a private receipt code. Entering it on the verification page confirms your ballot is in the count and untampered, without revealing your choices to anyone.",
     question: "How do I know my vote was actually counted?",
   },
   {
@@ -19,7 +18,7 @@ const FAQS = [
   {
     answer:
       "Voters receive a one-time code by SMS or email - there are no passwords for voters to forget on election day. A voter without a phone can still be verified in person by an accreditation official.",
-    question: "What if a voter has no smartphone or forgets a password?",
+    question: "What if a voter has no smartphone?",
   },
   {
     answer:
@@ -28,28 +27,39 @@ const FAQS = [
   },
   {
     answer:
-      "Sensitive changes made by administrators are staged and only take effect after a second, senior approval - and every action lands in a tamper-evident audit trail anyone authorized can inspect. No single person can quietly alter an election.",
+      "Sensitive changes made by administrators are staged and only take effect after a second, senior approval - and every action lands in a tamper-evident audit trail. No single person can quietly alter an election.",
     question: "What stops an administrator from rigging it?",
   },
 ];
 
 export function Faq() {
   return (
-    <section className="mx-auto w-full max-w-3xl scroll-mt-20 px-4 py-20 sm:px-6" id="faq">
-      <div className="text-center">
-        <p className="text-sm font-medium text-brand">FAQ</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-          Questions committees ask us
-        </h2>
-      </div>
-      <div className="mt-10 divide-y divide-border rounded-2xl border border-border bg-card">
+    <section
+      className="mx-auto mb-24 flex max-w-6xl scroll-mt-8 flex-col gap-8 px-6 md:mb-32 md:px-12"
+      id="faq"
+    >
+      <h2 className="text-4xl font-medium md:text-5xl">Questions, answered</h2>
+      <div>
         {FAQS.map((faq) => (
-          <details className="group px-6 py-4" key={faq.question}>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+          <details className="group border-t border-border last:border-b" key={faq.question}>
+            <summary className="flex list-none items-baseline justify-between gap-6 py-6 text-xl font-medium md:text-2xl [&::-webkit-details-marker]:hidden">
               {faq.question}
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+              <span
+                aria-hidden
+                className="shrink-0 text-2xl font-light text-muted-foreground group-open:hidden"
+              >
+                +
+              </span>
+              <span
+                aria-hidden
+                className="hidden shrink-0 text-2xl font-light text-muted-foreground group-open:inline"
+              >
+                −
+              </span>
             </summary>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{faq.answer}</p>
+            <p className="max-w-2xl pb-6 text-lg leading-relaxed text-muted-foreground">
+              {faq.answer}
+            </p>
           </details>
         ))}
       </div>
