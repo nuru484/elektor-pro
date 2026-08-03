@@ -46,7 +46,7 @@ export const verifyOtpController: RequestHandler[] = [
   asyncHandler(async (req: Request, res: Response) => {
     const { code, identifier } = req.body as { code: string; identifier: string };
     const result = await verifyVoterOtp(identifier, code, requestContextOf(req));
-    issueSession(res, { id: result.userId, role: Role.VOTER });
+    await issueSession(req, res, { id: result.userId, role: Role.VOTER });
     sendOk(res, 'Logged in', { voterId: result.voterId });
   }),
 ];

@@ -43,3 +43,26 @@ export const twoFactorActivateSchema = z.object({
 export const twoFactorDisableSchema = z.object({
   password: z.string().min(1),
 });
+
+// --- Profile self-service ---
+
+export const updateProfileSchema = z
+  .object({
+    firstName: z.string().min(1).max(80).trim().optional(),
+    lastName: z.string().min(1).max(80).trim().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  });
+
+export const requestEmailChangeSchema = z.object({
+  email: z.email().max(255),
+});
+
+export const requestPhoneChangeSchema = z.object({
+  phone: z.string().min(6).max(20),
+});
+
+export const confirmCodeSchema = z.object({
+  code: z.string().min(4).max(10),
+});

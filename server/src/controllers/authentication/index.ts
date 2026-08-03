@@ -2,5 +2,7 @@ export * from './account.js';
 export * from './login.js';
 export * from './logout.js';
 export * from './password.js';
+export * from './profile.js';
 export * from './refresh-jwt-token.js';
+export * from './sessions.js';
 export * from './two-factor.js';

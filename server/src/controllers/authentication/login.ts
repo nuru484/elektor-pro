@@ -31,15 +31,21 @@ const handleLogin = asyncHandler(async (req: Request, res: Response) => {
 
   if (result.status === 'two_factor_required') {
     res.status(200).json({
-      data: { challengeToken: signTwoFactorChallenge(result.userId) },
-      message: 'Two-factor authentication required',
+      data: {
+        challengeToken: signTwoFactorChallenge(result.userId),
+        method: result.method,
+      },
+      message:
+        result.method === 'EMAIL'
+          ? 'A sign-in code has been sent to your email'
+          : 'Two-factor authentication required',
       requiresTwoFactor: true,
       success: true,
     });
     return;
   }
 
-  issueSession(res, { id: result.userId, role: result.role });
+  await issueSession(req, res, { id: result.userId, role: result.role });
   const user = await getProfile(result.userId);
   res.status(200).json({ data: user, message: 'Login successful', success: true });
 });
@@ -52,7 +58,7 @@ const handleVerifyTwoFactor = asyncHandler(
     };
     const { id } = verifyTwoFactorChallenge(challengeToken);
     const result = await verifyStaffTwoFactor(id, code, requestContextOf(req));
-    issueSession(res, { id: result.userId, role: result.role });
+    await issueSession(req, res, { id: result.userId, role: result.role });
     const user = await getProfile(result.userId);
     res
       .status(200)

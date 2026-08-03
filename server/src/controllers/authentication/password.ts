@@ -12,7 +12,6 @@ import {
   resetPassword,
 } from '../../services/auth/auth.service.js';
 import { requestContextOf } from '../../utils/auth-session.js';
-import { CookieManager } from '../../utils/CookieManager.js';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
@@ -26,15 +25,16 @@ const handleChangePassword = asyncHandler(
       currentPassword: string;
       newPassword: string;
     };
+    // The current session survives; every other device is signed out.
     await changePassword(
       req.user.id,
       currentPassword,
       newPassword,
+      req.user.sessionId,
       requestContextOf(req),
     );
-    CookieManager.clearAllTokens(res);
     res.status(200).json({
-      message: 'Password changed successfully. Please log in again.',
+      message: 'Password changed. Other devices have been signed out.',
       success: true,
     });
   },

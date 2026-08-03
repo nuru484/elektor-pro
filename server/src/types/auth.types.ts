@@ -8,6 +8,8 @@ export interface IRefreshTokenPayload {
 export interface ITokenPayload {
   id: string;
   role: Role;
+  /** Present for session-backed logins. */
+  sessionId?: string;
 }
 
 export interface IUserLoginInput {
