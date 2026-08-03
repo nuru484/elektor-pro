@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Geist_Mono, Urbanist } from "next/font/google";
 
 import { SiteBackground } from "@/components/site-background";
-import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
@@ -21,14 +20,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    // suppressHydrationWarning: next-themes mutates the <html> class before
-    // hydration to apply the persisted/system theme.
-    <html lang="en" suppressHydrationWarning>
+    // Dark-only product: the `dark` class stays on <html> permanently so
+    // component-level dark: variants keep applying.
+    <html className="dark" lang="en">
       <body className={`${urbanist.variable} ${geistMono.variable} font-sans`}>
-        <ThemeProvider>
-          <SiteBackground />
-          <ReduxProvider>{children}</ReduxProvider>
-        </ThemeProvider>
+        <SiteBackground />
+        <ReduxProvider>{children}</ReduxProvider>
       </body>
     </html>
   );
