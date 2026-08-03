@@ -1,5 +1,5 @@
-import { AdminShell } from "@/components/admin/admin-shell";
+import { ConsoleShell } from "@/components/console/console-shell";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminShell>{children}</AdminShell>;
+  return <ConsoleShell allowedRoles={["SUPER_ADMIN", "ADMIN"]}>{children}</ConsoleShell>;
 }
