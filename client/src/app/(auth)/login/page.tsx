@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,15 +10,9 @@ import { toast } from "sonner";
 
 import type { TwoFactorMethod } from "@/types/api";
 
+import { AuthShell } from "@/components/auth/auth-shell";
 import { homeForRole } from "@/components/console/nav-config";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useLoginMutation, useVerifyTwoFactorMutation } from "@/redux/auth-api";
@@ -40,6 +34,7 @@ export default function LoginPage() {
   const [login, { isLoading }] = useLoginMutation();
   const [verify, { isLoading: verifying }] = useVerifyTwoFactorMutation();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginValues>({
     defaultValues: { emailOrPhone: "", password: "" },
@@ -61,7 +56,7 @@ export default function LoginPage() {
         return;
       }
       if (!("challengeToken" in res.data)) {
-        toast.success("Welcome back");
+        toast.success("Signed in successfully");
         router.push(homeForRole(res.data.role));
       }
     } catch (error) {
@@ -73,78 +68,105 @@ export default function LoginPage() {
     if (!challenge) return;
     try {
       const res = await verify({ challengeToken: challenge.token, code: values.code }).unwrap();
-      toast.success("Welcome back");
+      toast.success("Signed in successfully");
       router.push(homeForRole(res.data.role));
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Invalid code"));
     }
   });
 
+  if (challenge) {
+    return (
+      <AuthShell
+        subtitle={
+          challenge.method === "EMAIL"
+            ? "Enter the sign-in code we just sent to your email, or a recovery code."
+            : "Enter the 6-digit code from your authenticator app, or a recovery code."
+        }
+        title="Two-factor verification"
+      >
+        <form className="space-y-5" onSubmit={onVerify}>
+          <Field error={codeForm.formState.errors.code?.message} label="Authentication code">
+            <Input
+              autoFocus
+              inputMode="numeric"
+              placeholder="123456"
+              {...codeForm.register("code")}
+            />
+          </Field>
+          <Button className="w-full gap-2" loading={verifying} type="submit">
+            Verify and continue
+            {!verifying && <ArrowRight className="size-4" />}
+          </Button>
+          <button
+            className="w-full text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => {
+              setChallenge(null);
+              codeForm.reset();
+            }}
+            type="button"
+          >
+            Back to sign in
+          </button>
+        </form>
+      </AuthShell>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <span className="mb-1 flex size-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
-          <ShieldCheck className="size-5" />
-        </span>
-        <CardTitle className="text-lg">
-          {challenge ? "Two-factor verification" : "Staff sign in"}
-        </CardTitle>
-        <CardDescription>
-          {challenge
-            ? challenge.method === "EMAIL"
-              ? "Enter the sign-in code we just sent to your email (or a recovery code)."
-              : "Enter the 6-digit code from your authenticator app (or a recovery code)."
-            : "Sign in to manage elections. Voters should use the voter portal."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {challenge ? (
-          <form className="space-y-4" onSubmit={onVerify}>
-            <Field error={codeForm.formState.errors.code?.message} label="Authentication code">
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="123456"
-                {...codeForm.register("code")}
-              />
-            </Field>
-            <Button className="w-full" loading={verifying} type="submit" variant="brand">
-              Verify and continue
-            </Button>
+    <AuthShell subtitle="Sign in to manage elections" title="Welcome back">
+      <form className="space-y-5" noValidate onSubmit={onSubmit}>
+        <Field error={form.formState.errors.emailOrPhone?.message} label="Email or phone">
+          <Input
+            autoComplete="username"
+            autoFocus
+            placeholder="you@example.com"
+            {...form.register("emailOrPhone")}
+          />
+        </Field>
+        <Field controlId="login-password" error={form.formState.errors.password?.message} label="Password">
+          <div className="relative">
+            <Input
+              autoComplete="current-password"
+              className="pr-10"
+              id="login-password"
+              placeholder="••••••••"
+              type={showPassword ? "text" : "password"}
+              {...form.register("password")}
+            />
             <button
-              className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setChallenge(null);
-                codeForm.reset();
-              }}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowPassword((v) => !v)}
+              tabIndex={-1}
               type="button"
             >
-              Back to sign in
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
-          </form>
-        ) : (
-          <form className="space-y-4" onSubmit={onSubmit}>
-            <Field error={form.formState.errors.emailOrPhone?.message} label="Email or phone">
-              <Input autoFocus placeholder="you@example.com" {...form.register("emailOrPhone")} />
-            </Field>
-            <Field error={form.formState.errors.password?.message} label="Password">
-              <Input placeholder="••••••••" type="password" {...form.register("password")} />
-            </Field>
-            <Button className="w-full" loading={isLoading} type="submit" variant="brand">
-              Sign in
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              <Link className="hover:text-foreground" href="/forgot-password">
-                Forgot your password?
-              </Link>
-              <span className="mx-2">·</span>
-              <Link className="hover:text-foreground" href="/vote">
-                Voter portal
-              </Link>
-            </p>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+          </div>
+        </Field>
+        <div className="flex justify-end">
+          <Link
+            className="text-sm font-medium text-foreground transition-colors hover:text-muted-foreground"
+            href="/forgot-password"
+          >
+            Forgot password?
+          </Link>
+        </div>
+        <Button className="w-full gap-2" loading={isLoading} type="submit">
+          Sign in
+          {!isLoading && <ArrowRight className="size-4" />}
+        </Button>
+        <p className="text-center text-sm text-muted-foreground">
+          Voting in an election?{" "}
+          <Link
+            className="font-medium text-foreground transition-colors hover:text-muted-foreground"
+            href="/vote"
+          >
+            Voter portal
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

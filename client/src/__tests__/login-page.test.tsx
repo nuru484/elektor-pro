@@ -52,7 +52,7 @@ const fillAndSubmit = () => {
   fireEvent.change(screen.getByLabelText(/email or phone/i), {
     target: { value: "sa@test.com" },
   });
-  fireEvent.change(screen.getByLabelText(/password/i), {
+  fireEvent.change(screen.getByLabelText("Password"), {
     target: { value: "Password123!" },
   });
   fireEvent.click(screen.getByRole("button", { name: /sign in/i }));

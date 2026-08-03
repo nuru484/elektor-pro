@@ -1,21 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LockKeyhole } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,9 +41,12 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-center text-sm text-muted-foreground">
         This reset link is missing its token.{" "}
-        <Link className="text-brand hover:underline" href="/forgot-password">
+        <Link
+          className="font-medium text-foreground transition-colors hover:text-muted-foreground"
+          href="/forgot-password"
+        >
           Request a new one
         </Link>
         .
@@ -59,17 +55,17 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
+    <form className="space-y-5" noValidate onSubmit={onSubmit}>
       <Field error={form.formState.errors.newPassword?.message} label="New password">
-        <Input autoFocus type="password" {...form.register("newPassword")} />
+        <Input autoComplete="new-password" autoFocus type="password" {...form.register("newPassword")} />
       </Field>
       <Field
         error={form.formState.errors.confirmPassword?.message}
         label="Confirm new password"
       >
-        <Input type="password" {...form.register("confirmPassword")} />
+        <Input autoComplete="new-password" type="password" {...form.register("confirmPassword")} />
       </Field>
-      <Button className="w-full" loading={isLoading} type="submit" variant="brand">
+      <Button className="w-full" loading={isLoading} type="submit">
         Reset password
       </Button>
     </form>
@@ -78,22 +74,16 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Card>
-      <CardHeader>
-        <span className="mb-1 flex size-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
-          <LockKeyhole className="size-5" />
-        </span>
-        <CardTitle className="text-lg">Choose a new password</CardTitle>
-        <CardDescription>
-          Resetting your password signs you out of every device.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* useSearchParams requires a Suspense boundary during prerender. */}
-        <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-          <ResetPasswordForm />
-        </Suspense>
-      </CardContent>
-    </Card>
+    <AuthShell
+      backHref="/login"
+      backLabel="Back to sign in"
+      subtitle="Resetting your password signs you out of every device."
+      title="Choose a new password"
+    >
+      {/* useSearchParams requires a Suspense boundary during prerender. */}
+      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthShell>
   );
 }

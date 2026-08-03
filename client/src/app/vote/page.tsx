@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Smartphone, Vote } from "lucide-react";
+import { ArrowRight, CheckCircle2, Vote } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LinkButton } from "@/components/ui/link-button";
@@ -104,23 +104,21 @@ export default function VotePage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <span className="mb-1 flex size-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
-          <Smartphone className="size-5" />
-        </span>
-        <CardTitle className="text-lg">
-          {stage === "identify" ? "Verify your identity" : "Enter your code"}
-        </CardTitle>
-        <CardDescription>
-          {stage === "identify"
-            ? "Enter your voter ID. We'll send a one-time code to the phone or email on record."
-            : "We sent a one-time code to your phone. Enter it below."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="mx-auto w-full max-w-md">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="border-b border-border px-8 pt-8 pb-6 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {stage === "identify" ? "Verify your identity" : "Enter your code"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {stage === "identify"
+              ? "Enter your voter ID. We'll send a one-time code to the phone or email on record."
+              : "We sent a one-time code. Enter it below."}
+          </p>
+        </div>
+        <div className="px-8 py-6">
         {stage === "identify" ? (
-          <form className="space-y-4" onSubmit={onRequest}>
+          <form className="space-y-5" onSubmit={onRequest}>
             <Field label="Voter ID">
               <Input
                 autoFocus
@@ -129,12 +127,12 @@ export default function VotePage() {
                 value={identifier}
               />
             </Field>
-            <Button className="w-full" loading={requesting} type="submit" variant="brand">
+            <Button className="w-full" loading={requesting} type="submit">
               Send code
             </Button>
           </form>
         ) : (
-          <form className="space-y-4" onSubmit={onVerify}>
+          <form className="space-y-5" onSubmit={onVerify}>
             <Field label="One-time code">
               <Input
                 autoFocus
@@ -144,7 +142,7 @@ export default function VotePage() {
                 value={code}
               />
             </Field>
-            <Button className="w-full" loading={verifying} type="submit" variant="brand">
+            <Button className="w-full" loading={verifying} type="submit">
               Verify
             </Button>
             <button
@@ -156,7 +154,8 @@ export default function VotePage() {
             </button>
           </form>
         )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -21,11 +21,18 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
  */
 export function Field({
   children,
+  controlId: explicitControlId,
   error,
   hint,
   label,
 }: {
   children: React.ReactNode;
+  /**
+   * When the control is nested inside a wrapper (e.g. an input with an
+   * overlay button), auto-wiring would put the id on the wrapper - pass the
+   * control's own id here and set it on the control directly.
+   */
+  controlId?: string;
   error?: string;
   hint?: string;
   label?: string;
@@ -33,8 +40,8 @@ export function Field({
   const autoId = React.useId();
 
   let control = children;
-  let controlId: string | undefined;
-  if (React.isValidElement(children)) {
+  let controlId = explicitControlId;
+  if (!explicitControlId && React.isValidElement(children)) {
     const existingId = (children.props as { id?: string }).id;
     controlId = existingId ?? autoId;
     if (!existingId) {
