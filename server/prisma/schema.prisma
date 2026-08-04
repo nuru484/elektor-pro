@@ -1,0 +1,701 @@
+// Elektor Pro — generic, customizable e-voting platform schema
+// Single-organization deployment. Works for schools, companies, unions,
+// associations — any body that runs elections. Constituency grouping is
+// entirely optional: by default every eligible voter votes every portfolio.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===========================================================================
+// Enums
+// ===========================================================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  AGENT
+  CANDIDATE
+  VOTER
+  ACCREDITOR // election-day official: accreditation desk only
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  LOCKED
+}
+
+enum ElectionStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  PAUSED
+  ENDED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ResultsPolicy {
+  LIVE // visible live to everyone allowed by role/grant
+  ON_CLOSE // visible once the election ends
+  MANUAL // visible only after a super-admin publishes
+}
+
+// Who may vote at all.
+enum EligibilityMode {
+  ALL_VOTERS // every registered voter is eligible (e.g. whole-org SRC election)
+  ROLL // only voters explicitly assigned to the election
+}
+
+// Per-portfolio constituency scoping.
+enum PortfolioEligibilityMode {
+  ALL_VOTERS // everyone eligible for the election votes this portfolio (default)
+  ANY_OF_GROUPS // voter must belong to at least one of the listed groups
+  ALL_OF_GROUPS // voter must belong to all listed groups (cross-category AND)
+}
+
+enum VotingMethod {
+  SINGLE_CHOICE // pick exactly one candidate
+  MULTI_SELECT // pick up to maxSelections candidates
+  YES_NO // approve / reject a single nominee (referendum)
+}
+
+enum OtpPurpose {
+  VOTER_LOGIN
+  STAFF_LOGIN // email-OTP second factor at staff login
+  EMAIL_CHANGE // confirm ownership of a new email address
+  PHONE_CHANGE // confirm ownership of a new phone number
+  TWO_FACTOR_EMAIL_ENABLE // confirm email before enabling email 2FA
+}
+
+enum TwoFactorMethod {
+  TOTP // authenticator app (RFC 6238)
+  EMAIL // one-time code sent to the account email
+}
+
+enum BallotEntryType {
+  VOTE
+  SKIP
+  ABSTAIN
+}
+
+enum ChangeAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum ChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  APPLIED
+  FAILED
+}
+
+enum ChangeEntity {
+  ORGANIZATION
+  ELECTION
+  PORTFOLIO
+  CANDIDATE
+  VOTER
+  AGENT
+  USER
+  GROUP_CATEGORY
+  GROUP
+}
+
+enum Capability {
+  VIEW_RESULTS
+  MANAGE_ELECTIONS
+  MANAGE_PORTFOLIOS
+  MANAGE_CANDIDATES
+  MANAGE_VOTERS
+  MANAGE_AGENTS
+  MANAGE_GROUPS
+  MANAGE_ORGANIZATION
+  APPROVE_CHANGES
+  CERTIFY_RESULTS
+  ACCREDIT_VOTERS
+}
+
+// ===========================================================================
+// Organization (singleton) — branding & default settings for the deployment
+// ===========================================================================
+
+model Organization {
+  id           String  @id @default(cuid())
+  name         String
+  slug         String  @unique
+  logoUrl      String?
+  faviconUrl   String?
+  primaryColor String  @default("#111827")
+  accentColor  String  @default("#2563eb")
+  supportEmail String?
+  supportPhone String?
+  website      String?
+  timezone     String  @default("UTC")
+  locale       String  @default("en")
+  // Default role-based UI visibility / feature config (elections may override).
+  settings     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===========================================================================
+// Identity & auth
+// ===========================================================================
+
+model User {
+  id             String  @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String? @unique
+  phone          String? @unique
+  password       String?
+  role           Role    @default(ADMIN)
+  status         Status  @default(ACTIVE)
+  profilePicture String?
+
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+
+  // Two-factor
+  twoFactorEnabled Boolean          @default(false)
+  twoFactorMethod  TwoFactorMethod? // set while 2FA is enabled
+  totpSecret       String? // encrypted at rest
+
+  // Pending contact changes awaiting OTP confirmation
+  pendingEmail String?
+  pendingPhone String?
+
+  // Lockout / login hardening
+  failedLoginAttempts Int       @default(0)
+  lockedAt            DateTime?
+  lockedReason        String?
+  unlockedById        String?
+  unlockedBy          User?     @relation("UserUnlocker", fields: [unlockedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  unlockedUsers       User[]    @relation("UserUnlocker")
+  lastLoginAt         DateTime?
+  passwordChangedAt   DateTime?
+  /// Set on admin-created accounts: the user must replace the generated
+  /// temporary password before using the platform.
+  mustChangePassword  Boolean   @default(false)
+
+  createdById  String?
+  creator      User?   @relation("UserCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdUsers User[]  @relation("UserCreator")
+
+  // Linked domain profiles
+  voter      Voter?
+  candidates Candidate[]       @relation("CandidateAccount")
+  agentLinks AgentAssignment[]
+
+  // Governance / authored records
+  electionsCreated   Election[]              @relation("ElectionCreator")
+  changeRequestsMade ChangeRequest[]         @relation("ChangeRequester")
+  changeReviews      ChangeRequest[]         @relation("ChangeReviewer")
+  accessGrantsHeld   AccessGrant[]           @relation("GrantHolder")
+  accessGrantsIssued AccessGrant[]           @relation("GrantIssuer")
+  resultsCertified   ResultSnapshot[]        @relation("ResultsCertifier")
+  auditLogs          AuditLog[]              @relation("AuditActor")
+  recoveryCodes      TwoFactorRecoveryCode[]
+  passwordResets     PasswordResetToken[]
+  otps               Otp[]
+  sessions           Session[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([role])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([createdById])
+}
+
+model TwoFactorRecoveryCode {
+  id       String    @id @default(cuid())
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId   String
+  codeHash String
+  usedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Otp {
+  id         String     @id @default(cuid())
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId     String
+  codeHash   String
+  purpose    OtpPurpose @default(VOTER_LOGIN)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int        @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// A refresh-token session (one per signed-in device). The refresh JWT carries
+// the session id; its current token's hash is stored here and ROTATED on every
+// refresh, so a stolen older refresh token is dead on arrival and users can
+// see and revoke their signed-in devices.
+model Session {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId     String
+  tokenHash  String    @unique
+  ipAddress  String?
+  userAgent  String?
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ===========================================================================
+// Optional voter grouping (constituencies). Entirely admin-defined.
+// ===========================================================================
+
+model GroupCategory {
+  id            String  @id @default(cuid())
+  name          String  @unique // e.g. "Faculty", "Hall", "Level", "Region", "Chapter"
+  code          String  @unique
+  description   String?
+  order         Int     @default(0)
+  allowMultiple Boolean @default(false) // can a voter belong to >1 group here?
+
+  groups Group[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt])
+}
+
+model Group {
+  id          String        @id @default(cuid())
+  category    GroupCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  categoryId  String
+  name        String
+  code        String        @unique
+  description String?
+  // Optional hierarchy (e.g. Department under a Faculty).
+  parent      Group?        @relation("GroupHierarchy", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  parentId    String?
+  children    Group[]       @relation("GroupHierarchy")
+
+  voterMemberships     VoterGroupMembership[]
+  portfolioEligibility PortfolioEligibility[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([categoryId, name])
+  @@index([categoryId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+model VoterGroupMembership {
+  id      String @id @default(cuid())
+  voter   Voter  @relation(fields: [voterId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  voterId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  groupId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([voterId, groupId])
+  @@index([voterId])
+  @@index([groupId])
+}
+
+// ===========================================================================
+// Voters
+// ===========================================================================
+
+model Voter {
+  id             String  @id @default(cuid())
+  // Linked login account (role = VOTER); voters authenticate via phone OTP.
+  user           User?   @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  userId         String? @unique
+  name           String
+  voterId        String  @unique // index / membership / registration number
+  phoneNumber    String? @unique
+  // Unique like phoneNumber: both are OTP login identifiers, and the email
+  // fallback must resolve to exactly one voter.
+  email          String? @unique
+  profilePicture String?
+  // Free-form org-specific attributes (staff id, year, etc.).
+  metadata       Json?
+
+  groupMemberships VoterGroupMembership[]
+  voterElections   VoterElection[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt])
+}
+
+// ===========================================================================
+// Elections
+// ===========================================================================
+
+model Election {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  description String?
+  status      ElectionStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime
+
+  // Who may vote at all.
+  eligibilityMode EligibilityMode @default(ALL_VOTERS)
+
+  // Results governance
+  resultsPolicy      ResultsPolicy @default(ON_CLOSE)
+  resultsPublishedAt DateTime?
+  certifiedAt        DateTime?
+  certifiedById      String?
+
+  // Lifecycle / integrity
+  accreditationRequired Boolean @default(false)
+  isLocked              Boolean @default(false) // set on certification
+
+  // Per-election role-based UI visibility + branding overrides (over org defaults).
+  settings Json?
+
+  createdById String?
+  createdBy   User?   @relation("ElectionCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  portfolios      Portfolio[]
+  candidates      Candidate[]
+  voterElections  VoterElection[]
+  ballots         Ballot[]
+  agentLinks      AgentAssignment[]
+  accessGrants    AccessGrant[]
+  resultSnapshots ResultSnapshot[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+  @@index([deletedAt])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdById])
+}
+
+model Portfolio {
+  id            String                   @id @default(cuid())
+  name          String
+  description   String?
+  order         Int                      @default(0)
+  votingMethod  VotingMethod             @default(SINGLE_CHOICE)
+  maxSelections Int                      @default(1) // for MULTI_SELECT
+  allowAbstain  Boolean                  @default(true)
+  eligibility   PortfolioEligibilityMode @default(ALL_VOTERS)
+
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+
+  eligibilityGroups PortfolioEligibility[]
+  candidates        Candidate[]
+  ballotEntries     BallotEntry[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([electionId, name])
+  @@index([electionId])
+  @@index([deletedAt])
+}
+
+model PortfolioEligibility {
+  id          String    @id @default(cuid())
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  portfolioId String
+  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  groupId     String
+
+  createdAt DateTime @default(now())
+
+  @@unique([portfolioId, groupId])
+  @@index([portfolioId])
+  @@index([groupId])
+}
+
+model Candidate {
+  id             String  @id @default(cuid())
+  name           String
+  profilePicture String?
+  /// Campaign name / nickname (e.g. "Team Nuru") - organisational elections
+  /// rarely have parties. Kept on the original "party" column via @map.
+  nickname       String? @map("party")
+  partySymbol    String?
+  manifesto      String?
+  /// Uploaded manifesto document (PDF), set only by the upload middleware.
+  manifestoUrl   String?
+  order          Int     @default(0)
+
+  // Optional login account for the candidate (role = CANDIDATE)
+  account   User?   @relation("CandidateAccount", fields: [accountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  accountId String?
+
+  election    Election  @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId  String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  portfolioId String
+
+  ballotEntries BallotEntry[]
+  agentLinks    AgentAssignment[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([electionId])
+  @@index([portfolioId])
+  @@index([accountId])
+  @@index([deletedAt])
+}
+
+// Agents observe results for a scope (an election, optionally a candidate).
+model AgentAssignment {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  candidateId String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, electionId, candidateId])
+  @@index([electionId])
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+// ===========================================================================
+// Voting (secret ballot)
+// ===========================================================================
+
+// Per-voter, per-election status: turnout, accreditation, one-person-one-vote
+// guard. Deliberately NOT linked to a ballot, to preserve ballot secrecy.
+model VoterElection {
+  id         String   @id @default(cuid())
+  voter      Voter    @relation(fields: [voterId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  voterId    String
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+
+  isEligible     Boolean   @default(true)
+  accreditedAt   DateTime?
+  accreditedById String?
+  hasVoted       Boolean   @default(false)
+  votedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([voterId, electionId])
+  @@index([electionId])
+  @@index([voterId])
+}
+
+// An anonymous ballot. The receipt code is shown to the voter once and lets
+// them verify inclusion without us storing who they are.
+model Ballot {
+  id          String   @id @default(cuid())
+  election    Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId  String
+  receiptCode String   @unique
+  // Tamper-evident hash chain over ballots within an election.
+  sequence    Int
+  prevHash    String
+  hash        String   @unique
+  castAt      DateTime @default(now())
+
+  entries BallotEntry[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([electionId, sequence])
+  @@index([electionId])
+}
+
+model BallotEntry {
+  id          String          @id @default(cuid())
+  ballot      Ballot          @relation(fields: [ballotId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ballotId    String
+  portfolio   Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  portfolioId String
+  candidate   Candidate?      @relation(fields: [candidateId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  candidateId String?
+  type        BallotEntryType @default(VOTE)
+  approve     Boolean? // YES_NO portfolios: true = yes, false = no
+
+  createdAt DateTime @default(now())
+
+  @@unique([ballotId, portfolioId, candidateId])
+  @@index([ballotId])
+  @@index([portfolioId])
+  @@index([candidateId])
+  @@index([type])
+}
+
+// ===========================================================================
+// Governance: capability grants, change requests, certification, audit
+// ===========================================================================
+
+model AccessGrant {
+  id         String     @id @default(cuid())
+  user       User       @relation("GrantHolder", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId     String
+  capability Capability
+  election   Election?  @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  grantedById String?
+  grantedBy   User?   @relation("GrantIssuer", fields: [grantedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, capability, electionId])
+  @@index([userId])
+  @@index([electionId])
+}
+
+/// Runtime role → capability grants, edited by super-admins from the console
+/// (DMS RolePermission pattern). Seeded with the shipped defaults; the
+/// capability service reads these behind a short cache. SUPER_ADMIN is never
+/// stored - it implicitly holds every capability.
+model RoleCapability {
+  id         String     @id @default(cuid())
+  role       Role
+  capability Capability
+  createdAt  DateTime   @default(now())
+
+  @@unique([role, capability])
+  @@index([role])
+}
+
+model ChangeRequest {
+  id       String       @id @default(cuid())
+  action   ChangeAction
+  entity   ChangeEntity
+  entityId String? // null for CREATE
+  payload  Json // proposed data
+  status   ChangeStatus @default(PENDING)
+  summary  String?
+
+  requestedById String
+  requestedBy   User   @relation("ChangeRequester", fields: [requestedById], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  reviewedById String?
+  reviewedBy   User?     @relation("ChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  reviewedAt   DateTime?
+  reviewNote   String?
+  appliedAt    DateTime?
+  resultId     String? // id of entity created/updated on apply
+  error        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([entity, entityId])
+  @@index([requestedById])
+  @@index([createdAt])
+}
+
+model ResultSnapshot {
+  id         String   @id @default(cuid())
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+  data       Json // full certified tally
+  hash       String   @unique
+
+  certifiedById String?
+  certifiedBy   User?   @relation("ResultsCertifier", fields: [certifiedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([electionId])
+}
+
+// Append-only, hash-chained audit trail.
+model AuditLog {
+  id        String  @id @default(cuid())
+  sequence  Int     @unique @default(autoincrement())
+  actor     User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  actorId   String?
+  actorRole Role?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  prevHash  String
+  hash      String  @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
