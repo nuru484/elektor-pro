@@ -6,6 +6,30 @@ import type { Applier } from '../change-request/types.js';
 import prisma from '../../lib/prisma.js';
 import { BadRequestError, NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
+import { validateAndFormatPhone } from '../../utils/validate-phone.js';
+
+/**
+ * Contact fields are unique login identifiers, so they must be stored in ONE
+ * canonical form: emails lowercased, phones in E.164. Without this, the same
+ * address/number written differently ("Ama@x.com" / "024 000 0000") slips
+ * past the unique constraints and registers twice.
+ */
+const normalizeVoterEmail = (email: null | string | undefined): null | string => {
+  const trimmed = email?.toLowerCase().trim();
+  return trimmed?.length ? trimmed : null;
+};
+
+const normalizeVoterPhone = (phone: null | string | undefined): null | string => {
+  if (!phone?.trim()) return null;
+  try {
+    return validateAndFormatPhone(phone, 'GH').e164Format;
+  } catch {
+    throw new BadRequestError('The voter phone number is not valid', {
+      code: 'INVALID_PHONE',
+      layer: 'voter',
+    });
+  }
+};
 
 /**
  * Validate a group selection: every id must exist, and a category with
@@ -171,10 +195,10 @@ const createVoterInTx = async (
 ): Promise<{ id: string }> => {
   const voter = await tx.voter.create({
     data: {
-      email: input.email ?? null,
+      email: normalizeVoterEmail(input.email),
       metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       name: input.name,
-      phoneNumber: input.phoneNumber ?? null,
+      phoneNumber: normalizeVoterPhone(input.phoneNumber),
       profilePicture: input.profilePicture ?? null,
       voterId: input.voterId,
     },
@@ -211,10 +235,13 @@ export const voterApplier: Applier = {
     const { electionIds, groupIds, ...rest } = payload as VoterInput;
     await tx.voter.update({
       data: {
-        email: rest.email ?? undefined,
+        email: rest.email === undefined ? undefined : normalizeVoterEmail(rest.email),
         metadata: (rest.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
         name: rest.name,
-        phoneNumber: rest.phoneNumber ?? undefined,
+        phoneNumber:
+          rest.phoneNumber === undefined
+            ? undefined
+            : normalizeVoterPhone(rest.phoneNumber),
         profilePicture: rest.profilePicture ?? undefined,
       },
       where: { id },

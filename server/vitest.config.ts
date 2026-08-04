@@ -18,6 +18,12 @@ export default defineConfig({
       DATABASE_URL: TEST_DATABASE_URL,
       NODE_ENV: 'test',
       OTP_MODE: 'mock',
+      // The rate-limit tests assert exact request counts: pin the dev
+      // relaxation multiplier to the real (production) limits.
+      RATE_LIMIT_SCALE: '1',
+      // Tests must never share rate-limit counters with a running dev
+      // server's Redis - keep the in-memory store.
+      REDIS_URL: '',
       REFRESH_TOKEN_SECRET: 'test_refresh_secret_fedcba9876543210fedcba9876543210',
     },
     fileParallelism: false,

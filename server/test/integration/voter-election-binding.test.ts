@@ -199,3 +199,107 @@ describe('candidate sign-in accounts', () => {
     expect(account?.password).not.toBeNull();
   });
 });
+
+describe('contact uniqueness and normalization', () => {
+  beforeEach(resetDb);
+
+  it('refuses a second voter with the same email or phone in any format', async () => {
+    const cookie = await superAdminCookie();
+    const { election } = await createElectionFixture();
+
+    const first = await api()
+      .post('/api/v1/voters')
+      .set('Cookie', cookie)
+      .send({
+        electionIds: [election.id],
+        email: 'Ama@Test.com',
+        name: 'Ama One',
+        phoneNumber: '+233 24 000 0001',
+        voterId: 'UNIQ-1',
+      });
+    expect(first.status).toBe(201);
+    // Stored canonically: lowercase email, E.164 phone.
+    const stored = await prisma.voter.findFirst({ where: { voterId: 'UNIQ-1' } });
+    expect(stored?.email).toBe('ama@test.com');
+    expect(stored?.phoneNumber).toBe('+233240000001');
+
+    // Same email, different casing: refused.
+    const dupEmail = await api()
+      .post('/api/v1/voters')
+      .set('Cookie', cookie)
+      .send({
+        electionIds: [election.id],
+        email: 'AMA@test.com',
+        name: 'Ama Two',
+        voterId: 'UNIQ-2',
+      });
+    expect(dupEmail.status).toBe(409);
+
+    // Same phone, different formatting: refused.
+    const dupPhone = await api()
+      .post('/api/v1/voters')
+      .set('Cookie', cookie)
+      .send({
+        electionIds: [election.id],
+        name: 'Ama Three',
+        phoneNumber: '024 000 0001',
+        voterId: 'UNIQ-3',
+      });
+    expect(dupPhone.status).toBe(409);
+  });
+
+  it('refuses a second candidate using another person\'s contact', async () => {
+    const cookie = await superAdminCookie();
+    const { election, portfolio } = await createElectionFixture();
+
+    const first = await api()
+      .post('/api/v1/candidates')
+      .set('Cookie', cookie)
+      .send({
+        electionId: election.id,
+        email: 'owner@test.com',
+        name: 'Contact Owner',
+        portfolioId: portfolio.id,
+      });
+    expect(first.status).toBe(201);
+
+    // A different person with the same email: refused.
+    const stolen = await api()
+      .post('/api/v1/candidates')
+      .set('Cookie', cookie)
+      .send({
+        electionId: election.id,
+        email: 'owner@test.com',
+        name: 'Somebody Else',
+        portfolioId: portfolio.id,
+      });
+    expect(stolen.status).toBe(409);
+
+    // The same person nominated twice in the SAME election: refused.
+    const twice = await api()
+      .post('/api/v1/candidates')
+      .set('Cookie', cookie)
+      .send({
+        electionId: election.id,
+        email: 'owner@test.com',
+        name: 'Contact Owner',
+        portfolioId: portfolio.id,
+      });
+    expect(twice.status).toBe(409);
+
+    // The same person in a DIFFERENT election: allowed, same account reused.
+    const { election: other, portfolio: otherPortfolio } = await createElectionFixture();
+    const returning = await api()
+      .post('/api/v1/candidates')
+      .set('Cookie', cookie)
+      .send({
+        electionId: other.id,
+        email: 'owner@test.com',
+        name: 'Contact Owner',
+        portfolioId: otherPortfolio.id,
+      });
+    expect(returning.status).toBe(201);
+    const accounts = await prisma.user.count({ where: { email: 'owner@test.com' } });
+    expect(accounts).toBe(1);
+  });
+});

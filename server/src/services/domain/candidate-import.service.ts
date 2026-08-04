@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import prisma from '../../lib/prisma.js';
 import { BadRequestError, NotFoundError } from '../../middlewares/error-handler.js';
+import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 import { type ImportRowError, parseRecords } from './voter-import.service.js';
 
 export const MAX_CANDIDATE_IMPORT_ROWS = 1000;
@@ -145,6 +146,9 @@ export const previewCandidateImport = async (
   const errors: ImportRowError[] = [];
   const rows: ImportCandidateRow[] = [];
   const seenInFile = new Set<string>();
+  // Contact becomes the candidate's sign-in identity: one email/phone per
+  // person, so duplicates within the file are refused up front.
+  const seenContacts = new Map<string, number>();
 
   records.forEach((record, index) => {
     const rowNumber = index + 1;
@@ -173,6 +177,34 @@ export const previewCandidateImport = async (
         row: rowNumber,
       });
       return;
+    }
+
+    // Canonicalize the contact, then refuse in-file duplicates.
+    if (parsed.data.email) parsed.data.email = parsed.data.email.toLowerCase();
+    if (parsed.data.phone) {
+      try {
+        parsed.data.phone = validateAndFormatPhone(parsed.data.phone, 'GH').e164Format;
+      } catch {
+        errors.push({
+          field: 'phone',
+          message: 'Not a valid phone number',
+          row: rowNumber,
+        });
+        return;
+      }
+    }
+    for (const contact of [parsed.data.email, parsed.data.phone]) {
+      if (!contact) continue;
+      const firstRow = seenContacts.get(contact);
+      if (firstRow) {
+        errors.push({
+          field: parsed.data.email === contact ? 'email' : 'phone',
+          message: `Same contact as row ${String(firstRow)}: an email or phone belongs to one candidate`,
+          row: rowNumber,
+        });
+        return;
+      }
+      seenContacts.set(contact, rowNumber);
     }
 
     const key = `${portfolio.id}:${parsed.data.name.trim().toLowerCase()}`;

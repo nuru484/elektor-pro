@@ -69,6 +69,12 @@ interface IENV {
   PORT: number;
   /** Internal callers presenting this via X-Rate-Limit-Bypass skip rate limits. */
   RATE_LIMIT_BYPASS_SECRET: string;
+  /**
+   * Multiplier applied to every limiter's max requests. Defaults to a
+   * generous 25x outside production so development never trips limits;
+   * production defaults to 1 (the real limits).
+   */
+  RATE_LIMIT_SCALE: number;
   /** BullMQ connection; empty disables background queues (dev without Redis). */
   REDIS_URL: string;
   REFRESH_TOKEN_EXPIRY: string;
@@ -109,6 +115,7 @@ const ENV: IENV = {
   // Default matches .env.example and the client's NEXT_PUBLIC_API_URL fallback.
   PORT: envNumber('PORT', 4040),
   RATE_LIMIT_BYPASS_SECRET: envOptional('RATE_LIMIT_BYPASS_SECRET'),
+  RATE_LIMIT_SCALE: envNumber('RATE_LIMIT_SCALE', isProduction ? 1 : 25),
   REDIS_URL: envOptional('REDIS_URL'),
   REFRESH_TOKEN_EXPIRY: envOptional('REFRESH_TOKEN_EXPIRY', '7d'),
   REFRESH_TOKEN_SECRET: envRequired('REFRESH_TOKEN_SECRET'),

@@ -8,6 +8,7 @@ import {
   NotFoundError,
   UnauthorizedError,
 } from '../../middlewares/error-handler.js';
+import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { makeOtpService } from '../auth/otp.service.js';
 import { type AppDeps, defaultDeps } from '../deps.js';
@@ -35,12 +36,28 @@ export const makeVoterAuthService = (
   const { config, prisma } = d;
   const otp = makeOtpService(d);
 
-  const findVoterByIdentifier = (identifier: string) =>
-    prisma.voter.findFirst({
+  const findVoterByIdentifier = (identifier: string) => {
+    // Contact is stored canonically (lowercase email, E.164 phone), so the
+    // typed identifier is normalised the same way before matching - a voter
+    // registered as +233240000001 can sign in typing "024 000 0001".
+    const trimmed = identifier.trim();
+    const candidates = new Set([trimmed, trimmed.toLowerCase()]);
+    try {
+      candidates.add(validateAndFormatPhone(trimmed, 'GH').e164Format);
+    } catch {
+      // Not a phone number; the other candidates still match voterId/email.
+    }
+    const values = [...candidates];
+    return prisma.voter.findFirst({
       where: {
-        OR: [{ voterId: identifier }, { phoneNumber: identifier }, { email: identifier }],
+        OR: [
+          { voterId: { in: values } },
+          { phoneNumber: { in: values } },
+          { email: { in: values } },
+        ],
       },
     });
+  };
 
   /** Ensure the voter has a linked User(VOTER) account; create lazily. */
   const ensureVoterUser = async (voter: {

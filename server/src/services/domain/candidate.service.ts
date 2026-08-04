@@ -144,14 +144,17 @@ interface CandidatePayload extends Record<string, unknown> {
 }
 
 /**
- * Resolve the candidate's login account from their contact details: an
- * existing CANDIDATE account with the same email/phone is reused (one person,
- * many elections), otherwise a fresh account is created with a temporary
- * password delivered by email/SMS - candidates have no staff-issued IDs, so
- * their contact IS their sign-in identity.
+ * Resolve the candidate's login account from their contact details. An email
+ * or phone belongs to exactly ONE person: an existing CANDIDATE account with
+ * the same contact is reused only when it is clearly the same person (same
+ * name) returning in a DIFFERENT election - anything else is a conflict.
+ * Otherwise a fresh account is created with a temporary password delivered
+ * by email/SMS - candidates have no staff-issued IDs, so their contact IS
+ * their sign-in identity.
  */
 const ensureCandidateAccount = async (
   tx: TxClient,
+  electionId: string,
   name: string,
   email: null | string | undefined,
   phone: null | string | undefined,
@@ -174,7 +177,7 @@ const ensureCandidateAccount = async (
   if (!normalEmail && !normalPhone) return null;
 
   const existing = await tx.user.findFirst({
-    select: { id: true, role: true },
+    select: { firstName: true, id: true, lastName: true, role: true },
     where: {
       OR: [
         ...(normalEmail ? [{ email: normalEmail }] : []),
@@ -186,6 +189,34 @@ const ensureCandidateAccount = async (
     if (existing.role !== Role.CANDIDATE) {
       throw new ConflictError(
         'This email or phone already belongs to a non-candidate account',
+        { code: 'CONTACT_IN_USE', layer: 'candidate' },
+      );
+    }
+    // Same contact, different name: two different people cannot share an
+    // email or phone number.
+    // Single-word names store '-' as the surname placeholder; ignore it.
+    const accountName = [existing.firstName, existing.lastName]
+      .filter((part) => part && part !== '-')
+      .join(' ')
+      .replaceAll(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    const givenName = name.replaceAll(/\s+/g, ' ').trim().toLowerCase();
+    if (accountName !== givenName) {
+      throw new ConflictError(
+        'This email or phone already belongs to another candidate',
+        { code: 'CONTACT_IN_USE', layer: 'candidate' },
+      );
+    }
+    // Same person: allowed across elections (their history links up), but
+    // never twice within the same election.
+    const inThisElection = await tx.candidate.findFirst({
+      select: { id: true },
+      where: { accountId: existing.id, electionId },
+    });
+    if (inThisElection) {
+      throw new ConflictError(
+        'This email or phone already belongs to a candidate in this election',
         { code: 'CONTACT_IN_USE', layer: 'candidate' },
       );
     }
@@ -249,6 +280,7 @@ const createCandidateInTx = async (
     : null;
   const accountId = await ensureCandidateAccount(
     tx,
+    electionId ?? '',
     typeof rest.name === 'string' ? rest.name : '',
     email,
     phone,
@@ -294,11 +326,17 @@ export const candidateApplier: Applier = {
     let accountId: null | string = null;
     if (email || phone) {
       const current = await tx.candidate.findUnique({
-        select: { accountId: true, name: true },
+        select: { accountId: true, electionId: true, name: true },
         where: { id },
       });
       if (current && !current.accountId) {
-        accountId = await ensureCandidateAccount(tx, current.name, email, phone);
+        accountId = await ensureCandidateAccount(
+          tx,
+          current.electionId,
+          current.name,
+          email,
+          phone,
+        );
       }
     }
     return tx.candidate.update({

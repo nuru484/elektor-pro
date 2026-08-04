@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import prisma from '../../lib/prisma.js';
 import { BadRequestError } from '../../middlewares/error-handler.js';
+import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 
 export const MAX_IMPORT_ROWS = 5000;
 
@@ -187,6 +188,27 @@ export const previewVoterImport = async (file: {
         });
       }
       return;
+    }
+
+    // Canonicalize contact before any comparison: emails lowercase, phones
+    // E.164 - otherwise the same number written differently slips past both
+    // the in-file dedup and the existing-voter checks, only to explode on
+    // the unique constraint at insert time.
+    if (parsed.data.email) parsed.data.email = parsed.data.email.toLowerCase();
+    if (parsed.data.phoneNumber) {
+      try {
+        parsed.data.phoneNumber = validateAndFormatPhone(
+          parsed.data.phoneNumber,
+          'GH',
+        ).e164Format;
+      } catch {
+        errors.push({
+          field: 'phoneNumber',
+          message: 'Not a valid phone number',
+          row: rowNumber,
+        });
+        return;
+      }
     }
 
     // In-file duplicate detection on the identifying columns.

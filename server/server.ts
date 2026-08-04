@@ -13,6 +13,7 @@ import {
   reportError,
 } from './src/lib/error-reporting.js';
 import prisma from './src/lib/prisma.js';
+import { closeRateLimitStore } from './src/middlewares/rateLimit.js';
 import { closeRealtime, initRealtime } from './src/realtime/io.js';
 import logger from './src/utils/logger.js';
 
@@ -66,6 +67,7 @@ const shutdown = async (signal: string): Promise<void> => {
     await new Promise<void>((resolve) => httpServer.close(() => { resolve(); }));
     await closeRealtime();
     await stopWorkers();
+    await closeRateLimitStore();
     await prisma.$disconnect();
     // Last: give buffered crash/error reports a bounded chance to leave.
     await flushErrorReporting();

@@ -5,8 +5,10 @@ import rateLimit, {
   ipKeyGenerator,
   type RateLimitRequestHandler,
 } from "express-rate-limit";
+import { RedisStore } from "rate-limit-redis";
 
 import ENV from "../config/env.js";
+import { createRedisConnection } from "../jobs/connection.js";
 import { CustomError, ErrorSeverity } from "./error-handler.js";
 
 // Custom rate limit exceeded error
@@ -20,9 +22,39 @@ export class RateLimitExceededError extends CustomError {
   }
 }
 
-// Create enhanced memory-based rate limiter
+/**
+ * One shared Redis client for every limiter. With REDIS_URL set, counters
+ * live in Redis and SURVIVE process restarts - the in-memory default store
+ * is per-process RAM, which is why a restart used to clear active blocks.
+ * Without Redis (CI, tests, bare dev) limiters fall back to memory.
+ */
+const rateLimitRedis = createRedisConnection();
+let storeSequence = 0;
+
+/** Close the shared rate-limit Redis client (coordinated shutdown path). */
+export const closeRateLimitStore = async (): Promise<void> => {
+  if (rateLimitRedis) await rateLimitRedis.quit().catch(() => undefined);
+};
+
+const makeStore = (): RedisStore | undefined => {
+  if (!rateLimitRedis) return undefined;
+  // Each limiter needs its own prefix so their counters never collide.
+  storeSequence += 1;
+  const prefix = `rl:${String(storeSequence)}:`;
+  return new RedisStore({
+    prefix,
+    sendCommand: async (command, ...args) =>
+      rateLimitRedis.call(command, ...args) as Promise<never>,
+  });
+};
+
+/**
+ * Create a rate limiter. Every limit is multiplied by ENV.RATE_LIMIT_SCALE -
+ * 1 in production (the real limits), a generous default outside it so
+ * development never trips them.
+ */
 export const createRateLimiter = (
-  windowMs: number = 15 * 60 * 10000,
+  windowMs: number = 15 * 60 * 1000,
   maxRequests = 100,
   message = "Too many requests, please try again later.",
 ): RateLimitRequestHandler => {
@@ -40,9 +72,8 @@ export const createRateLimiter = (
       return `${ipKey}${userId}`;
     },
     legacyHeaders: false,
-    max: maxRequests,
+    max: Math.max(1, Math.round(maxRequests * ENV.RATE_LIMIT_SCALE)),
     message,
-
     // Skip rate limiting for certain requests
     skip: (req: Request) => {
       // Skip health checks
@@ -57,6 +88,8 @@ export const createRateLimiter = (
     },
 
     standardHeaders: true,
+
+    store: makeStore(),
 
     windowMs,
   });
