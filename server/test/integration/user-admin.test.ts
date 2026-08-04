@@ -172,3 +172,34 @@ describe('user administration', () => {
     ).toBeInstanceOf(Date);
   });
 });
+
+describe('contact-change privilege boundaries', () => {
+  beforeEach(resetDb);
+
+  it('admins can stage contact changes only on strictly lower tiers', async () => {
+    await createUser(Role.ADMIN, { email: 'admin-a@test.com' });
+    const peerAdmin = await createUser(Role.ADMIN, { email: 'admin-b@test.com' });
+    const superAdmin = await createUser(Role.SUPER_ADMIN, { email: 'root@test.com' });
+    const agent = await createUser(Role.AGENT, { email: 'field@test.com' });
+    const cookie = await loginCookie('admin-a@test.com');
+
+    // Peer admin and super-admin targets are refused - a contact change is a
+    // takeover primitive (email -> password reset).
+    for (const target of [peerAdmin, superAdmin]) {
+      const res = await api()
+        .post(`/api/v1/users/${target.id}/contact/request`)
+        .set('Cookie', cookie)
+        .send({ email: 'attacker@evil.com' });
+      expect(res.status).toBe(403);
+    }
+
+    // A strictly lower tier (agent) is allowed and stages the pending email.
+    const ok = await api()
+      .post(`/api/v1/users/${agent.id}/contact/request`)
+      .set('Cookie', cookie)
+      .send({ email: 'new-agent-mail@test.com' });
+    expect(ok.status).toBe(200);
+    const staged = await prisma.user.findUnique({ where: { id: agent.id } });
+    expect(staged?.pendingEmail).toBe('new-agent-mail@test.com');
+  });
+});

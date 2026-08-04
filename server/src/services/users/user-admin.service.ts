@@ -42,6 +42,26 @@ interface Actor {
   role: Role;
 }
 
+/** Role tiers for administer-checks: an actor may only touch accounts on a
+ * strictly LOWER tier (super-admins may touch anyone, incl. other SAs). */
+const ROLE_RANK: Record<Role, number> = {
+  [Role.ACCREDITOR]: 1,
+  [Role.ADMIN]: 2,
+  [Role.AGENT]: 1,
+  [Role.CANDIDATE]: 0,
+  [Role.SUPER_ADMIN]: 3,
+  [Role.VOTER]: 0,
+};
+
+const assertCanAdminister = (actor: Actor, targetRole: Role): void => {
+  if (actor.role === Role.SUPER_ADMIN) return;
+  if (ROLE_RANK[actor.role] <= ROLE_RANK[targetRole]) {
+    throw new ForbiddenError(
+      'You cannot modify an account with equal or higher privileges',
+    );
+  }
+};
+
 const USER_ADMIN_SELECT = {
   ...STAFF_SELECT,
   creator: { select: { firstName: true, id: true, lastName: true } },
@@ -146,10 +166,13 @@ export const makeUserAdminService = (
       throw new BadRequestError('Use your profile to edit your own account');
     }
     const target = await prisma.user.findFirst({
-      select: { id: true },
+      select: { id: true, role: true },
       where: { id: userId },
     });
     if (!target) throw new NotFoundError('User not found');
+    // A contact change is an account-takeover primitive (email -> password
+    // reset), so only strictly higher tiers may stage one.
+    assertCanAdminister(actor, target.role);
 
     if (input.email) {
       const email = input.email.toLowerCase().trim();
@@ -189,6 +212,7 @@ export const makeUserAdminService = (
       where: { id: userId },
     });
     if (!target) throw new NotFoundError('User not found');
+    assertCanAdminister(actor, target.role);
     if (!target.pendingEmail && !target.pendingPhone) {
       throw new BadRequestError('No contact change in progress');
     }
