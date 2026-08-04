@@ -4,7 +4,15 @@
 // Rows link to the full candidate profile; creation uses the standard
 // nomination page.
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Eye, FileUp, Hash, Pencil, Plus, UserRound } from "lucide-react";
+import {
+  Eye,
+  FileUp,
+  Hash,
+  Pencil,
+  Plus,
+  UserRound,
+  UserRoundPlus,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
@@ -314,6 +322,15 @@ export default function ElectionCandidatesPage({
                 variant="outline"
               >
                 <FileUp className="size-4" /> Import
+              </Button>
+              <Button
+                asChild
+                title="Assign people already in the system to a portfolio here"
+                variant="outline"
+              >
+                <Link href={`/admin/elections/${electionId}/candidates/add`}>
+                  <UserRoundPlus className="size-4" /> Allocate existing
+                </Link>
               </Button>
               <Button asChild variant="brand">
                 <Link href="/admin/candidates/new">

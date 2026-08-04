@@ -21,3 +21,9 @@ export function clearSessionMarker(): void {
   if (typeof document === "undefined") return;
   document.cookie = `${SESSION_MARKER_COOKIE}=; path=/; max-age=0; samesite=lax`;
 }
+
+/** Whether this browser previously marked a session (probably signed in). */
+export function hasSessionMarker(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split("; ").includes(`${SESSION_MARKER_COOKIE}=1`);
+}

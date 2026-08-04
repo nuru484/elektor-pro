@@ -328,9 +328,12 @@ export const verifyVoteCode = async (
 };
 
 /**
- * Elections a voter can currently participate in (open + within window),
- * scoped by election-level eligibility: group-scoped elections outside the
- * voter's groups are invisible, not merely refused.
+ * Elections a voter can see: open ones (their window is live) plus published
+ * upcoming ones (SCHEDULED - admins make an election visible by scheduling
+ * it; drafts stay invisible). Scoped by election-level eligibility:
+ * group-scoped elections outside the voter's groups are invisible, not
+ * merely refused. Carries the voter's standing so the portal can show
+ * accreditation and voting state per election.
  */
 export const listVoterElections = async (userId: string) => {
   const voter = await prisma.voter.findFirst({
@@ -343,22 +346,25 @@ export const listVoterElections = async (userId: string) => {
   return prisma.election.findMany({
     orderBy: { startDate: 'asc' },
     select: {
+      accreditationRequired: true,
       description: true,
       endDate: true,
       id: true,
       name: true,
+      resultsPolicy: true,
+      resultsPublishedAt: true,
       slug: true,
       startDate: true,
       status: true,
       voterElections: {
-        select: { hasVoted: true },
+        select: { accreditedAt: true, hasVoted: true, isEligible: true },
         where: { voterId: voter.id },
       },
     },
     where: {
       ...visibility,
       endDate: { gte: now },
-      status: 'IN_PROGRESS',
+      status: { in: ['IN_PROGRESS', 'SCHEDULED'] },
     },
   });
 };

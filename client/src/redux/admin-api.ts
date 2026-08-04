@@ -100,7 +100,10 @@ export const adminApi = apiSlice.injectEndpoints({
       providesTags: ["Election"],
       query: (id) => `/elections/${id}`,
     }),
-    listCandidates: build.query<PaginatedResponse<Candidate>, ListQuery & { electionId?: string }>({
+    listCandidates: build.query<
+      PaginatedResponse<Candidate>,
+      ListQuery & { electionId?: string; excludeElectionId?: string }
+    >({
       providesTags: ["Candidate"],
       query: (params) => `/candidates${qs(params)}`,
     }),
@@ -377,6 +380,17 @@ export const adminApi = apiSlice.injectEndpoints({
       providesTags: ["Roll"],
       query: (electionId) => `/elections/${electionId}/turnout`,
     }),
+    allocateCandidates: build.mutation<
+      ApiResponse<{ added: number; skipped: number }>,
+      { candidateIds: string[]; electionId: string; portfolioId: string }
+    >({
+      invalidatesTags: ["Candidate", "Election"],
+      query: ({ electionId, ...body }) => ({
+        body,
+        method: "POST",
+        url: `/elections/${electionId}/candidates/allocate`,
+      }),
+    }),
     publishResults: build.mutation<unknown, string>({
       invalidatesTags: ["Election", "Results"],
       query: (electionId) => ({
@@ -485,6 +499,7 @@ export const adminApi = apiSlice.injectEndpoints({
 
 export const {
   useAccreditVoterMutation,
+  useAllocateCandidatesMutation,
   useAddToRollMutation,
   useApproveChangeMutation,
   useAutoAssignBallotNumbersMutation,

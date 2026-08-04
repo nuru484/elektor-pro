@@ -12,7 +12,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { homeForRole } from "@/components/console/nav-config";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { useGetMeQuery } from "@/redux/auth-api";
 import { useChangePasswordMutation } from "@/redux/profile-api";
@@ -57,31 +57,28 @@ export default function PasswordSetupPage() {
     >
       <form className="space-y-5" onSubmit={onSubmit}>
         <Field label="Temporary password">
-          <Input
+          <PasswordInput
             autoComplete="current-password"
             autoFocus
             name="currentPassword"
             placeholder="The password you signed in with"
             required
-            type="password"
           />
         </Field>
         <Field hint="At least 8 characters with upper, lower, and a digit." label="New password">
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             name="newPassword"
             placeholder="Your own password"
             required
-            type="password"
           />
         </Field>
         <Field error={error ?? undefined} label="Confirm new password">
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             name="confirmPassword"
             placeholder="Repeat the new password"
             required
-            type="password"
           />
         </Field>
         <Button className="w-full gap-2" loading={isLoading} type="submit">

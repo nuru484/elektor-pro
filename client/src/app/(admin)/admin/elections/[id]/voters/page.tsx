@@ -14,10 +14,11 @@ import {
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import { toast } from "sonner";
 
-import type { RollEntry, Voter } from "@/types/api";
+import type { RollEntry } from "@/types/api";
 
 import { VoteCodeDialog } from "@/components/accreditation/code-dialog";
 import { EntityAvatar } from "@/components/console/entity-avatar";
@@ -29,9 +30,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Field } from "@/components/ui/field";
-import { Input, Select as NativeSelect } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { Select as NativeSelect } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/states";
 import { CellText, RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -40,187 +39,12 @@ import { useTableQueryState } from "@/hooks/use-table-query-state";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
   useAccreditVoterMutation,
-  useAddToRollMutation,
-  useGetElectionQuery,
   useListRollQuery,
-  useListVotersQuery,
   useRemoveFromRollMutation,
   useRevokeAccreditationMutation,
   useSetRollEligibilityMutation,
 } from "@/redux/admin-api";
-import { useListGroupsQuery } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
-
-// --- Add-voters modal: a whole group, hand-picked voters, or both ---
-
-function AddVotersModal({
-  electionId,
-  onClose,
-  open,
-}: {
-  electionId: string;
-  onClose: () => void;
-  open: boolean;
-}) {
-  const [addToRoll, { isLoading }] = useAddToRollMutation();
-  const [groupId, setGroupId] = useState("");
-  const [joinGroupId, setJoinGroupId] = useState("");
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Voter[]>([]);
-
-  const { data: groupsData } = useListGroupsQuery({ limit: 100 });
-  const groups = groupsData?.data ?? [];
-  const { data: electionData } = useGetElectionQuery(electionId);
-  // For a group-scoped election, hand-picked voters can be enrolled into one
-  // of its eligibility groups so they properly belong to the election's
-  // category/group, not just its roll.
-  const scopedGroups = (electionData?.data.eligibilityGroups ?? []).map(
-    (entry) => entry.group,
-  );
-  const { data: votersData, isFetching: searching } = useListVotersQuery(
-    // excludeElectionId: only voters not yet part of THIS election appear.
-    { excludeElectionId: electionId, limit: 8, search },
-    { skip: search.length < 2 },
-  );
-  const matches = (votersData?.data ?? []).filter(
-    (voter) => !selected.some((s) => s.id === voter.id),
-  );
-
-  const submit = async () => {
-    if (!groupId && selected.length === 0) {
-      toast.error("Pick a group or select voters first");
-      return;
-    }
-    try {
-      const res = await addToRoll({
-        electionId,
-        ...(groupId ? { groupId } : {}),
-        ...(joinGroupId ? { joinGroupId } : {}),
-        ...(selected.length ? { voterIds: selected.map((v) => v.id) } : {}),
-      }).unwrap();
-      const { added, alreadyEligible, joinedGroup, reEnabled } = res.data;
-      toast.success(
-        `${String(added)} added${reEnabled ? `, ${String(reEnabled)} re-enabled` : ""}${
-          alreadyEligible ? `, ${String(alreadyEligible)} already on the roll` : ""
-        }${joinedGroup ? `, ${String(joinedGroup)} joined the group` : ""}`,
-      );
-      onClose();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  return (
-    <Modal
-      description="Add a whole group, hand-pick voters, or both at once. Only voters not yet in this election show up in the search."
-      onClose={onClose}
-      open={open}
-      title="Add voters to the roll"
-    >
-      <div className="space-y-4">
-        <Field hint="Every voter in the group joins the roll." label="Whole group">
-          <NativeSelect
-            onChange={(e) => {
-              setGroupId(e.target.value);
-            }}
-            title="Adds every member of the chosen group to this election's roll"
-            value={groupId}
-          >
-            <option value="">No group</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.category ? `${group.category.name} · ` : ""}
-                {group.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-
-        <Field
-          hint="Search by name, voter ID, or phone. Voters already in this election are hidden."
-          label="Individual voters"
-        >
-          <Input
-            onChange={(e) => {
-              setSearch(e.target.value);
-            }}
-            placeholder="Type at least 2 characters…"
-            title="Find registered voters who are not yet part of this election"
-            value={search}
-          />
-        </Field>
-        {search.length >= 2 && (
-          <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border p-1.5">
-            {searching && <p className="px-2 py-1 text-xs text-muted-foreground">Searching…</p>}
-            {!searching && matches.length === 0 && (
-              <p className="px-2 py-1 text-xs text-muted-foreground">No matching voters.</p>
-            )}
-            {matches.map((voter) => (
-              <button
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                key={voter.id}
-                onClick={() => {
-                  setSelected((prev) => [...prev, voter]);
-                }}
-                type="button"
-              >
-                <EntityAvatar name={voter.name} size="size-6" url={voter.profilePicture} />
-                <span className="min-w-0 truncate">{voter.name}</span>
-                <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
-                  {voter.voterId}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        {selected.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {selected.map((voter) => (
-              <button
-                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:border-destructive/50"
-                key={voter.id}
-                onClick={() => {
-                  setSelected((prev) => prev.filter((v) => v.id !== voter.id));
-                }}
-                title="Remove from selection"
-                type="button"
-              >
-                <span className="min-w-0 truncate">{voter.name}</span>
-                <span aria-hidden>×</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {scopedGroups.length > 0 && (
-          <Field
-            hint="This election is group-scoped: enrolling the added voters into one of its groups makes them belong to that category/group, not just this roll."
-            label="Also enrol them in"
-          >
-            <NativeSelect
-              onChange={(e) => {
-                setJoinGroupId(e.target.value);
-              }}
-              title="Optionally place the added voters into one of this election's eligibility groups"
-              value={joinGroupId}
-            >
-              <option value="">Roll only (no group change)</option>
-              {scopedGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-        )}
-
-        <Button className="w-full" loading={isLoading} onClick={submit} variant="brand">
-          Add to roll
-        </Button>
-      </div>
-    </Modal>
-  );
-}
 
 // --- The roll table ---
 
@@ -265,9 +89,9 @@ export default function ElectionRollPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: electionId } = use(params);
+  const router = useRouter();
   const { can, isSuperAdmin } = useAuthRole();
   const canAccredit = can("ACCREDIT_VOTERS");
-  const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [removing, setRemoving] = useState<null | RollEntry>(null);
   const [issuedCode, setIssuedCode] = useState<null | string>(null);
@@ -476,7 +300,7 @@ export default function ElectionRollPage({
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   onClick={() => {
-                    setAddOpen(true);
+                    router.push(`/admin/elections/${electionId}/voters/add`);
                   }}
                   variant="brand"
                 >
@@ -548,7 +372,7 @@ export default function ElectionRollPage({
                 </Button>
                 <Button
                   onClick={() => {
-                    setAddOpen(true);
+                    router.push(`/admin/elections/${electionId}/voters/add`);
                   }}
                   variant="brand"
                 >
@@ -580,23 +404,15 @@ export default function ElectionRollPage({
         totalCount={totalCount}
       />
 
-      <AddVotersModal
-        electionId={electionId}
-        key={addOpen ? "open" : "closed"}
-        onClose={() => {
-          setAddOpen(false);
-        }}
-        open={addOpen}
-      />
       {/* After a successful import the fastest path onto the roll is the
-          Add voters modal (by group). */}
+          add-voters page (by group). */}
       <VoterImportDialog
         key={importOpen ? "import-open" : "import-closed"}
         onClose={() => {
           setImportOpen(false);
         }}
         onDone={() => {
-          setAddOpen(true);
+          router.push(`/admin/elections/${electionId}/voters/add`);
         }}
         open={importOpen}
       />

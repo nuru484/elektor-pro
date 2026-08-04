@@ -26,13 +26,24 @@ interface BallotSelection {
 }
 
 interface VoterElectionItem {
+  accreditationRequired: boolean;
   description: null | string;
+  endDate: string;
   id: string;
   name: string;
+  resultsPolicy: string;
+  resultsPublishedAt: null | string;
   slug: string;
+  startDate: string;
   status: string;
-  voterElections: { hasVoted: boolean }[];
+  voterElections: {
+    accreditedAt: null | string;
+    hasVoted: boolean;
+    isEligible: boolean;
+  }[];
 }
+
+export type { VoterElectionItem };
 
 export const votingApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
