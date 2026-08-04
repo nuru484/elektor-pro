@@ -24,6 +24,9 @@ import { hashPassword } from '../src/utils/password.js';
 
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
+/** Every seeded user account signs in with this (development data only). */
+const SEED_PASSWORD = 'ORACLE1995@B9';
+
 async function main() {
   // --- Organization (singleton) ---
   const existingOrg = await prisma.organization.findFirst();
@@ -54,18 +57,18 @@ async function main() {
     console.log('✓ role capability defaults seeded');
   }
 
-  // --- Accounts ---
+  // --- Accounts. One password for every seeded account (dev data only). ---
   const superAdmin = await upsertUser(
     ENV.ADMIN_EMAIL,
     ENV.ADMIN_FIRST_NAME,
     ENV.ADMIN_LAST_NAME,
     Role.SUPER_ADMIN,
-    ENV.ADMIN_PASSWORD,
+    SEED_PASSWORD,
     ENV.ADMIN_PHONE,
   );
-  await upsertUser('commission@elektorpro.com', 'Ada', 'Mensah', Role.ADMIN, 'Password123!', '+233200000002');
-  const agent = await upsertUser('agent@elektorpro.com', 'Kojo', 'Asare', Role.AGENT, 'Password123!', '+233200000003');
-  await upsertUser('candidate@elektorpro.com', 'Ama', 'Owusu', Role.CANDIDATE, 'Password123!', '+233200000004');
+  await upsertUser('commission@elektorpro.com', 'Ada', 'Mensah', Role.ADMIN, SEED_PASSWORD, '+233200000002');
+  const agent = await upsertUser('agent@elektorpro.com', 'Kojo', 'Asare', Role.AGENT, SEED_PASSWORD, '+233200000003');
+  await upsertUser('candidate@elektorpro.com', 'Ama', 'Owusu', Role.CANDIDATE, SEED_PASSWORD, '+233200000004');
   console.log('✓ accounts ready (super-admin, admin, agent, candidate)');
 
   // --- Optional voter groups ---
@@ -95,9 +98,9 @@ async function main() {
   await seedWorstCaseEverywhere(superAdmin.id);
 
   console.log('\nSeed complete.');
-  console.log(`  Super admin: ${ENV.ADMIN_EMAIL} / ${ENV.ADMIN_PASSWORD}`);
-  console.log('  Admin: commission@elektorpro.com / Password123!');
-  console.log('  Agent: agent@elektorpro.com / Password123!');
+  console.log(`  Super admin: ${ENV.ADMIN_EMAIL} / ${SEED_PASSWORD}`);
+  console.log(`  Admin: commission@elektorpro.com / ${SEED_PASSWORD}`);
+  console.log(`  Agent: agent@elektorpro.com / ${SEED_PASSWORD}`);
   console.log('  Voter login: use any voterId like STU1001 (OTP printed to server log in mock mode)');
 }
 
@@ -611,12 +614,12 @@ async function seedRichExtras(superAdminId: string, agentId: string) {
     select: { id: true },
     where: { email: 'commission@elektorpro.com' },
   });
-  await upsertUser('accreditor@elektorpro.com', 'Efua', 'Adjei', Role.ACCREDITOR, 'Password123!', '+233200000005');
-  const agent2 = await upsertUser('agent2@elektorpro.com', 'Yaw', 'Boakye', Role.AGENT, 'Password123!', '+233200000006');
-  const candidate2 = await upsertUser('candidate2@elektorpro.com', 'Esi', 'Nyame', Role.CANDIDATE, 'Password123!', '+233200000007');
-  const suspended = await upsertUser('suspended@elektorpro.com', 'Kwame', 'Dadzie', Role.ADMIN, 'Password123!', '+233200000008');
+  await upsertUser('accreditor@elektorpro.com', 'Efua', 'Adjei', Role.ACCREDITOR, SEED_PASSWORD, '+233200000005');
+  const agent2 = await upsertUser('agent2@elektorpro.com', 'Yaw', 'Boakye', Role.AGENT, SEED_PASSWORD, '+233200000006');
+  const candidate2 = await upsertUser('candidate2@elektorpro.com', 'Esi', 'Nyame', Role.CANDIDATE, SEED_PASSWORD, '+233200000007');
+  const suspended = await upsertUser('suspended@elektorpro.com', 'Kwame', 'Dadzie', Role.ADMIN, SEED_PASSWORD, '+233200000008');
   await prisma.user.update({ data: { status: 'SUSPENDED' }, where: { id: suspended.id } });
-  const locked = await upsertUser('locked@elektorpro.com', 'Abena', 'Sarpong', Role.ACCREDITOR, 'Password123!', '+233200000009');
+  const locked = await upsertUser('locked@elektorpro.com', 'Abena', 'Sarpong', Role.ACCREDITOR, SEED_PASSWORD, '+233200000009');
   await prisma.user.update({
     data: { failedLoginAttempts: 5, lockedAt: new Date(), lockedReason: 'Too many failed sign-in attempts', status: 'LOCKED' },
     where: { id: locked.id },
@@ -829,7 +832,7 @@ async function seedRichExtras(superAdminId: string, agentId: string) {
       status: 'ARCHIVED',
     },
   });
-  const formerStaff = await upsertUser('former-staff@elektorpro.com', 'Kojo', 'Mensimah', Role.ADMIN, 'Password123!', '+233200000010');
+  const formerStaff = await upsertUser('former-staff@elektorpro.com', 'Kojo', 'Mensimah', Role.ADMIN, SEED_PASSWORD, '+233200000010');
   await prisma.user.update({ data: { deletedAt: new Date(Date.now() - 6 * day) }, where: { id: formerStaff.id } });
   await prisma.group.upsert({
     create: {
@@ -975,7 +978,7 @@ async function seedWorstCaseEverywhere(superAdminId: string) {
       email: `worst.case.staff.${'x'.repeat(30)}@extremely-long-subdomain.example-university-of-technology.edu.gh`,
       firstName: longName80,
       lastName: `Surname${UNBROKEN}`.slice(0, 80),
-      password: await hashPassword('Password123!'),
+      password: await hashPassword(SEED_PASSWORD),
       phone: '+233556999998',
       role: Role.ADMIN,
     },
@@ -1050,7 +1053,7 @@ async function seedWorstCaseEverywhere(superAdminId: string) {
       email: 'worst.agent@elektorpro.com',
       firstName: `Agent${UNBROKEN}`.slice(0, 80),
       lastName: `Observer${UNBROKEN}`.slice(0, 80),
-      password: await hashPassword('Password123!'),
+      password: await hashPassword(SEED_PASSWORD),
       phone: '+233556999997',
       role: Role.AGENT,
     },
