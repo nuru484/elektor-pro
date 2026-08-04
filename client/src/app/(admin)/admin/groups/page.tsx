@@ -21,13 +21,6 @@ import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -369,24 +362,22 @@ function GroupsTab({ categories }: { categories: GroupCategory[] }) {
             searchPlaceholder="Search groups…"
           >
             <FilterField caption="Category">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ categoryId: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-48"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    categoryId: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.categoryId ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-48">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
           </TableToolbar>
         }

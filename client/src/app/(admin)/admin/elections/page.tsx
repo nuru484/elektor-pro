@@ -14,13 +14,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState, PageHeader } from "@/components/ui/states";
@@ -77,25 +70,18 @@ function StatusCell({ election }: { election: Election }) {
 
   return (
     <>
-      <Select
-        onValueChange={(value) => setPendingStatus(value as ElectionStatus)}
+      <NativeSelect
+        aria-label={`Change status of ${election.name}`}
+        className="h-8 w-auto text-xs"
+        onChange={(e) => setPendingStatus(e.target.value as ElectionStatus)}
         value={election.status}
       >
-        <SelectTrigger
-          aria-label={`Change status of ${election.name}`}
-          className="h-8 w-auto text-xs"
-          size="sm"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUSES.map((status) => (
-            <SelectItem key={status} value={status}>
-              {status.replace("_", " ")}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {STATUSES.map((status) => (
+          <option key={status} value={status}>
+            {status.replace("_", " ")}
+          </option>
+        ))}
+      </NativeSelect>
       <ConfirmationDialog
         confirmText="Change status"
         description={`"${election.name}" will move from ${election.status.replace("_", " ")} to ${pendingStatus?.replace("_", " ") ?? ""}. This affects what voters and agents can do right now.`}
@@ -304,24 +290,22 @@ export default function ElectionsPage() {
             searchPlaceholder="Search elections…"
           >
             <FilterField caption="Status">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ status: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-44"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    status: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.status ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-44">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status.replace("_", " ")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All statuses</option>
+                {STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replace("_", " ")}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
           </TableToolbar>
         }

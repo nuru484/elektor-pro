@@ -14,13 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select as NativeSelect } from "@/components/ui/input";
 
 interface ITablePaginationProps<TData> {
   onPageChange?: (page: number) => void;
@@ -49,21 +43,18 @@ export function DataTablePagination<TData>({
         <label className="hidden text-xs whitespace-nowrap sm:inline" htmlFor="page-size">
           Rows
         </label>
-        <Select
-          onValueChange={(value) => onPageSizeChange?.(Number(value))}
+        <NativeSelect
+          className="h-8 w-auto min-w-16 text-xs"
+          id="page-size"
+          onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
           value={pageSize.toString()}
         >
-          <SelectTrigger className="h-8 w-auto min-w-16" id="page-size" size="sm">
-            <SelectValue placeholder={pageSize} />
-          </SelectTrigger>
-          <SelectContent side="top">
-            {[5, 10, 20, 30, 50, 100].map((size) => (
-              <SelectItem key={size} value={size.toString()}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {[5, 10, 20, 30, 50, 100].map((size) => (
+            <option key={size} value={size.toString()}>
+              {size}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
 
       {/* Range + navigation */}

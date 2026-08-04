@@ -32,13 +32,6 @@ import {
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RowCard } from "@/components/ui/table-bits";
@@ -518,44 +511,40 @@ export default function UsersPage() {
             searchPlaceholder="Search by name or email…"
           >
             <FilterField caption="Role">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ role: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-40"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    role: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.role ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="All roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All roles</SelectItem>
-                  {ALL_ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {ROLE_LABELS[role]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All roles</option>
+                {ALL_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
             <FilterField caption="Status">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ status: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-36"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    status: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.status ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-36">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status.charAt(0) + status.slice(1).toLowerCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All statuses</option>
+                {STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status.charAt(0) + status.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
             <FilterField caption="From date">
               <Input

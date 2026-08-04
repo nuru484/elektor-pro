@@ -15,14 +15,7 @@ import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -276,21 +269,17 @@ export default function DeletedRecordsPage() {
               onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
             >
               <FilterField caption="Resource">
-                <Select
-                  onValueChange={(value) => handleFiltersChange({ resource: value })}
+                <NativeSelect
+                  className="w-full lg:w-52"
+                  onChange={(e) => handleFiltersChange({ resource: e.target.value })}
                   value={resource}
                 >
-                  <SelectTrigger className="w-full lg:w-52">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RESOURCES.map((key) => (
-                      <SelectItem key={key} value={key}>
-                        {RESOURCE_LABELS[key]} ({countFor(key)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {RESOURCES.map((key) => (
+                    <option key={key} value={key}>
+                      {RESOURCE_LABELS[key]} ({countFor(key)})
+                    </option>
+                  ))}
+                </NativeSelect>
               </FilterField>
               <FilterField caption="From date">
                 <Input

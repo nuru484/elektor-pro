@@ -20,13 +20,6 @@ import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -290,24 +283,22 @@ export default function AgentsPage() {
             searchPlaceholder="Search agent, candidate, or election…"
           >
             <FilterField caption="Election">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ electionId: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-48"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    electionId: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.electionId ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-48">
-                  <SelectValue placeholder="All elections" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All elections</SelectItem>
-                  {elections?.data.map((election) => (
-                    <SelectItem key={election.id} value={election.id}>
-                      {election.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All elections</option>
+                {elections?.data.map((election) => (
+                  <option key={election.id} value={election.id}>
+                    {election.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
             <FilterField caption="From date">
               <Input

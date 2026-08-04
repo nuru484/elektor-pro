@@ -6,14 +6,7 @@ import { ScrollText, ShieldCheck, ShieldX } from "lucide-react";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -177,24 +170,22 @@ export default function AuditPage() {
             searchPlaceholder="Search action, entity, actor, or IP…"
           >
             <FilterField caption="Entity">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ entity: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-44"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    entity: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.entity ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-44">
-                  <SelectValue placeholder="All entities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All entities</SelectItem>
-                  {ENTITIES.map((entity) => (
-                    <SelectItem key={entity} value={entity}>
-                      {entity}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All entities</option>
+                {ENTITIES.map((entity) => (
+                  <option key={entity} value={entity}>
+                    {entity}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
             {/* Date range: whole-day inclusive on both ends (server handles
                 the exclusive next-day upper bound). */}

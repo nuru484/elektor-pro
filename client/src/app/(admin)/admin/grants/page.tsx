@@ -20,13 +20,6 @@ import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -314,26 +307,24 @@ export default function GrantsPage() {
             onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
           >
             <FilterField caption="Capability">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ capability: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-52"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    capability: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.capability ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-52">
-                  <SelectValue placeholder="All capabilities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All capabilities</SelectItem>
-                  {catalog.flatMap((group) =>
-                    group.capabilities.map((meta) => (
-                      <SelectItem key={meta.capability} value={meta.capability}>
-                        {meta.label}
-                      </SelectItem>
-                    )),
-                  )}
-                </SelectContent>
-              </Select>
+                <option value="all">All capabilities</option>
+                {catalog.flatMap((group) =>
+                  group.capabilities.map((meta) => (
+                    <option key={meta.capability} value={meta.capability}>
+                      {meta.label}
+                    </option>
+                  )),
+                )}
+              </NativeSelect>
             </FilterField>
             <FilterField caption="From date">
               <Input

@@ -17,15 +17,8 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
-import { Input, Textarea } from "@/components/ui/input";
+import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RowCard } from "@/components/ui/table-bits";
@@ -366,44 +359,40 @@ export default function ApprovalsPage() {
             searchPlaceholder="Search change requests…"
           >
             <FilterField caption="Status">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ status: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-40"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    status: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.status ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-40">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status.charAt(0) + status.slice(1).toLowerCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All statuses</option>
+                {STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status.charAt(0) + status.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
             <FilterField caption="Entity">
-              <Select
-                onValueChange={(value) =>
-                  handleFiltersChange({ entity: value === "all" ? undefined : value })
+              <NativeSelect
+                className="w-full lg:w-44"
+                onChange={(e) =>
+                  handleFiltersChange({
+                    entity: e.target.value === "all" ? undefined : e.target.value,
+                  })
                 }
                 value={filters.entity ?? "all"}
               >
-                <SelectTrigger className="w-full lg:w-44">
-                  <SelectValue placeholder="All entities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All entities</SelectItem>
-                  {ENTITIES.map((entity) => (
-                    <SelectItem key={entity} value={entity}>
-                      {entity.replace("_", " ").toLowerCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="all">All entities</option>
+                {ENTITIES.map((entity) => (
+                  <option key={entity} value={entity}>
+                    {entity.replace("_", " ").toLowerCase()}
+                  </option>
+                ))}
+              </NativeSelect>
             </FilterField>
             <FilterField caption="From date">
               <Input
