@@ -142,6 +142,7 @@ export const listStaffUsers = async (
         lastName: true,
         lockedAt: true,
         phone: true,
+        profilePicture: true,
         role: true,
         status: true,
         twoFactorEnabled: true,

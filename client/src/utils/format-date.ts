@@ -1,6 +1,24 @@
 // Shared date/time presentation for data tables and detail pages (DMS
 // convention: every table shows the date AND its time).
 
+export const formatDate = (value: null | string | undefined): string => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+export const formatTime = (value: null | string | undefined): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+};
+
 /** "Aug 4, 2026 · 10:45 AM" */
 export const formatDateTime = (value: null | string | undefined): string => {
   if (!value) return "—";

@@ -8,13 +8,14 @@
 // to the NEW contact.
 import { ArrowLeft, Mail, Pencil, Phone, ShieldAlert } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import type { StaffUser } from "@/types/api";
 
 import { AvatarUpdater } from "@/components/console/avatar-updater";
+import { ProfileSkeleton } from "@/components/console/profile-skeleton";
 import {
   CARD_MOBILE,
   CARD_PAD_MOBILE,
@@ -31,8 +32,7 @@ import {
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
-import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { ErrorState } from "@/components/ui/states";
+import { ErrorState, PageHeader } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
@@ -320,6 +320,23 @@ function DetailsCard({
               <dt className="text-xs text-muted-foreground">Last name</dt>
               <dd className="mt-0.5 text-sm font-medium">{user.lastName}</dd>
             </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Role</dt>
+              <dd className="mt-1">
+                <Badge variant="outline">{ROLE_LABELS[user.role] ?? user.role}</Badge>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Status</dt>
+              <dd className="mt-1 flex items-center gap-1.5">
+                <StatusBadge status={user.status} />
+                {user.lockedAt && user.status !== "LOCKED" && (
+                  <Badge variant="destructive">
+                    <ShieldAlert className="size-3" /> locked
+                  </Badge>
+                )}
+              </dd>
+            </div>
           </dl>
         )}
       </CardContent>
@@ -327,16 +344,12 @@ function DetailsCard({
   );
 }
 
-export default function UserProfilePage() {
+function UserProfileContent() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const editInitially = searchParams.get("edit") === "1";
   const { data, isError, isLoading } = useGetStaffUserQuery(params.id);
   const [updatePicture] = useUpdateUserPictureMutation();
-  // Read once at mount: ?edit=1 (the tables' Edit action) opens the form.
-  const [editInitially] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("edit") === "1",
-  );
   const user = data?.data;
 
 
@@ -349,8 +362,13 @@ export default function UserProfilePage() {
         <ArrowLeft className="size-4" /> Back to users
       </Link>
 
+      <PageHeader
+        description="View and manage this account."
+        title="User profile"
+      />
+
       {isLoading ? (
-        <CardGridSkeleton count={3} />
+        <ProfileSkeleton />
       ) : isError || !user ? (
         <ErrorState />
       ) : (
@@ -366,50 +384,11 @@ export default function UserProfilePage() {
                 onUpload={(file) => updatePicture({ file, id: user.id }).unwrap()}
                 url={user.profilePicture}
               />
-              <div className="min-w-0">
-                <h1 className="truncate text-xl font-semibold">
-                  {user.firstName} {user.lastName}
-                </h1>
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-                  <Badge variant="outline">{ROLE_LABELS[user.role] ?? user.role}</Badge>
-                  <StatusBadge status={user.status} />
-                  {user.lockedAt && user.status !== "LOCKED" && (
-                    <Badge variant="destructive">
-                      <ShieldAlert className="size-3" /> locked
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-muted-foreground">Two-factor</dt>
-                  <dd className="text-xs font-medium">
-                    {user.twoFactorEnabled ? "Enabled" : "Off"}
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-muted-foreground">Last sign-in</dt>
-                  <dd className="text-xs font-medium">{formatDateTime(user.lastLoginAt)}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-muted-foreground">Created</dt>
-                  <dd className="text-xs font-medium">{formatDateTime(user.createdAt)}</dd>
-                </div>
-                {user.creator && (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-xs text-muted-foreground">Created by</dt>
-                    <dd className="truncate text-xs font-medium">
-                      {user.creator.firstName} {user.creator.lastName}
-                    </dd>
-                  </div>
-                )}
-                {user.mustChangePassword && (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-xs text-muted-foreground">Password</dt>
-                    <dd className="text-xs font-medium text-warning">Temporary</dd>
-                  </div>
-                )}
-              </dl>
+              {/* Rail keeps it minimal: the photo and the name. Everything
+                  else lives in the cards on the right. */}
+              <h1 className="min-w-0 truncate text-xl font-semibold">
+                {user.firstName} {user.lastName}
+              </h1>
             </CardContent>
           </Card>
 
@@ -429,9 +408,61 @@ export default function UserProfilePage() {
                 <ContactChannel channel="phone" current={user.phone} user={user} />
               </CardContent>
             </Card>
+            <Card className={CARD_MOBILE}>
+              <CardHeader className={CARD_PAD_MOBILE}>
+                <CardTitle className="text-base">Account</CardTitle>
+              </CardHeader>
+              <CardContent className={CARD_PAD_MOBILE}>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Two-factor</dt>
+                    <dd className="mt-0.5 text-sm font-medium">
+                      {user.twoFactorEnabled ? "Enabled" : "Off"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Last sign-in</dt>
+                    <dd className="mt-0.5 text-sm font-medium">
+                      {formatDateTime(user.lastLoginAt)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Created</dt>
+                    <dd className="mt-0.5 text-sm font-medium">
+                      {formatDateTime(user.createdAt)}
+                    </dd>
+                  </div>
+                  {user.creator && (
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Created by</dt>
+                      <dd className="mt-0.5 text-sm font-medium">
+                        {user.creator.firstName} {user.creator.lastName}
+                      </dd>
+                    </div>
+                  )}
+                  {user.mustChangePassword && (
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Password</dt>
+                      <dd className="mt-0.5 text-sm font-medium text-warning">
+                        Temporary - not yet replaced
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function UserProfilePage() {
+  // useSearchParams needs a Suspense boundary for prerendering.
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <UserProfileContent />
+    </Suspense>
   );
 }

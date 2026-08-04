@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type { DeletedRow } from "@/types/api";
 
 import { RowActionsMenu } from "@/components/console/row-actions";
+import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -116,9 +117,7 @@ export default function DeletedRecordsPage() {
     {
       accessorKey: "deletedAt",
       cell: ({ row }) => (
-        <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {formatDateTime(row.original.deletedAt)}
-        </time>
+<TableDate value={row.original.deletedAt} />
       ),
       header: "Deleted",
     },

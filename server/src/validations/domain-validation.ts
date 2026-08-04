@@ -114,8 +114,8 @@ const candidateBase = z.object({
   electionId: z.string().min(1),
   manifesto: z.string().max(5000).optional().nullable(),
   name: z.string().min(1).max(150),
+  nickname: z.string().max(120).optional().nullable(),
   order: z.number().int().min(0).optional(),
-  party: z.string().max(120).optional().nullable(),
   partySymbol: z.string().max(300).optional().nullable(),
   portfolioId: z.string().min(1),
   // profilePicture deliberately absent: media URLs may only originate from

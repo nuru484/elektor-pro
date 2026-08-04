@@ -7,6 +7,7 @@ import {
   type ChangeStatus,
   type ElectionStatus,
 } from '../../generated/prisma/client.js';
+import { cloudinaryService } from '../config/cloudinary.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import multerUpload from '../config/multer.js';
 import { asyncHandler, ValidationError } from '../middlewares/error-handler.js';
@@ -28,6 +29,7 @@ import {
   listElections,
 } from '../services/domain/election.service.js';
 import {
+  updateCandidateManifesto,
   updateCandidatePicture,
   updateVoterPicture,
 } from '../services/domain/entity-picture.service.js';
@@ -121,8 +123,61 @@ export const portfolioControllers = makeCrud({
 });
 
 // --- Candidates ---
+// Two optional files ride candidate creation (photo + manifesto PDF), so it
+// uses a custom chain instead of the factory's single-image seam.
+const uploadCandidateAssets = asyncHandler(async (req, _res, next) => {
+  const files = req.files as
+    | Partial<Record<string, Express.Multer.File[]>>
+    | undefined;
+  const body = req.body as Record<string, unknown>;
+  const image = files?.image?.[0];
+  const pdf = files?.manifestoPdf?.[0];
+  if (image) {
+    const uploaded = await cloudinaryService.uploadImage(
+      { ...image },
+      { folder: 'elektor-pro/candidates' },
+    );
+    body.profilePicture = uploaded.secure_url;
+  }
+  if (pdf) {
+    if (pdf.mimetype !== 'application/pdf') {
+      throw new ValidationError('Manifesto must be a PDF file', {
+        code: 'VALIDATION_ERROR',
+        context: { errors: [{ field: 'manifestoPdf', message: 'Manifesto must be a PDF file' }] },
+      });
+    }
+    const uploaded = await cloudinaryService.uploadImage(
+      { ...pdf },
+      { folder: 'elektor-pro/manifestos', resource_type: 'auto' },
+    );
+    body.manifestoUrl = uploaded.secure_url;
+  }
+  next();
+});
+
+export const createCandidateController: RequestHandler[] = [
+  multerUpload.fields([
+    { maxCount: 1, name: 'image' },
+    { maxCount: 1, name: 'manifestoPdf' },
+  ]),
+  ...validationMiddleware.create(createCandidateSchema),
+  uploadCandidateAssets,
+  asyncHandler(async (req, res) => {
+    const outcome = await proposeOrExecute(
+      actorOf(req),
+      {
+        action: ChangeAction.CREATE,
+        entity: ChangeEntity.CANDIDATE,
+        payload: req.body,
+        summary: `Create candidate: ${(req.body as { name: string }).name}`,
+      },
+      ctxOf(req),
+    );
+    respondToProposal(res, outcome, 'Candidate', HTTP_STATUS_CODES.CREATED);
+  }),
+];
+
 export const candidateControllers = makeCrud({
-  createImage: { field: 'profilePicture', folder: 'elektor-pro/candidates' },
   createSchema: createCandidateSchema,
   entity: ChangeEntity.CANDIDATE,
   get: getCandidate,
@@ -192,6 +247,25 @@ export const updateVoterPictureController: RequestHandler[] = [
       ctxOf(req),
     );
     sendOk(res, 'Profile photo updated', voter);
+  }),
+];
+
+export const updateCandidateManifestoController: RequestHandler[] = [
+  multerUpload.single('manifestoPdf'),
+  asyncHandler(async (req, res) => {
+    if (req.file?.mimetype !== 'application/pdf') {
+      throw new ValidationError('A PDF file is required', {
+        code: 'VALIDATION_ERROR',
+        context: { errors: [{ field: 'manifestoPdf', message: 'A PDF file is required' }] },
+      });
+    }
+    const candidate = await updateCandidateManifesto(
+      req.params.id,
+      { buffer: req.file.buffer, mimetype: req.file.mimetype },
+      actorOf(req),
+      ctxOf(req),
+    );
+    sendOk(res, 'Manifesto updated', candidate);
   }),
 ];
 

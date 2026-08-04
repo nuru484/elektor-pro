@@ -9,7 +9,7 @@ export interface EligiblePortfolio {
     id: string;
     manifesto: null | string;
     name: string;
-    party: null | string;
+    nickname: null | string;
     partySymbol: null | string;
     profilePicture: null | string;
   }[];
@@ -42,7 +42,7 @@ export const resolveEligiblePortfolios = async (
             id: true,
             manifesto: true,
             name: true,
-            party: true,
+            nickname: true,
             partySymbol: true,
             profilePicture: true,
           },

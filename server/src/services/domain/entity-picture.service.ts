@@ -64,7 +64,47 @@ export const makeEntityPictureService = (
     return updated;
   };
 
+  /** Replace a candidate's manifesto PDF (standalone, audited). */
+  const updateCandidateManifesto = async (
+    id: string,
+    file: { buffer: Buffer; mimetype?: string },
+    actor: Actor,
+    ctx: Ctx = {},
+  ) => {
+    const existing = await prisma.candidate.findFirst({
+      select: { id: true, manifestoUrl: true },
+      where: { id },
+    });
+    if (!existing) throw new NotFoundError('Candidate not found');
+    const uploaded = await d.cloudinary.uploadImage(file, {
+      folder: 'elektor-pro/manifestos',
+      resource_type: 'auto',
+    });
+    const updated = await prisma.candidate.update({
+      data: { manifestoUrl: uploaded.secure_url },
+      where: { id },
+    });
+    if (existing.manifestoUrl && existing.manifestoUrl !== uploaded.secure_url) {
+      try {
+        await d.cloudinary.deleteImage(existing.manifestoUrl);
+      } catch (error) {
+        d.logger.warn({ error, id }, 'Old manifesto cleanup failed');
+      }
+    }
+    await appendAudit(prisma, {
+      action: 'candidate.manifesto_updated',
+      actorId: actor.id,
+      actorRole: actor.role,
+      entity: 'Candidate',
+      entityId: id,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    });
+    return updated;
+  };
+
   return {
+    updateCandidateManifesto,
     updateCandidatePicture: (
       id: string,
       image: { buffer: Buffer; mimetype?: string },
@@ -81,4 +121,5 @@ export const makeEntityPictureService = (
 };
 
 export const entityPictureService = makeEntityPictureService(defaultDeps);
-export const { updateCandidatePicture, updateVoterPicture } = entityPictureService;
+export const { updateCandidateManifesto, updateCandidatePicture, updateVoterPicture } =
+  entityPictureService;

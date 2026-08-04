@@ -14,6 +14,7 @@ import type { AgentAssignment } from "@/types/api";
 import { EntityAvatar } from "@/components/console/entity-avatar";
 import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
+import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -39,7 +40,6 @@ import {
   useRemoveAgentMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
-import { formatDateTime } from "@/utils/format-date";
 
 interface AgentFilters extends Record<string, string | undefined> {
   electionId?: string;
@@ -297,9 +297,7 @@ export default function AgentsPage() {
     {
       accessorKey: "createdAt",
       cell: ({ row }) => (
-        <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {formatDateTime(row.original.createdAt)}
-        </time>
+<TableDate value={row.original.createdAt} />
       ),
       header: "Assigned",
     },

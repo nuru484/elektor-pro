@@ -5,13 +5,14 @@
 // edits ride maker-checker (202 = staged for approval).
 import { ArrowLeft, Pencil } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import type { Voter } from "@/types/api";
 
 import { AvatarUpdater } from "@/components/console/avatar-updater";
+import { ProfileSkeleton } from "@/components/console/profile-skeleton";
 import {
   CARD_MOBILE,
   CARD_PAD_MOBILE,
@@ -27,8 +28,7 @@ import {
 } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { ErrorState } from "@/components/ui/states";
+import { ErrorState, PageHeader } from "@/components/ui/states";
 import {
   useGetVoterQuery,
   useUpdateVoterMutation,
@@ -185,16 +185,12 @@ function VoterDetailsCard({
   );
 }
 
-export default function VoterProfilePage() {
+function VoterProfileContent() {
   const params = useParams<{ id: string }>();
   const { data, isError, isLoading } = useGetVoterQuery(params.id);
   const [updatePicture] = useUpdateVoterPictureMutation();
-  // Read once at mount: ?edit=1 (the tables' Edit action) opens the form.
-  const [editInitially] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("edit") === "1",
-  );
+  const searchParams = useSearchParams();
+  const editInitially = searchParams.get("edit") === "1";
   const voter = data?.data;
 
 
@@ -207,8 +203,10 @@ export default function VoterProfilePage() {
         <ArrowLeft className="size-4" /> Back to voters
       </Link>
 
+      <PageHeader description="View and manage this voter." title="Voter profile" />
+
       {isLoading ? (
-        <CardGridSkeleton count={2} />
+        <ProfileSkeleton />
       ) : isError || !voter ? (
         <ErrorState />
       ) : (
@@ -248,5 +246,14 @@ export default function VoterProfilePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function VoterProfilePage() {
+  // useSearchParams needs a Suspense boundary for prerendering.
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <VoterProfileContent />
+    </Suspense>
   );
 }

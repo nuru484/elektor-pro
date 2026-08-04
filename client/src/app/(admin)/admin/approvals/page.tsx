@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type { ChangeRequest, ChangeStatus } from "@/types/api";
 
 import { RowActionsMenu } from "@/components/console/row-actions";
+import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -253,9 +254,7 @@ export default function ApprovalsPage() {
     {
       accessorKey: "createdAt",
       cell: ({ row }) => (
-        <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {formatDateTime(row.original.createdAt)}
-        </time>
+<TableDate value={row.original.createdAt} />
       ),
       header: "Requested",
     },

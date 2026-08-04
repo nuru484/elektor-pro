@@ -1,5 +1,5 @@
 // src/routes/domain/index.ts
-import { Router } from 'express';
+import { type RequestHandler, Router } from 'express';
 
 import { Capability } from '../../../generated/prisma/client.js';
 import {
@@ -7,6 +7,7 @@ import {
   bulkUploadVotersController,
   cancelChangeRequestController,
   candidateControllers,
+  createCandidateController,
   electionControllers,
   getChangeRequestController,
   getOrganizationController,
@@ -15,6 +16,7 @@ import {
   listChangeRequestsController,
   portfolioControllers,
   rejectChangeRequestController,
+  updateCandidateManifestoController,
   updateCandidatePictureController,
   updateElectionStatusController,
   updateOrganizationController,
@@ -28,11 +30,20 @@ import { requireCapability } from '../../middlewares/require-capability.js';
 
 type Crud = ReturnType<typeof import('../../controllers/crud-factory.js').makeCrud>;
 
-const crudRouter = (controllers: Crud, capability: Capability): Router => {
+const crudRouter = (
+  controllers: Crud,
+  capability: Capability,
+  overrides: { create?: RequestHandler[] } = {},
+): Router => {
   const router = Router();
   router.get('/', authenticateJWT, controllers.list);
   router.get('/:id', authenticateJWT, controllers.getOne);
-  router.post('/', authenticateJWT, requireCapability(capability), ...controllers.create);
+  router.post(
+    '/',
+    authenticateJWT,
+    requireCapability(capability),
+    ...(overrides.create ?? controllers.create),
+  );
   router.patch('/:id', authenticateJWT, requireCapability(capability), ...controllers.update);
   router.delete('/:id', authenticateJWT, requireCapability(capability), controllers.remove);
   return router;
@@ -99,12 +110,20 @@ domainRoutes.use(
   '/portfolios',
   crudRouter(portfolioControllers, Capability.MANAGE_PORTFOLIOS),
 );
-const candidatesRouter = crudRouter(candidateControllers, Capability.MANAGE_CANDIDATES);
+const candidatesRouter = crudRouter(candidateControllers, Capability.MANAGE_CANDIDATES, {
+  create: createCandidateController,
+});
 candidatesRouter.patch(
   '/:id/picture',
   authenticateJWT,
   requireCapability(Capability.MANAGE_CANDIDATES),
   ...updateCandidatePictureController,
+);
+candidatesRouter.patch(
+  '/:id/manifesto',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES),
+  ...updateCandidateManifestoController,
 );
 domainRoutes.use('/candidates', candidatesRouter);
 

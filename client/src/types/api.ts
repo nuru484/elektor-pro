@@ -210,8 +210,9 @@ export interface Candidate {
   election?: { id: string; name: string; slug?: string };
   id: string;
   manifesto?: null | string;
+  manifestoUrl?: null | string;
   name: string;
-  party: null | string;
+  nickname: null | string;
   portfolio?: { id: string; name: string };
   portfolioId?: string;
   profilePicture: null | string;
@@ -260,7 +261,7 @@ export interface ChangeRequest {
 export interface CandidateResult {
   id: string;
   name: string;
-  party: null | string;
+  nickname: null | string;
   percentage: number;
   votes: number;
 }

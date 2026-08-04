@@ -9,31 +9,26 @@ import { toast } from "sonner";
 import type { Candidate } from "@/types/api";
 
 import { EntityAvatar } from "@/components/console/entity-avatar";
-import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
+import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
-import { Field } from "@/components/ui/field";
-import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { Select as NativeSelect } from "@/components/ui/input";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
 import {
-  useCreateCandidateMutation,
   useDeleteCandidateMutation,
-  useGetElectionQuery,
   useListCandidatesQuery,
   useListElectionsQuery,
 } from "@/redux/admin-api";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
-import { formatDateTime } from "@/utils/format-date";
 
 interface CandidateFilters extends Record<string, string | undefined> {
   electionId?: string;
@@ -70,16 +65,14 @@ const buildColumns = (
   },
   {
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">{row.original.party ?? "—"}</span>
+      <span className="text-sm text-muted-foreground">{row.original.nickname ?? "—"}</span>
     ),
-    header: "Party",
-    id: "party",
+    header: "Nickname",
+    id: "nickname",
   },
   {
     cell: ({ row }) => (
-      <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-        {formatDateTime(row.original.createdAt)}
-      </time>
+<TableDate value={row.original.createdAt} />
     ),
     header: "Added",
     id: "added",
@@ -109,84 +102,8 @@ const buildColumns = (
   },
 ];
 
-function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boolean }) {
-  const [electionId, setElectionId] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const { data: elections } = useListElectionsQuery({ limit: 100 });
-  const { data: election } = useGetElectionQuery(electionId, { skip: !electionId });
-  const [createCandidate, { isLoading: creating }] = useCreateCandidateMutation();
-
-  const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const body = new FormData();
-    body.append("electionId", String(f.get("electionId")));
-    body.append("portfolioId", String(f.get("portfolioId")));
-    body.append("name", String(f.get("name")));
-    if (f.get("party")) body.append("party", String(f.get("party")));
-    if (f.get("manifesto")) body.append("manifesto", String(f.get("manifesto")));
-    if (photo) body.append("image", photo);
-    try {
-      const res = await createCandidate(body).unwrap();
-      setPhoto(null);
-      onClose();
-      toast.success(
-        (res as { pending?: boolean }).pending ? "Submitted for approval" : "Candidate added",
-      );
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  return (
-    <Modal onClose={onClose} open={open} title="Add candidate">
-      <form className="space-y-4" onSubmit={onCreate}>
-        <Field label="Election">
-          <NativeSelect
-            name="electionId"
-            onChange={(e) => setElectionId(e.target.value)}
-            required
-            value={electionId}
-          >
-            <option value="">Select election…</option>
-            {elections?.data.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-        <Field label="Portfolio">
-          <NativeSelect name="portfolioId" required>
-            <option value="">Select portfolio…</option>
-            {election?.data.portfolios?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-        <Field label="Full name">
-          <Input name="name" placeholder="e.g. Kwame Mensah" required />
-        </Field>
-        <Field label="Party / affiliation">
-          <Input name="party" placeholder="e.g. Progressive Alliance (optional)" />
-        </Field>
-        <Field label="Manifesto">
-          <Textarea name="manifesto" placeholder="What the candidate stands for (optional)" />
-        </Field>
-        <PhotoInput file={photo} onChange={setPhoto} />
-        <Button className="w-full" loading={creating} type="submit" variant="brand">
-          Add candidate
-        </Button>
-      </form>
-    </Modal>
-  );
-}
-
 export default function CandidatesPage() {
   const { isSuperAdmin } = useAuthRole();
-  const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<Candidate | null>(null);
   const [deleteCandidate] = useDeleteCandidateMutation();
   const {
@@ -225,8 +142,10 @@ export default function CandidatesPage() {
         emptyState={
           <EmptyState
             action={
-              <Button onClick={() => setAddOpen(true)} variant="brand">
-                <Plus className="size-4" /> Add candidate
+              <Button asChild variant="brand">
+                <Link href="/admin/candidates/new">
+                  <Plus className="size-4" /> Add candidate
+                </Link>
               </Button>
             }
             description="Add candidates once your election and portfolios exist."
@@ -251,7 +170,7 @@ export default function CandidatesPage() {
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {row.original.portfolio?.name ?? "No portfolio"}
-              {row.original.party ? ` · ${row.original.party}` : ""}
+              {row.original.nickname ? ` · ${row.original.nickname}` : ""}
             </p>
           </RowCard>
         )}
@@ -259,8 +178,10 @@ export default function CandidatesPage() {
         toolbar={
           <TableToolbar
             actions={
-              <Button onClick={() => setAddOpen(true)} variant="brand">
-                <Plus className="size-4" /> Add candidate
+              <Button asChild variant="brand">
+                <Link href="/admin/candidates/new">
+                  <Plus className="size-4" /> Add candidate
+                </Link>
               </Button>
             }
             filters={filters}
@@ -292,7 +213,6 @@ export default function CandidatesPage() {
         totalCount={totalCount}
       />
 
-      <AddCandidateModal onClose={() => setAddOpen(false)} open={addOpen} />
       <ConfirmationDialog
         confirmText="Delete candidate"
         description={`"${deleting?.name ?? ""}" will be withdrawn from the ballot. They can be restored from Deleted records.`}

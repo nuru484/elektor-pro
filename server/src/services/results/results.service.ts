@@ -74,7 +74,7 @@ export interface CandidateResult {
   approveVotes?: number;
   id: string;
   name: string;
-  party: null | string;
+  nickname: null | string;
   profilePicture: null | string;
   rejectVotes?: number;
   votes: number;
@@ -91,7 +91,7 @@ export const computeResults = async (electionId: string) => {
         include: {
           candidates: {
             orderBy: { order: 'asc' },
-            select: { id: true, name: true, party: true, profilePicture: true },
+            select: { id: true, name: true, nickname: true, profilePicture: true },
           },
         },
         orderBy: { order: 'asc' },
@@ -140,7 +140,7 @@ export const computeResults = async (electionId: string) => {
       const result: CandidateResult = {
         id: c.id,
         name: c.name,
-        party: c.party,
+        nickname: c.nickname,
         profilePicture: c.profilePicture,
         votes: voteCount.get(key) ?? 0,
       };

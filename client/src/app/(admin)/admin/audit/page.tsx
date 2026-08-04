@@ -3,6 +3,7 @@
 import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { ScrollText, ShieldCheck, ShieldX } from "lucide-react";
 
+import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
@@ -49,9 +50,7 @@ const COLUMNS: ColumnDef<AuditLogRow>[] = [
   {
     accessorKey: "createdAt",
     cell: ({ row }) => (
-      <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-        {formatDateTime(row.original.createdAt)}
-      </time>
+<TableDate value={row.original.createdAt} />
     ),
     header: "Time",
   },

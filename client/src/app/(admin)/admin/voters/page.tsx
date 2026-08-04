@@ -9,31 +9,25 @@ import { toast } from "sonner";
 import type { Voter } from "@/types/api";
 
 import { EntityAvatar } from "@/components/console/entity-avatar";
-import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
+import { TableDate } from "@/components/console/table-date";
 import { TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
 import {
-  useCreateVoterMutation,
   useDeleteVoterMutation,
   useListVotersQuery,
 } from "@/redux/admin-api";
-import { useListGroupsQuery } from "@/redux/governance-api";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
-import { formatDateTime } from "@/utils/format-date";
 
 interface VoterFilters extends Record<string, string | undefined> {
   search?: string;
@@ -88,9 +82,7 @@ const buildColumns = (
   },
   {
     cell: ({ row }) => (
-      <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-        {formatDateTime(row.original.createdAt)}
-      </time>
+<TableDate value={row.original.createdAt} />
     ),
     header: "Registered",
     id: "registered",
@@ -120,87 +112,8 @@ const buildColumns = (
   },
 ];
 
-function AddVoterModal({ onClose, open }: { onClose: () => void; open: boolean }) {
-  const [createVoter, { isLoading: creating }] = useCreateVoterMutation();
-  const [photo, setPhoto] = useState<File | null>(null);
-  const { data: groupsData } = useListGroupsQuery({ limit: 100 }, { skip: !open });
-  const groups = groupsData?.data ?? [];
-
-  const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    // Multipart body: only meaningful fields, plus the staged photo.
-    const body = new FormData();
-    body.append("name", String(f.get("name")));
-    body.append("voterId", String(f.get("voterId")));
-    if (f.get("phoneNumber")) body.append("phoneNumber", String(f.get("phoneNumber")));
-    if (f.get("email")) body.append("email", String(f.get("email")));
-    for (const groupId of f.getAll("groupIds")) body.append("groupIds", String(groupId));
-    if (photo) body.append("image", photo);
-    try {
-      const res = await createVoter(body).unwrap();
-      setPhoto(null);
-      onClose();
-      toast.success(
-        (res as { pending?: boolean }).pending ? "Submitted for approval" : "Voter added",
-      );
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  return (
-    <Modal onClose={onClose} open={open} title="Add voter">
-      <form className="space-y-4" onSubmit={onCreate}>
-        <Field label="Full name">
-          <Input name="name" placeholder="e.g. Ama Owusu" required />
-        </Field>
-        <Field hint="Index / membership number" label="Voter ID">
-          <Input name="voterId" placeholder="e.g. STU1234" required />
-        </Field>
-        <Field hint="Used to send their one-time login code" label="Phone number">
-          <Input name="phoneNumber" placeholder="e.g. +233 24 000 0000" />
-        </Field>
-        <Field hint="Fallback for their one-time login code" label="Email">
-          <Input name="email" placeholder="e.g. ama@example.com (optional)" type="email" />
-        </Field>
-        <PhotoInput file={photo} onChange={setPhoto} />
-        {groups.length > 0 && (
-          <Field
-            hint="Group membership decides which scoped elections they can vote in."
-            label="Groups"
-          >
-            <div className="grid max-h-40 grid-cols-1 gap-1.5 overflow-y-auto rounded-lg border border-border p-3 sm:grid-cols-2">
-              {groups.map((group) => (
-                <label className="flex items-center gap-2 text-sm" key={group.id}>
-                  <input
-                    className="size-4 accent-brand"
-                    name="groupIds"
-                    type="checkbox"
-                    value={group.id}
-                  />
-                  <span className="min-w-0 truncate">
-                    {group.name}
-                    {group.category ? (
-                      <span className="text-muted-foreground"> · {group.category.name}</span>
-                    ) : null}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </Field>
-        )}
-        <Button className="w-full" loading={creating} type="submit" variant="brand">
-          Add voter
-        </Button>
-      </form>
-    </Modal>
-  );
-}
-
 export default function VotersPage() {
   const { isSuperAdmin } = useAuthRole();
-  const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<null | Voter>(null);
   const [deleteVoter] = useDeleteVoterMutation();
   const {
@@ -238,8 +151,10 @@ export default function VotersPage() {
         emptyState={
           <EmptyState
             action={
-              <Button onClick={() => setAddOpen(true)} variant="brand">
-                <Plus className="size-4" /> Add voter
+              <Button asChild variant="brand">
+                <Link href="/admin/voters/new">
+                  <Plus className="size-4" /> Add voter
+                </Link>
               </Button>
             }
             description="Add voters individually or import them in bulk."
@@ -277,8 +192,10 @@ export default function VotersPage() {
         toolbar={
           <TableToolbar
             actions={
-              <Button onClick={() => setAddOpen(true)} variant="brand">
-                <Plus className="size-4" /> Add voter
+              <Button asChild variant="brand">
+                <Link href="/admin/voters/new">
+                  <Plus className="size-4" /> Add voter
+                </Link>
               </Button>
             }
             filters={filters}
@@ -291,7 +208,6 @@ export default function VotersPage() {
         totalCount={totalCount}
       />
 
-      <AddVoterModal onClose={() => setAddOpen(false)} open={addOpen} />
       <ConfirmationDialog
         confirmText="Delete voter"
         description={`"${deleting?.name ?? ""}" (${deleting?.voterId ?? ""}) will be removed from the roll. They can be restored from Deleted records.`}

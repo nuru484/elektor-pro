@@ -34,7 +34,7 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
                   <span className="flex items-center gap-1.5 font-medium">
                     {leading && <Crown className="size-3.5 text-warning" />}
                     {c.name}
-                    {c.party && <span className="text-xs font-normal text-muted-foreground">{c.party}</span>}
+                    {c.nickname && <span className="text-xs font-normal text-muted-foreground">{c.nickname}</span>}
                   </span>
                   <span className="tabular-nums text-muted-foreground">
                     {c.votes} · {c.percentage}%

@@ -125,6 +125,14 @@ export const adminApi = apiSlice.injectEndpoints({
         return { body, method: "PATCH", url: `/voters/${id}/picture` };
       },
     }),
+    updateCandidateManifesto: build.mutation<unknown, { file: File; id: string }>({
+      invalidatesTags: ["Candidate"],
+      query: ({ file, id }) => {
+        const body = new FormData();
+        body.append("manifestoPdf", file);
+        return { body, method: "PATCH", url: `/candidates/${id}/manifesto` };
+      },
+    }),
     updateCandidatePicture: build.mutation<unknown, { file: File; id: string }>({
       invalidatesTags: ["Candidate"],
       query: ({ file, id }) => {
@@ -251,6 +259,7 @@ export const {
   useRejectChangeMutation,
   useRestoreDeletedRecordMutation,
   useSetElectionStatusMutation,
+  useUpdateCandidateManifestoMutation,
   useUpdateCandidateMutation,
   useUpdateCandidatePictureMutation,
   useUpdateRolePermissionsMutation,

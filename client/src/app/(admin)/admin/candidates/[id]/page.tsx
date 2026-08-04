@@ -3,15 +3,18 @@
 // Candidate profile. Identity rail left, editable candidacy right; ?edit=1
 // opens the form straight from the table. The photo updates on its own;
 // field edits ride maker-checker (202 = staged for approval).
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Upload } from "lucide-react";
+import { useRef } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { toast as sonnerToast } from "sonner";
 import { toast } from "sonner";
 
 import type { Candidate } from "@/types/api";
 
 import { AvatarUpdater } from "@/components/console/avatar-updater";
+import { ProfileSkeleton } from "@/components/console/profile-skeleton";
 import {
   CARD_MOBILE,
   CARD_PAD_MOBILE,
@@ -27,10 +30,10 @@ import {
 } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
-import { CardGridSkeleton } from "@/components/ui/skeleton";
-import { ErrorState } from "@/components/ui/states";
+import { ErrorState, PageHeader } from "@/components/ui/states";
 import {
   useGetCandidateQuery,
+  useUpdateCandidateManifestoMutation,
   useUpdateCandidateMutation,
   useUpdateCandidatePictureMutation,
 } from "@/redux/admin-api";
@@ -55,7 +58,7 @@ function CandidacyCard({
         data: {
           manifesto: f.get("manifesto") || null,
           name: f.get("name"),
-          party: f.get("party") || null,
+          nickname: f.get("nickname") || null,
         },
         id: candidate.id,
       }).unwrap();
@@ -93,11 +96,11 @@ function CandidacyCard({
             <Field label="Full name">
               <Input defaultValue={candidate.name} name="name" required />
             </Field>
-            <Field label="Party / affiliation">
+            <Field label="Nickname / campaign name">
               <Input
-                defaultValue={candidate.party ?? ""}
-                name="party"
-                placeholder="e.g. Progressive Alliance (optional)"
+                defaultValue={candidate.nickname ?? ""}
+                name="nickname"
+                placeholder='e.g. "Team Nuru" (optional)'
               />
             </Field>
             <Field label="Manifesto">
@@ -132,8 +135,8 @@ function CandidacyCard({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Party / affiliation</dt>
-                <dd className="mt-0.5 text-sm font-medium">{candidate.party ?? "—"}</dd>
+                <dt className="text-xs text-muted-foreground">Nickname / campaign name</dt>
+                <dd className="mt-0.5 text-sm font-medium">{candidate.nickname ?? "—"}</dd>
               </div>
             </dl>
             {candidate.manifesto && (
@@ -144,6 +147,7 @@ function CandidacyCard({
                 </p>
               </div>
             )}
+            <ManifestoPdf candidate={candidate} />
           </>
         )}
       </CardContent>
@@ -151,16 +155,69 @@ function CandidacyCard({
   );
 }
 
-export default function CandidateProfilePage() {
+/** The manifesto as a document: view the current PDF, replace it anytime. */
+function ManifestoPdf({ candidate }: { candidate: Candidate }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [upload, { isLoading }] = useUpdateCandidateManifestoMutation();
+
+  const onPick = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      sonnerToast.error("Manifesto must be a PDF file");
+      return;
+    }
+    try {
+      await upload({ file, id: candidate.id }).unwrap();
+      sonnerToast.success("Manifesto PDF updated");
+    } catch (error) {
+      sonnerToast.error(getApiErrorMessage(error));
+    } finally {
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      {candidate.manifestoUrl ? (
+        <a
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
+          href={candidate.manifestoUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <FileText className="size-4" /> View manifesto (PDF)
+        </a>
+      ) : (
+        <p className="text-xs text-muted-foreground">No manifesto document uploaded.</p>
+      )}
+      <input
+        accept="application/pdf"
+        className="hidden"
+        onChange={(e) => onPick(e.target.files?.[0])}
+        ref={inputRef}
+        type="file"
+      />
+      <Button
+        className="ml-auto"
+        loading={isLoading}
+        onClick={() => inputRef.current?.click()}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <Upload className="size-3.5" />
+        {candidate.manifestoUrl ? "Replace PDF" : "Upload PDF"}
+      </Button>
+    </div>
+  );
+}
+
+function CandidateProfileContent() {
   const params = useParams<{ id: string }>();
   const { data, isError, isLoading } = useGetCandidateQuery(params.id);
   const [updatePicture] = useUpdateCandidatePictureMutation();
-  // Read once at mount: ?edit=1 (the tables' Edit action) opens the form.
-  const [editInitially] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("edit") === "1",
-  );
+  const searchParams = useSearchParams();
+  const editInitially = searchParams.get("edit") === "1";
   const candidate = data?.data;
 
 
@@ -173,8 +230,10 @@ export default function CandidateProfilePage() {
         <ArrowLeft className="size-4" /> Back to candidates
       </Link>
 
+      <PageHeader description="View and manage this candidacy." title="Candidate profile" />
+
       {isLoading ? (
-        <CardGridSkeleton count={2} />
+        <ProfileSkeleton />
       ) : isError || !candidate ? (
         <ErrorState />
       ) : (
@@ -195,7 +254,7 @@ export default function CandidateProfilePage() {
                   {candidate.portfolio && (
                     <Badge variant="brand">{candidate.portfolio.name}</Badge>
                   )}
-                  {candidate.party && <Badge variant="outline">{candidate.party}</Badge>}
+                  {candidate.nickname && <Badge variant="outline">{candidate.nickname}</Badge>}
                 </div>
               </div>
               <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
@@ -213,5 +272,14 @@ export default function CandidateProfilePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CandidateProfilePage() {
+  // useSearchParams needs a Suspense boundary for prerendering.
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <CandidateProfileContent />
+    </Suspense>
   );
 }

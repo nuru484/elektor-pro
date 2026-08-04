@@ -23,7 +23,7 @@ export const exportResultsCsv = async (electionId: string): Promise<string> => {
         [
           csvEscape(portfolio.name),
           csvEscape(candidate.name),
-          csvEscape(candidate.party ?? ''),
+          csvEscape(candidate.nickname ?? ''),
           candidate.votes,
           `${candidate.percentage}%`,
         ].join(','),
@@ -71,7 +71,7 @@ export const exportResultsPdf = async (electionId: string): Promise<Buffer> => {
       doc.fontSize(10).fillColor('#333');
       for (const candidate of portfolio.candidates) {
         doc.text(
-          `  ${candidate.name}${candidate.party ? ` (${candidate.party})` : ''} — ${candidate.votes} votes (${candidate.percentage}%)`,
+          `  ${candidate.name}${candidate.nickname ? ` (${candidate.nickname})` : ''} — ${candidate.votes} votes (${candidate.percentage}%)`,
         );
       }
       if (portfolio.winner) {

@@ -203,7 +203,7 @@ function BallotBody({ electionId }: { electionId: string }) {
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate font-medium">{c.name}</span>
-                          {c.party && <span className="block truncate text-xs text-muted-foreground">{c.party}</span>}
+                          {c.nickname && <span className="block truncate text-xs text-muted-foreground">{c.nickname}</span>}
                         </span>
                       </button>
                     );

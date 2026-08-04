@@ -151,15 +151,15 @@ async function main() {
     select: { id: true },
   });
 
-  const mkCandidates = (portfolioId: string, names: string[], party?: string[]) =>
+  const mkCandidates = (portfolioId: string, names: string[], nickname?: string[]) =>
     Promise.all(
       names.map((name, i) =>
         prisma.candidate.create({
           data: {
             electionId: election.id,
             name,
+            nickname: nickname?.[i],
             order: i,
-            party: party?.[i],
             portfolioId,
           },
           select: { id: true },
@@ -327,10 +327,10 @@ async function seedRichExtras(superAdminId: string, agentId: string) {
   });
   const deptCandidates = await Promise.all([
     prisma.candidate.create({
-      data: { electionId: departmental.id, name: 'Nana Agyeman', order: 1, party: 'Forward Group', portfolioId: deptPresident.id },
+      data: { electionId: departmental.id, name: 'Nana Agyeman', nickname: 'Forward Group', order: 1, portfolioId: deptPresident.id },
     }),
     prisma.candidate.create({
-      data: { electionId: departmental.id, name: 'Akosua Frimpong', order: 2, party: 'Unity Ticket', portfolioId: deptPresident.id },
+      data: { electionId: departmental.id, name: 'Akosua Frimpong', nickname: 'Unity Ticket', order: 2, portfolioId: deptPresident.id },
     }),
     prisma.candidate.create({
       data: { electionId: departmental.id, name: 'Kofi Antwi', order: 1, portfolioId: deptSecretary.id },

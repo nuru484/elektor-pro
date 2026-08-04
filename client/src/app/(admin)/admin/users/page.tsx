@@ -25,6 +25,7 @@ import type { StaffUser } from "@/types/api";
 import { EntityAvatar } from "@/components/console/entity-avatar";
 import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
+import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,6 @@ import {
   useUpdateUserRoleMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
-import { formatDateTime } from "@/utils/format-date";
 
 // Staff only: agents, candidates, and voters live in their own modules.
 const CREATABLE_ROLES = ["ADMIN", "ACCREDITOR"] as const;
@@ -321,7 +321,7 @@ function UserActions({
 }
 
 export default function UsersPage() {
-  const { isSuperAdmin } = useAuthRole();
+  const { isSuperAdmin, user: me } = useAuthRole();
   const [createOpen, setCreateOpen] = useState(false);
   const [locking, setLocking] = useState<null | StaffUser>(null);
   const [changingRole, setChangingRole] = useState<null | StaffUser>(null);
@@ -353,8 +353,9 @@ export default function UsersPage() {
             url={row.original.profilePicture}
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
+            <p className="flex items-center gap-1.5 truncate text-sm font-medium">
               {row.original.firstName} {row.original.lastName}
+              {me?.id === row.original.id && <Badge variant="brand">You</Badge>}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {row.original.email ?? row.original.phone ?? "—"}
@@ -389,9 +390,7 @@ export default function UsersPage() {
     {
       accessorKey: "createdAt",
       cell: ({ row }) => (
-        <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {formatDateTime(row.original.createdAt)}
-        </time>
+<TableDate value={row.original.createdAt} />
       ),
       header: "Created",
     },

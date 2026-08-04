@@ -471,9 +471,13 @@ model Candidate {
   id             String  @id @default(cuid())
   name           String
   profilePicture String?
-  party          String?
+  /// Campaign name / nickname (e.g. "Team Nuru") - organisational elections
+  /// rarely have parties. Kept on the original "party" column via @map.
+  nickname       String? @map("party")
   partySymbol    String?
   manifesto      String?
+  /// Uploaded manifesto document (PDF), set only by the upload middleware.
+  manifestoUrl   String?
   order          Int     @default(0)
 
   // Optional login account for the candidate (role = CANDIDATE)

@@ -78,7 +78,7 @@ export const DELETED_RESOURCES = {
   candidates: {
     accessor: 'candidate',
     entity: 'Candidate',
-    toRow: (r) => ({ label: s(r.name), meta: s(r.party) || null }),
+    toRow: (r) => ({ label: s(r.name), meta: s(r.nickname) || null }),
   },
   elections: {
     accessor: 'election',
