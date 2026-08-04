@@ -27,6 +27,86 @@ const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 /** Every seeded user account signs in with this (development data only). */
 const SEED_PASSWORD = 'ORACLE1995@B9s';
 
+/**
+ * Finishing pass: every voter carries a phone (and most an email), and every
+ * candidate person has a sign-in account (email + phone + password) plus a
+ * manifesto - no half-filled records anywhere. Idempotent: only fills nulls.
+ */
+async function ensureFullContactDetails() {
+  // Voters without a phone get one; every second also gets an email.
+  const bareVoters = await prisma.voter.findMany({
+    select: { email: true, id: true },
+    where: { phoneNumber: null },
+  });
+  for (const [i, voter] of bareVoters.entries()) {
+    const needsEmail = !voter.email && i % 2 === 1;
+    await prisma.voter.update({
+      data: {
+        phoneNumber: `+23354${String(700000 + i)}`,
+        ...(needsEmail
+          ? { email: `voter.fill${String(700000 + i)}@elektorpro.com` }
+          : {}),
+      },
+      where: { id: voter.id },
+    });
+  }
+
+  // Candidates without an account: one account per unique person (name),
+  // linked across all their candidacies; missing manifestos get a real one.
+  const bare = await prisma.candidate.findMany({
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, manifesto: true, name: true },
+    where: { accountId: null },
+  });
+  const accountByName = new Map<string, string>();
+  let n = 0;
+  for (const candidate of bare) {
+    const key = candidate.name.trim().toLowerCase();
+    let accountId = accountByName.get(key);
+    if (!accountId) {
+      n += 1;
+      const [firstName, ...rest] = candidate.name.trim().split(/\s+/);
+      const account = await prisma.user.create({
+        data: {
+          email: `candidate.${String(500000 + n)}@elektorpro.com`,
+          firstName: firstName || candidate.name,
+          lastName: rest.join(' ') || '-',
+          password: await hashPassword(SEED_PASSWORD),
+          phone: `+23353${String(500000 + n)}`,
+          role: Role.CANDIDATE,
+        },
+        select: { id: true },
+      });
+      accountId = account.id;
+      accountByName.set(key, accountId);
+    }
+    await prisma.candidate.update({
+      data: {
+        accountId,
+        ...(candidate.manifesto
+          ? {}
+          : {
+              manifesto:
+                'Accountable leadership: open budgets, regular member updates, and delivery on every commitment in this manifesto.',
+            }),
+      },
+      where: { id: candidate.id },
+    });
+  }
+  // Manifestos for anyone still missing one (account-linked candidates too).
+  await prisma.candidate.updateMany({
+    data: {
+      manifesto:
+        'Accountable leadership: open budgets, regular member updates, and delivery on every commitment in this manifesto.',
+    },
+    where: { manifesto: null },
+  });
+
+  console.log(
+    `✓ contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts)`,
+  );
+}
+
 async function main() {
   // --- Organization (singleton) ---
   const existingOrg = await prisma.organization.findFirst();
@@ -95,7 +175,8 @@ async function main() {
   await seedDemoElection(superAdmin.id, agent.id, science.id);
   await seedBuild5Extras(superAdmin.id);
   await seedVettingDemo(superAdmin.id);
-  await seedWorstCaseEverywhere(superAdmin.id);
+  await seedScaleNumbers(superAdmin.id);
+  await ensureFullContactDetails();
 
   console.log('\nSeed complete.');
   console.log(`  Super admin: ${ENV.ADMIN_EMAIL} / ${SEED_PASSWORD}`);
@@ -108,9 +189,8 @@ async function main() {
  * Build 5 demo data: a group-scoped election (ElectionEligibility + early
  * results access), a managed-roll election with every roll-entry state, a
  * certified election with a chained ballot history and an immutable result
- * snapshot, seed audit entries, and a worst-case election whose content sits
- * at every field's validation maximum so the UI can be checked against
- * extremes. Idempotent: gated on the scoped election's slug.
+ * snapshot, and seed audit entries. Idempotent: gated on the scoped
+ * election's slug.
  */
 async function seedBuild5Extras(superAdminId: string) {
   if (await prisma.election.findUnique({ where: { slug: 'science-departmental-2026' } })) {
@@ -350,99 +430,8 @@ async function seedBuild5Extras(superAdminId: string) {
     console.log('✓ Staff Council 2025 certified (chained ballots + snapshot + lock)');
   }
 
-  // --- Worst-case content: every field at its validation maximum, plus an
-  // unbroken token, so layouts are checked against extremes. DRAFT so it
-  // never interferes with live voting flows. ---
-  const UNBROKEN = 'Nnamdiokwuchukwuemekachimaamandaobianujuchukwudalunjemanachukwukadibiaegwuonwuchukwunonso';
-  const sentence =
-    'This extraordinary consolidated general election determines the leadership of every federated association, allied society, standing committee, and affiliated chapter for the coming administrative year. ';
-  const longName = `Extraordinary Consolidated General Election of the Federated Union of Allied Student Associations and Societies ${UNBROKEN}`.slice(0, 150);
-  const longDescription = sentence.repeat(12).slice(0, 2000);
-  const longManifesto = sentence.repeat(30).slice(0, 5000);
-
-  const worstCategory = await prisma.groupCategory.upsert({
-    create: {
-      code: 'WORST',
-      description: sentence.repeat(3).slice(0, 500),
-      name: 'Category With The Longest Permissible Name For Layout Checking Here'.slice(0, 80),
-    },
-    select: { id: true },
-    update: {},
-    where: { code: 'WORST' },
-  });
-  const worstGroup = await prisma.group.upsert({
-    create: {
-      categoryId: worstCategory.id,
-      code: 'WORST-G',
-      description: sentence.repeat(3).slice(0, 500),
-      name: `Group With A Very Long Name ${UNBROKEN}`.slice(0, 120),
-    },
-    select: { id: true },
-    update: {},
-    where: { code: 'WORST-G' },
-  });
-  const worst = await prisma.election.create({
-    data: {
-      createdById: superAdminId,
-      description: longDescription,
-      eligibilityGroups: { create: [{ groupId: worstGroup.id }] },
-      eligibilityMode: 'GROUPS',
-      endDate: new Date(Date.now() + 60 * day),
-      name: longName,
-      resultsPolicy: ResultsPolicy.MANUAL,
-      slug: 'worst-case-election-with-a-really-long-slug-for-layout-checking',
-      startDate: new Date(Date.now() + 59 * day),
-      status: ElectionStatus.DRAFT,
-    },
-    select: { id: true },
-  });
-  const worstPortfolio = await prisma.portfolio.create({
-    data: {
-      description: sentence.repeat(6).slice(0, 1000),
-      electionId: worst.id,
-      maxSelections: 5,
-      name: `Portfolio With The Longest Permissible Name For Checking Layout Overflow Behaviour Everywhere ${UNBROKEN}`.slice(0, 150),
-      order: 1,
-      votingMethod: VotingMethod.MULTI_SELECT,
-    },
-    select: { id: true },
-  });
-  await prisma.candidate.create({
-    data: {
-      electionId: worst.id,
-      manifesto: longManifesto,
-      name: UNBROKEN.slice(0, 150) || 'Unbroken',
-      nickname: `The ${UNBROKEN}`.slice(0, 120),
-      order: 1,
-      partySymbol: sentence.repeat(2).slice(0, 300),
-      portfolioId: worstPortfolio.id,
-    },
-  });
-  await prisma.candidate.create({
-    data: {
-      electionId: worst.id,
-      manifesto: longManifesto,
-      name: 'Nana Kwabena Osei-Bonsu Asante-Mensah Boakye-Yiadom Agyeman-Duah Ofori-Atta Kyeremateng Owusu-Ansah II'.slice(0, 150),
-      nickname: 'Progress',
-      order: 2,
-      portfolioId: worstPortfolio.id,
-    },
-  });
-  const worstVoter = await prisma.voter.create({
-    data: {
-      email: `worst.case.layout.checking.address.${'x'.repeat(40)}@extremely-long-subdomain.example-university-of-technology.edu.gh`,
-      metadata: { hostel: `Block ${UNBROKEN.slice(0, 40)}`, notes: sentence.trim() },
-      name: `Voter ${UNBROKEN}`.slice(0, 150),
-      phoneNumber: '+233556999999',
-      voterId: 'WORST-CASE-VOTER-IDENTIFICATION-NUMBER-000000000000000000001'.slice(0, 60),
-    },
-    select: { id: true },
-  });
-  await prisma.voterGroupMembership.create({
-    data: { groupId: worstGroup.id, voterId: worstVoter.id },
-  });
-  console.log('✓ worst-case content seeded (max-length everything + unbroken tokens)');
 }
+
 
 /** The live SRC demo election with ballots. Idempotent: gated on its slug. */
 async function seedDemoElection(superAdminId: string, agentId: string, scienceGroupId: string) {
@@ -595,7 +584,6 @@ async function seedDemoElection(superAdminId: string, agentId: string, scienceGr
 
   console.log('✓ demo election seeded (portfolios, candidates, voters, ballots)');
 }
-
 
 /**
  * Rich demo data across every module - staff in each role and status, more
@@ -854,6 +842,210 @@ async function seedRichExtras(superAdminId: string, agentId: string) {
 }
 
 /**
+ * Numbers at scale, with ordinary content: thousands of voters (all with
+ * phones, many with emails), a live election carrying hundreds of real
+ * chained ballots, extra elections and candidates, and a stack of pending
+ * approvals - so the dashboard and every counter across the system show
+ * worst-case NUMBERS while the text stays realistic. Idempotent: gated on
+ * the live stress election's slug.
+ */
+async function seedScaleNumbers(superAdminId: string) {
+  if (await prisma.election.findUnique({ where: { slug: 'convention-2026' } })) {
+    console.log('✓ scale numbers already seeded — skipping');
+    return;
+  }
+  const day = 86_400_000;
+  const FIRST = ['Ama', 'Kofi', 'Esi', 'Yaw', 'Akosua', 'Kwame', 'Abena', 'Kojo', 'Adjoa', 'Kwesi'];
+  const LAST = ['Mensah', 'Owusu', 'Asante', 'Boateng', 'Osei', 'Appiah', 'Agyei', 'Addo', 'Ofori', 'Ansah'];
+  const personName = (i: number) =>
+    `${FIRST[i % 10]} ${LAST[Math.floor(i / 10) % 10]} ${String(Math.floor(i / 100) + 1)}`;
+
+  // --- 2,500 bulk voters: big dashboard counters. Every voter has a phone;
+  // every third also has an email. ---
+  await prisma.voter.createMany({
+    data: Array.from({ length: 2500 }, (_, i) => ({
+      email: i % 3 === 0 ? `voter${String(100000 + i)}@elektorpro.com` : null,
+      name: personName(i),
+      phoneNumber: `+23357${String(100000 + i)}`,
+      voterId: `REG${String(100000 + i)}`,
+    })),
+    skipDuplicates: true,
+  });
+
+  // --- The live convention: hundreds of REAL chained ballots. ---
+  const live = await prisma.election.create({
+    data: {
+      createdById: superAdminId,
+      description:
+        'The annual delegates convention. High-turnout election used to stress live results and turnout numbers.',
+      eligibilityMode: 'ALL_VOTERS',
+      endDate: new Date(Date.now() + 6 * day),
+      name: 'Annual Delegates Convention 2026',
+      resultsPolicy: ResultsPolicy.LIVE,
+      slug: 'convention-2026',
+      startDate: new Date(Date.now() - day),
+      status: ElectionStatus.IN_PROGRESS,
+    },
+    select: { id: true },
+  });
+  const conventionPortfolios = await Promise.all(
+    ['Convention Chairperson', 'General Secretary', 'Treasurer'].map((name, i) =>
+      prisma.portfolio.create({
+        data: { electionId: live.id, name, order: i + 1 },
+        select: { id: true },
+      }),
+    ),
+  );
+  const conventionCandidates: { id: string }[] = [];
+  for (const [pi, portfolio] of conventionPortfolios.entries()) {
+    for (let c = 0; c < 3; c += 1) {
+      const idx = pi * 3 + c;
+      const name = personName(500 + idx);
+      const account = await prisma.user.create({
+        data: {
+          email: `convention.candidate${String(idx + 1)}@elektorpro.com`,
+          firstName: name.split(' ')[0],
+          lastName: name.split(' ').slice(1).join(' '),
+          password: await hashPassword(SEED_PASSWORD),
+          phone: `+23358${String(200000 + idx)}`,
+          role: Role.CANDIDATE,
+        },
+        select: { id: true },
+      });
+      const candidate = await prisma.candidate.create({
+        data: {
+          accountId: account.id,
+          ballotNumber: c + 1,
+          electionId: live.id,
+          manifesto:
+            'Transparent budgets, monthly member forums, and a public scorecard for every promise made at this convention.',
+          name,
+          nickname: c === 0 ? 'Team Forward' : c === 1 ? 'Unity Ticket' : null,
+          order: c,
+          portfolioId: portfolio.id,
+        },
+        select: { id: true },
+      });
+      conventionCandidates.push({ id: candidate.id });
+    }
+  }
+
+  // 220 voters with accounts cast full ballots through the real voting path
+  // (hash-chained), so tallies, turnout, and the results page carry real
+  // three-digit numbers.
+  let cast = 0;
+  for (let i = 0; i < 220; i += 1) {
+    const name = personName(3000 + i);
+    const user = await prisma.user.create({
+      data: {
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ').slice(1).join(' '),
+        phone: `+23359${String(300000 + i)}`,
+        role: Role.VOTER,
+      },
+      select: { id: true },
+    });
+    await prisma.voter.create({
+      data: {
+        name,
+        phoneNumber: `+23359${String(300000 + i)}`,
+        userId: user.id,
+        voterId: `CNV${String(10000 + i)}`,
+      },
+    });
+    const selections: BallotSelection[] = conventionPortfolios.map((p, pi) => ({
+      candidateIds: [conventionCandidates[pi * 3 + ((i + pi) % 3)].id],
+      portfolioId: p.id,
+    }));
+    await castBallot(user.id, live.id, selections);
+    cast += 1;
+  }
+  console.log(`✓ convention: ${String(cast)} chained ballots cast`);
+
+  // --- Extra elections in every status so lists and filters carry volume. ---
+  const statuses: [string, ElectionStatus, number, number][] = [
+    ['Sports Committee 2026', ElectionStatus.SCHEDULED, 10, 12],
+    ['Library Board 2026', ElectionStatus.SCHEDULED, 20, 22],
+    ['Welfare Trustees 2026', ElectionStatus.DRAFT, 30, 33],
+    ['Alumni Council 2025', ElectionStatus.ENDED, -50, -48],
+    ['Hall Week Planning 2025', ElectionStatus.ENDED, -80, -78],
+    ['Debate Society 2025', ElectionStatus.CANCELLED, -20, -18],
+  ];
+  for (const [index, [name, status, startOffset, endOffset]] of statuses.entries()) {
+    const election = await prisma.election.create({
+      data: {
+        createdById: superAdminId,
+        description: `${name}: seeded for list volume across statuses.`,
+        eligibilityMode: 'ALL_VOTERS',
+        endDate: new Date(Date.now() + endOffset * day),
+        name,
+        resultsPolicy: ResultsPolicy.ON_CLOSE,
+        slug: name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'),
+        startDate: new Date(Date.now() + startOffset * day),
+        status,
+      },
+      select: { id: true },
+    });
+    const portfolio = await prisma.portfolio.create({
+      data: { electionId: election.id, name: 'Chairperson', order: 1 },
+      select: { id: true },
+    });
+    await prisma.candidate.createMany({
+      data: [0, 1].map((c) => ({
+        electionId: election.id,
+        manifesto:
+          'A steady hand, open books, and a full report to members every quarter.',
+        name: personName(700 + index * 2 + c),
+        order: c,
+        portfolioId: portfolio.id,
+      })),
+    });
+  }
+
+  // --- A stack of pending approvals so the queue and dashboard badge show
+  // real numbers. ---
+  const admin = await prisma.user.findFirst({
+    select: { id: true },
+    where: { email: 'commission@elektorpro.com' },
+  });
+  if (admin) {
+    for (let i = 1; i <= 8; i += 1) {
+      await prisma.changeRequest.create({
+        data: {
+          action: 'CREATE',
+          entity: 'VOTER',
+          payload: {
+            electionIds: [live.id],
+            name: `Pending Voter ${String(i)}`,
+            phoneNumber: `+23356${String(880000 + i)}`,
+            voterId: `PEND${String(9000 + i)}`,
+          },
+          requestedById: admin.id,
+          summary: `Create voter: Pending Voter ${String(i)}`,
+        },
+      });
+    }
+  }
+
+  // --- Audit volume: routine entries so the log paginates. ---
+  for (let i = 0; i < 40; i += 1) {
+    await appendAudit(prisma, {
+      action: 'election.viewed',
+      actorId: superAdminId,
+      actorRole: Role.SUPER_ADMIN,
+      entity: 'Election',
+      entityId: live.id,
+      metadata: { seed: true, view: i },
+    });
+  }
+
+  console.log(
+    '✓ scale numbers seeded (2,500 voters w/ phones, 220 live ballots, 6 extra elections, 8 pending approvals, audit volume)',
+  );
+}
+
+
+/**
  * Build 6 vetting demo on the Science election: vetting on, two criteria,
  * candidates in every lifecycle state with scores/notes, and ballot numbers
  * on the qualified ones. Idempotent via the criteria gate; looks its targets
@@ -943,229 +1135,6 @@ async function seedVettingDemo(superAdminId: string) {
     });
   }
   console.log('✓ vetting demo seeded (criteria, nominees in every state, ballot numbers)');
-}
-
-/**
- * Worst-case content in EVERY remaining module - staff, agents, grants,
- * change requests, audit, vetting, the roll, a LIVE election with ballots
- * (so voting, results, and dashboards all carry extremes) - plus a bulk
- * batch of voters so dashboard counters show real four-digit numbers.
- * Idempotent: gated on the live worst-case election's slug.
- */
-async function seedWorstCaseEverywhere(superAdminId: string) {
-  if (await prisma.election.findUnique({ where: { slug: 'worst-case-live-results' } })) {
-    console.log('✓ worst-case everywhere already seeded — skipping');
-    return;
-  }
-  const UNBROKEN =
-    'Nnamdiokwuchukwuemekachimaamandaobianujuchukwudalunjemanachukwukadibiaegwuonwuchukwunonso';
-  const sentence =
-    'This record exists so every screen in the console is checked against content at its permitted maximum length before real organisations meet it in production. ';
-  const longName80 = `Verylongfirstnamethatkeepsgoingandgoing${UNBROKEN}`.slice(0, 80);
-
-  // --- Bulk voters: four-digit dashboard counters. ---
-  await prisma.voter.createMany({
-    data: Array.from({ length: 1500 }, (_, i) => ({
-      name: `Bulk Voter ${String(i + 1)}`,
-      voterId: `WC${String(100000 + i)}`,
-    })),
-    skipDuplicates: true,
-  });
-
-  // --- Staff user at field maximums (users table, profile pages). ---
-  const worstStaff = await prisma.user.upsert({
-    create: {
-      email: `worst.case.staff.${'x'.repeat(30)}@extremely-long-subdomain.example-university-of-technology.edu.gh`,
-      firstName: longName80,
-      lastName: `Surname${UNBROKEN}`.slice(0, 80),
-      password: await hashPassword(SEED_PASSWORD),
-      phone: '+233556999998',
-      role: Role.ADMIN,
-    },
-    select: { id: true },
-    update: {},
-    where: { phone: '+233556999998' },
-  });
-
-  // --- Live worst-case election: voting portal, live results, dashboards. ---
-  const day = 86_400_000;
-  const live = await prisma.election.create({
-    data: {
-      createdById: superAdminId,
-      description: sentence.repeat(12).slice(0, 2000),
-      eligibilityMode: 'ALL_VOTERS',
-      endDate: new Date(Date.now() + 6 * day),
-      name: `Live Results Stress Election of the Consolidated Congress of Allied Societies ${UNBROKEN}`.slice(0, 150),
-      resultsPolicy: ResultsPolicy.LIVE,
-      slug: 'worst-case-live-results',
-      startDate: new Date(Date.now() - day),
-      status: ElectionStatus.IN_PROGRESS,
-    },
-    select: { id: true, name: true },
-  });
-  const livePortfolio = await prisma.portfolio.create({
-    data: {
-      description: sentence.repeat(6).slice(0, 1000),
-      electionId: live.id,
-      name: `Executive Portfolio With The Longest Permissible Name For Overflow Checking ${UNBROKEN}`.slice(0, 150),
-      order: 1,
-    },
-    select: { id: true },
-  });
-  const liveCandidates = await Promise.all(
-    [
-      { name: UNBROKEN.slice(0, 150), nickname: `The ${UNBROKEN}`.slice(0, 120) },
-      {
-        name: 'Nana Kwabena Osei-Bonsu Asante-Mensah Boakye-Yiadom Agyeman-Duah Ofori-Atta Kyeremateng Owusu-Ansah III'.slice(0, 150),
-        nickname: 'Progress Alliance For A Better Tomorrow And Beyond'.slice(0, 120),
-      },
-      { name: 'Adjoa Short', nickname: null },
-    ].map((c, i) =>
-      prisma.candidate.create({
-        data: {
-          electionId: live.id,
-          manifesto: sentence.repeat(30).slice(0, 5000),
-          name: c.name,
-          nickname: c.nickname,
-          order: i,
-          portfolioId: livePortfolio.id,
-        },
-        select: { id: true },
-      }),
-    ),
-  );
-  const liveVoters = await prisma.voter.findMany({
-    orderBy: { voterId: 'asc' },
-    select: { userId: true },
-    take: 6,
-    where: { userId: { not: null }, voterId: { startsWith: 'STU' } },
-  });
-  for (const voter of liveVoters) {
-    if (!voter.userId) continue;
-    await castBallot(voter.userId, live.id, [
-      { candidateIds: [pick(liveCandidates).id], portfolioId: livePortfolio.id },
-    ]);
-  }
-
-  // --- Agent assignment + access grant carrying the long names. ---
-  const worstAgent = await prisma.user.upsert({
-    create: {
-      email: 'worst.agent@elektorpro.com',
-      firstName: `Agent${UNBROKEN}`.slice(0, 80),
-      lastName: `Observer${UNBROKEN}`.slice(0, 80),
-      password: await hashPassword(SEED_PASSWORD),
-      phone: '+233556999997',
-      role: Role.AGENT,
-    },
-    select: { id: true },
-    update: {},
-    where: { phone: '+233556999997' },
-  });
-  await prisma.agentAssignment.create({
-    data: { candidateId: liveCandidates[0].id, electionId: live.id, userId: worstAgent.id },
-  });
-  await prisma.accessGrant.create({
-    data: {
-      capability: 'VIEW_RESULTS',
-      electionId: live.id,
-      grantedById: superAdminId,
-      userId: worstStaff.id,
-    },
-  });
-
-  // --- Maker-checker: a pending request with maximum-length prose. ---
-  const admin = await prisma.user.findFirst({
-    select: { id: true },
-    where: { email: 'commission@elektorpro.com' },
-  });
-  if (admin) {
-    await prisma.changeRequest.create({
-      data: {
-        action: 'UPDATE',
-        entity: 'ELECTION',
-        entityId: live.id,
-        payload: { description: sentence.repeat(12).slice(0, 2000) },
-        requestedById: admin.id,
-        summary: `Update election: ${live.name} — ${sentence}`.slice(0, 500),
-      },
-    });
-  }
-
-  // --- Audit entry whose metadata carries the extremes. ---
-  await appendAudit(prisma, {
-    action: 'election.update',
-    actorId: superAdminId,
-    actorRole: Role.SUPER_ADMIN,
-    entity: 'Election',
-    entityId: live.id,
-    ipAddress: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-    metadata: { name: live.name, note: sentence.repeat(3).slice(0, 400) },
-    userAgent: `Mozilla/5.0 (StressTest) ${UNBROKEN}`,
-  });
-
-  // --- Vetting at maximums on the live election. ---
-  await prisma.election.update({
-    data: { vettingEnabled: true },
-    where: { id: live.id },
-  });
-  const worstCriterion = await prisma.vettingCriterion.create({
-    data: {
-      description: sentence.repeat(3).slice(0, 500),
-      electionId: live.id,
-      maxScore: 100,
-      name: `Criterion With The Longest Permissible Name ${UNBROKEN}`.slice(0, 120),
-      order: 1,
-    },
-    select: { id: true },
-  });
-  const worstNominee = await prisma.candidate.create({
-    data: {
-      electionId: live.id,
-      manifesto: sentence.repeat(30).slice(0, 5000),
-      name: `Nominee ${UNBROKEN}`.slice(0, 150),
-      order: 9,
-      portfolioId: livePortfolio.id,
-      status: 'UNDER_REVIEW',
-      vettingNote: sentence.repeat(6).slice(0, 1000),
-    },
-    select: { id: true },
-  });
-  await prisma.vettingScore.create({
-    data: {
-      candidateId: worstNominee.id,
-      criterionId: worstCriterion.id,
-      note: sentence.repeat(6).slice(0, 1000),
-      score: 87,
-      scoredById: superAdminId,
-    },
-  });
-
-  // --- The worst-case voter joins the congress roll (roll table extremes). ---
-  const congress = await prisma.election.findUnique({
-    select: { id: true },
-    where: { slug: 'delegates-congress-2026' },
-  });
-  const worstVoter = await prisma.voter.findFirst({
-    select: { id: true },
-    where: { voterId: { startsWith: 'WORST-CASE' } },
-  });
-  if (congress && worstVoter) {
-    await prisma.voterElection.upsert({
-      create: {
-        accreditedAt: new Date(),
-        accreditedById: superAdminId,
-        electionId: congress.id,
-        isEligible: true,
-        voterId: worstVoter.id,
-      },
-      update: {},
-      where: {
-        voterId_electionId: { electionId: congress.id, voterId: worstVoter.id },
-      },
-    });
-  }
-
-  console.log('✓ worst-case content seeded in every module (staff, agents, grants, approvals, audit, vetting, roll, live election + ballots, 1500 bulk voters)');
 }
 
 async function upsertUser(
