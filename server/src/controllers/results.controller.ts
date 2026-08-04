@@ -11,6 +11,7 @@ import {
   certifyResults,
   getCertification,
   publishResults,
+  unpublishResults,
 } from '../services/results/results-admin.service.js';
 import {
   assertCanViewResults,
@@ -75,6 +76,17 @@ export const publishResultsController = asyncHandler(
       requestContextOf(req),
     );
     sendOk(res, 'Results published', data);
+  },
+);
+
+export const unpublishResultsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    await unpublishResults(
+      actorOf(req),
+      req.params.electionId,
+      requestContextOf(req),
+    );
+    sendOk(res, 'Results unpublished', { electionId: req.params.electionId });
   },
 );
 

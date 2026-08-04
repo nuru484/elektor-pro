@@ -99,6 +99,43 @@ export const getCandidate = async (id: string) => {
   return { ...candidate, otherCandidacies };
 };
 
+/**
+ * The signed-in candidate's own candidacies (linked via their account),
+ * powering the candidate console. Vetting details come from the redacted
+ * per-candidate vetting endpoint.
+ */
+export const listMyCandidacies = async (userId: string) =>
+  prisma.candidate.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: {
+      ballotNumber: true,
+      election: {
+        select: {
+          endDate: true,
+          id: true,
+          name: true,
+          resultsPolicy: true,
+          resultsPublishedAt: true,
+          slug: true,
+          startDate: true,
+          status: true,
+          vettingEnabled: true,
+          vettingPassPercent: true,
+        },
+      },
+      id: true,
+      manifesto: true,
+      name: true,
+      nickname: true,
+      portfolio: { select: { id: true, name: true } },
+      profilePicture: true,
+      reviewedAt: true,
+      status: true,
+      vettingNote: true,
+    },
+    where: { accountId: userId },
+  });
+
 interface CandidatePayload extends Record<string, unknown> {
   electionId?: string;
   email?: null | string;

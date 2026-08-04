@@ -22,7 +22,7 @@ export class RateLimitExceededError extends CustomError {
 
 // Create enhanced memory-based rate limiter
 export const createRateLimiter = (
-  windowMs: number = 15 * 60 * 1000,
+  windowMs: number = 15 * 60 * 10000,
   maxRequests = 100,
   message = "Too many requests, please try again later.",
 ): RateLimitRequestHandler => {

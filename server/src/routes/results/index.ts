@@ -8,6 +8,7 @@ import {
   getCertificationController,
   getResultsController,
   publishResultsController,
+  unpublishResultsController,
 } from '../../controllers/results.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { optionalAuth } from '../../middlewares/optional-auth.js';
@@ -34,6 +35,12 @@ resultsRoutes.post(
   authenticateJWT,
   requireCapability(Capability.CERTIFY_RESULTS),
   publishResultsController,
+);
+resultsRoutes.post(
+  '/elections/:electionId/results/unpublish',
+  authenticateJWT,
+  requireCapability(Capability.CERTIFY_RESULTS),
+  unpublishResultsController,
 );
 resultsRoutes.post(
   '/elections/:electionId/results/certify',

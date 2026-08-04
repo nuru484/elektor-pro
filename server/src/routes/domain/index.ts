@@ -15,6 +15,7 @@ import {
   groupCategoryControllers,
   groupControllers,
   listChangeRequestsController,
+  myCandidaciesController,
   portfolioControllers,
   previewCandidateImportController,
   previewVoterImportController,
@@ -177,6 +178,10 @@ candidatesRouter.patch(
   ...setBallotNumberController,
 );
 domainRoutes.use('/candidates', candidatesRouter);
+
+// The signed-in candidate's own candidacies (no capability: it is scoped to
+// the caller's linked account and returns nothing for everyone else).
+domainRoutes.get('/my/candidacies', authenticateJWT, myCandidaciesController);
 
 // Vetting criteria + ballot-number auto-assignment (election-scoped)
 domainRoutes.get(

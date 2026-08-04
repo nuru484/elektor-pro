@@ -57,6 +57,43 @@ export const publishResults = async (
   return { resultsPublishedAt };
 };
 
+/**
+ * Take published results back down (a mistaken or premature publish).
+ * Refused once certified: certification is the final, public record.
+ */
+export const unpublishResults = async (
+  actor: Actor,
+  electionId: string,
+  ctx: Ctx = {},
+): Promise<void> => {
+  await requireCertifier(actor);
+  const election = await prisma.election.findFirst({
+    select: { certifiedAt: true, id: true },
+    where: { id: electionId },
+  });
+  if (!election) throw new NotFoundError('Election not found');
+  if (election.certifiedAt) {
+    throw new BadRequestError('Certified results cannot be unpublished', {
+      code: 'ALREADY_CERTIFIED',
+      layer: 'results',
+    });
+  }
+  await prisma.election.update({
+    data: { resultsPublishedAt: null },
+    where: { id: electionId },
+  });
+  await appendAudit(prisma, {
+    action: 'results.unpublished',
+    actorId: actor.id,
+    actorRole: actor.role,
+    entity: 'Election',
+    entityId: electionId,
+    ipAddress: ctx.ipAddress,
+    userAgent: ctx.userAgent,
+  });
+  emitElectionUpdate(electionId, 'results:invalidate', { electionId });
+};
+
 /** Certify final results: snapshot + hash, lock the election, publish. */
 export const certifyResults = async (
   actor: Actor,

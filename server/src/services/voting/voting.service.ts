@@ -330,7 +330,14 @@ export const verifyBallotChain = async (idOrSlug: string) => {
 };
 
 /** Verify a ballot by its receipt code, proving inclusion + chain integrity. */
-export const verifyReceipt = async (electionId: string, receiptCode: string) => {
+export const verifyReceipt = async (idOrSlug: string, receiptCode: string) => {
+  // Slug-friendly like the chain verify: public pages address elections by slug.
+  const election = await prisma.election.findFirst({
+    select: { id: true },
+    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+  });
+  if (!election) throw new NotFoundError('Election not found');
+  const electionId = election.id;
   const ballot = await prisma.ballot.findFirst({
     include: {
       entries: {

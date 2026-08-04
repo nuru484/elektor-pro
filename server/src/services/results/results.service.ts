@@ -66,9 +66,15 @@ export const canViewResults = async (
 
   if (await hasCapability(viewer, Capability.VIEW_RESULTS, election.id)) return true;
 
-  if (isOver(election.status)) return true;
-  // Voters may see live results only under a LIVE policy. Candidates wait.
-  if (viewer.role === Role.VOTER && election.resultsPolicy === ResultsPolicy.LIVE) {
+  // Ordinary viewers (voters, candidates) follow the election's policy:
+  // LIVE shows the running tally, ON_CLOSE opens up once the election is
+  // over, MANUAL stays hidden until a certifier explicitly publishes - even
+  // after the election has ended.
+  if (election.resultsPolicy === ResultsPolicy.LIVE) return true;
+  if (
+    election.resultsPolicy === ResultsPolicy.ON_CLOSE &&
+    isOver(election.status)
+  ) {
     return true;
   }
   return false;

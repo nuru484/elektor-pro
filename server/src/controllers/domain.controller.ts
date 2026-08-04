@@ -11,7 +11,11 @@ import {
 import { cloudinaryService } from '../config/cloudinary.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import multerUpload from '../config/multer.js';
-import { asyncHandler, ValidationError } from '../middlewares/error-handler.js';
+import {
+  asyncHandler,
+  UnauthorizedError,
+  ValidationError,
+} from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
 import {
   approveChangeRequest,
@@ -25,6 +29,7 @@ import { previewCandidateImport } from '../services/domain/candidate-import.serv
 import {
   getCandidate,
   listCandidates,
+  listMyCandidacies,
 } from '../services/domain/candidate.service.js';
 import {
   getElection,
@@ -245,6 +250,12 @@ export const bulkUploadCandidatesController: RequestHandler[] = [
     respondToProposal(res, outcome, 'Candidates', HTTP_STATUS_CODES.CREATED);
   }),
 ];
+
+/** The signed-in candidate's own candidacies (candidate console home). */
+export const myCandidaciesController = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError('Authentication required');
+  sendOk(res, 'Candidacies retrieved', await listMyCandidacies(req.user.id));
+});
 
 // --- Voters ---
 export const voterControllers = makeCrud({
