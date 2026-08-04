@@ -1,10 +1,18 @@
 "use client";
 
-// The console shell: a persistent sidebar on large screens, a sheet drawer on
-// phones, and a slim top bar with the theme toggle + account menu. Role-aware:
-// nav items come from nav-config filtered by the signed-in user's role, and
-// the guard redirects signed-out visitors to the right login page.
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, ShieldCheck, UserCircle } from "lucide-react";
+// The console shell: a persistent sidebar on large screens (collapsible to an
+// icon rail, DMS-style), a sheet drawer on phones, a slim top bar whose
+// bottom hairline lines up with the sidebar header's, and a console footer.
+// Role-aware: nav items come from nav-config filtered by the signed-in user's
+// role, and the guard redirects signed-out visitors to the login page.
+import {
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ShieldCheck,
+  UserCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -13,6 +21,7 @@ import type { Role } from "@/types/api";
 
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +32,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { cn } from "@/lib/utils";
 import { useGetMeQuery, useLogoutMutation } from "@/redux/auth-api";
@@ -44,16 +59,25 @@ const ROLE_LABELS: Record<Role, string> = {
   VOTER: "Voter",
 };
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const { role } = useAuthRole();
   if (!role) return null;
 
   return (
-    <nav aria-label="Console" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+    <nav
+      aria-label="Console"
+      className={cn("flex flex-1 flex-col gap-5 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}
+    >
       {sectionsForRole(role).map((section) => (
         <div key={section.label ?? "main"}>
-          {section.label && (
+          {section.label && !collapsed && (
             <p className="mb-1.5 px-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground/70 uppercase">
               {section.label}
             </p>
@@ -63,22 +87,30 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
               const active =
                 pathname === item.href ||
                 (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
-              return (
+              const link = (
                 <Link
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
+                    collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
                     active
                       ? "bg-brand-muted text-brand"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   )}
                   href={item.href}
-                  key={item.href}
                   onClick={onNavigate}
                 >
                   <item.icon className="size-4 shrink-0" />
-                  {item.label}
+                  {!collapsed && item.label}
                 </Link>
+              );
+              return collapsed ? (
+                <Tooltip key={item.href}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <span key={item.href}>{link}</span>
               );
             })}
           </div>
@@ -92,53 +124,85 @@ function UserMenu() {
   const router = useRouter();
   const { role, user } = useAuthRole();
   const [logout] = useLogoutMutation();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   if (!user || !role) return null;
 
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          aria-label="Account menu"
-          className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-brand text-xs font-semibold text-brand-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          type="button"
-        >
-          {user.profilePicture ? (
-            // eslint-disable-next-line @next/next/no-img-element -- avatar from Cloudinary, tiny
-            <img alt="" className="size-full object-cover" src={user.profilePicture} />
-          ) : (
-            initials
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <p className="truncate text-sm font-medium">
-            {user.firstName} {user.lastName}
-          </p>
-          <p className="truncate text-xs font-normal text-muted-foreground">
-            {ROLE_LABELS[role]}
-          </p>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/profile">
-            <UserCircle className="size-4" /> My profile
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={async () => {
-            await logout();
-            router.replace("/login");
-          }}
-          variant="destructive"
-        >
-          <LogOut className="size-4" /> Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            aria-label="Account menu"
+            className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-brand text-xs font-semibold text-brand-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            type="button"
+          >
+            {user.profilePicture ? (
+              // eslint-disable-next-line @next/next/no-img-element -- avatar from Cloudinary, tiny
+              <img alt="" className="size-full object-cover" src={user.profilePicture} />
+            ) : (
+              initials
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>
+            <p className="truncate text-sm font-medium">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="truncate text-xs font-normal text-muted-foreground">
+              {ROLE_LABELS[role]}
+            </p>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/profile">
+              <UserCircle className="size-4" /> My profile
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setConfirmOpen(true)} variant="destructive">
+            <LogOut className="size-4" /> Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmationDialog
+        confirmText="Sign out"
+        description="You will be signed out of this device."
+        isDestructive
+        onConfirm={async () => {
+          setConfirmOpen(false);
+          await logout();
+          router.replace("/login");
+        }}
+        onOpenChange={setConfirmOpen}
+        open={confirmOpen}
+        title="Sign out?"
+      />
+    </>
+  );
+}
+
+function ConsoleFooter() {
+  return (
+    <footer className="border-t border-border bg-background/95">
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-4 py-4 text-center sm:px-6 lg:flex-row lg:px-8 lg:text-left">
+        <div className="hidden items-center gap-2 lg:flex">
+          <Logo href={null} showText={false} />
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold">Elektor Pro</span>
+            <span className="text-[10px] text-muted-foreground">
+              Every ballot secret, every result provable
+            </span>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          © {new Date().getFullYear()} Elektor Pro. All rights reserved.
+        </p>
+      </div>
+    </footer>
   );
 }
 
@@ -154,9 +218,9 @@ export function ConsoleShell({
   const { isError, isLoading } = useGetMeQuery();
   const { initialized, role, user } = useAuthRole();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Desktop sidebar collapse, remembered across visits. The stored value is
-  // read via useSyncExternalStore (false during SSR, real value after
-  // hydration - no setState-in-effect); in-session toggles override it.
+  // Desktop sidebar collapse (icon rail), remembered across visits. The
+  // stored value is read via useSyncExternalStore (false during SSR, real
+  // value after hydration); in-session toggles override it.
   const storedCollapsed = useSyncExternalStore(
     emptySubscribe,
     () => localStorage.getItem(COLLAPSE_KEY) === "1",
@@ -197,38 +261,50 @@ export function ConsoleShell({
     );
   }
 
-  const sidebar = (
+  const sidebar = (collapsedRail: boolean) => (
+    <TooltipProvider delayDuration={0}>
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-sidebar-border px-5 py-4">
-        <Logo href="/" />
+      {/* Same h-16 + hairline as the top bar so the two lines meet. */}
+      <div
+        className={cn(
+          "flex h-16 shrink-0 items-center border-b border-sidebar-border",
+          collapsedRail ? "justify-center px-0" : "px-5",
+        )}
+      >
+        <Logo href="/" showText={!collapsedRail} />
       </div>
-      <NavList onNavigate={() => setDrawerOpen(false)} />
+      <NavList collapsed={collapsedRail} onNavigate={() => setDrawerOpen(false)} />
       <div className="border-t border-sidebar-border p-3">
-        <p className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-brand" />
-          Secured, audited elections
-        </p>
+        {collapsedRail ? (
+          <p className="flex justify-center text-muted-foreground">
+            <ShieldCheck className="size-4 text-brand" />
+          </p>
+        ) : (
+          <p className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground">
+            <ShieldCheck className="size-3.5 text-brand" />
+            Secured, audited elections
+          </p>
+        )}
       </div>
     </div>
+    </TooltipProvider>
   );
 
   return (
     <div
       className={cn(
-        "min-h-dvh bg-background",
-        collapsed ? "lg:block" : "lg:grid lg:grid-cols-[264px_1fr]",
+        "min-h-dvh bg-background lg:grid",
+        collapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[264px_1fr]",
       )}
     >
-      {/* Desktop sidebar */}
-      {!collapsed && (
-        <aside className="hidden border-r border-sidebar-border bg-sidebar lg:block">
-          <div className="sticky top-0 h-dvh">{sidebar}</div>
-        </aside>
-      )}
+      {/* Desktop sidebar (full or icon rail) */}
+      <aside className="hidden border-r border-sidebar-border bg-sidebar lg:block">
+        <div className="sticky top-0 h-dvh">{sidebar(collapsed)}</div>
+      </aside>
 
       <div className="flex min-w-0 flex-col">
-        {/* Top bar */}
-        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-2.5 backdrop-blur sm:px-6">
+        {/* Top bar - h-16 to mirror the sidebar header exactly. */}
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6">
           <div className="flex items-center gap-2">
             <Sheet onOpenChange={setDrawerOpen} open={drawerOpen}>
               <SheetTrigger asChild>
@@ -238,12 +314,12 @@ export function ConsoleShell({
               </SheetTrigger>
               <SheetContent className="w-72 bg-sidebar p-0" side="left">
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
-                {sidebar}
+                {sidebar(false)}
               </SheetContent>
             </Sheet>
             {/* Desktop: collapse/expand the sidebar (DMS-style trigger). */}
             <Button
-              aria-label={collapsed ? "Open sidebar" : "Close sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               className="hidden lg:inline-flex"
               onClick={toggleCollapsed}
               size="icon-sm"
@@ -251,7 +327,7 @@ export function ConsoleShell({
             >
               {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
             </Button>
-            <span className={cn(!collapsed && "lg:hidden")}>
+            <span className="lg:hidden">
               <Logo href="/" />
             </span>
           </div>
@@ -263,6 +339,8 @@ export function ConsoleShell({
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
+
+        <ConsoleFooter />
       </div>
     </div>
   );
