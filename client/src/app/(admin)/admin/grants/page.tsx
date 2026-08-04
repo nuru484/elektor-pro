@@ -62,7 +62,17 @@ function GrantModal({
   open: boolean;
 }) {
   const [grant, { isLoading: granting }] = useGrantCapabilityMutation();
+  // Staff, agents, and candidates are separate modules - fetch each pool so
+  // any signable account can receive a grant.
   const { data: staff } = useListStaffUsersQuery({ limit: 100 }, { skip: !open });
+  const { data: agents } = useListStaffUsersQuery(
+    { limit: 100, role: "AGENT" },
+    { skip: !open },
+  );
+  const { data: candidates } = useListStaffUsersQuery(
+    { limit: 100, role: "CANDIDATE" },
+    { skip: !open },
+  );
   const { data: elections } = useListElectionsQuery({ limit: 100 }, { skip: !open });
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -94,13 +104,33 @@ function GrantModal({
         <Field label="User">
           <NativeSelect name="userId" required>
             <option value="">Select user…</option>
-            {staff?.data
-              .filter((user) => user.role !== "SUPER_ADMIN")
-              .map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName} ({user.role.toLowerCase()})
-                </option>
-              ))}
+            <optgroup label="Staff">
+              {staff?.data
+                .filter((user) => user.role !== "SUPER_ADMIN")
+                .map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName} ({user.role.toLowerCase()})
+                  </option>
+                ))}
+            </optgroup>
+            {(agents?.data.length ?? 0) > 0 && (
+              <optgroup label="Agents">
+                {agents?.data.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {(candidates?.data.length ?? 0) > 0 && (
+              <optgroup label="Candidates">
+                {candidates?.data.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </NativeSelect>
         </Field>
         <Field label="Capability">
