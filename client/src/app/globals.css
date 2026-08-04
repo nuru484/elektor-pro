@@ -50,6 +50,10 @@
 }
 
 :root {
+  /* Native form controls (select popups, date pickers, scrollbars) render
+     in the OS light theme unless told otherwise - this keeps them dark. */
+  color-scheme: dark;
+
   --radius: 0.625rem;
 
   /* Elektor Pro is dark-only. Brand system: DEEP BLUE + WHITE + NEUTRAL
