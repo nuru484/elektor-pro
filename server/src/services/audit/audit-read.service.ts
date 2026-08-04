@@ -10,13 +10,30 @@ const AUDIT_INCLUDE = {
 } as const;
 
 export const listAuditLogs = async (
-  filters: { action?: string; actorId?: string; entity?: string },
+  filters: {
+    action?: string;
+    actorId?: string;
+    entity?: string;
+    /** Free-text search across action, entity, IP, and actor name. */
+    search?: string;
+  },
   pagination: PaginationParams,
 ) => {
   const where: Prisma.AuditLogWhereInput = {
     ...(filters.entity ? { entity: filters.entity } : {}),
     ...(filters.actorId ? { actorId: filters.actorId } : {}),
     ...(filters.action ? { action: { contains: filters.action } } : {}),
+    ...(filters.search
+      ? {
+          OR: [
+            { action: { contains: filters.search, mode: 'insensitive' } },
+            { entity: { contains: filters.search, mode: 'insensitive' } },
+            { ipAddress: { contains: filters.search } },
+            { actor: { firstName: { contains: filters.search, mode: 'insensitive' } } },
+            { actor: { lastName: { contains: filters.search, mode: 'insensitive' } } },
+          ],
+        }
+      : {}),
   };
   const [data, total] = await Promise.all([
     prisma.auditLog.findMany({

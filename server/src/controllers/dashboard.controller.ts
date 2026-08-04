@@ -43,6 +43,7 @@ export const listAuditLogsController = asyncHandler(
         action: str(req.query.action),
         actorId: str(req.query.actorId),
         entity: str(req.query.entity),
+        search: str(req.query.search),
       },
       parsePagination(req.query),
     );
