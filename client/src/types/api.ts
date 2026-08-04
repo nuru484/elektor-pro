@@ -68,6 +68,8 @@ export interface CurrentUser {
   id: string;
   lastLoginAt?: null | string;
   lastName: string;
+  /** Admin-created account that must set its own password before use. */
+  mustChangePassword?: boolean;
   phone: null | string;
   profilePicture?: null | string;
   role: Role;

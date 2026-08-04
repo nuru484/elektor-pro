@@ -7,13 +7,6 @@ export const createStaffUserSchema = z.object({
   email: z.email(),
   firstName: z.string().min(1).max(80),
   lastName: z.string().min(1).max(80),
-  password: z
-    .string()
-    .min(8)
-    .max(255)
-    .regex(/[a-z]/)
-    .regex(/[A-Z]/)
-    .regex(/[0-9]/),
   phone: z.string().min(6).max(20).optional(),
   role: z.enum([Role.ADMIN, Role.AGENT, Role.CANDIDATE, Role.ACCREDITOR]),
 });

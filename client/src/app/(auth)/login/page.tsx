@@ -61,7 +61,11 @@ export default function LoginPage() {
         // the very next request to a protected route.
         setSessionMarker();
         toast.success("Signed in successfully");
-        router.push(homeForRole(res.data.role));
+        router.push(
+          (res.data as { mustChangePassword?: boolean }).mustChangePassword
+            ? "/password-setup"
+            : homeForRole(res.data.role),
+        );
       }
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Login failed"));
@@ -74,7 +78,11 @@ export default function LoginPage() {
       const res = await verify({ challengeToken: challenge.token, code: values.code }).unwrap();
       setSessionMarker();
       toast.success("Signed in successfully");
-      router.push(homeForRole(res.data.role));
+      router.push(
+        (res.data as { mustChangePassword?: boolean }).mustChangePassword
+          ? "/password-setup"
+          : homeForRole(res.data.role),
+      );
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Invalid code"));
     }

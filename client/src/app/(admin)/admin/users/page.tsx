@@ -86,21 +86,26 @@ const FILTERS_SPEC: TableFiltersSpec<UserFilters> = {
 
 function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [create, { isLoading: creating }] = useCreateStaffUserMutation();
+  const [tempPassword, setTempPassword] = useState<null | string>(null);
+
+  const close = () => {
+    setTempPassword(null);
+    onClose();
+  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     try {
-      await create({
+      const res = (await create({
         email: f.get("email"),
         firstName: f.get("firstName"),
         lastName: f.get("lastName"),
-        password: f.get("password"),
         phone: f.get("phone") || undefined,
         role: f.get("role"),
-      }).unwrap();
+      }).unwrap()) as { data?: { temporaryPassword?: string } };
       toast.success("Account created");
-      onClose();
+      setTempPassword(res.data?.temporaryPassword ?? null);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     }
@@ -108,27 +113,58 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
 
   return (
     <Modal
-      description="They can sign in immediately and should change this password."
-      onClose={onClose}
+      description={
+        tempPassword
+          ? undefined
+          : "The system generates a temporary password and emails it to them; they must set their own on first sign-in."
+      }
+      onClose={close}
       open={open}
-      title="New staff account"
+      title={tempPassword ? "Account created" : "New staff account"}
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="First name">
-            <Input name="firstName" placeholder="e.g. Ama" required />
-          </Field>
-          <Field label="Last name">
-            <Input name="lastName" placeholder="e.g. Owusu" required />
-          </Field>
+      {tempPassword ? (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Share this temporary password with the new user - it is shown only
+            once (they also receive it by email). They will be asked to set
+            their own password on first sign-in.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-center font-mono text-lg tracking-wider">
+              {tempPassword}
+            </code>
+            <Button
+              onClick={async () => {
+                await navigator.clipboard.writeText(tempPassword);
+                toast.success("Copied");
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Copy
+            </Button>
+          </div>
+          <Button className="w-full" onClick={close} variant="brand">
+            Done
+          </Button>
         </div>
-        <Field label="Email">
-          <Input name="email" placeholder="e.g. ama@org.com" required type="email" />
-        </Field>
-        <Field label="Phone">
-          <Input name="phone" placeholder="e.g. +233 24 000 0000 (optional)" type="tel" />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
+      ) : (
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First name">
+              <Input name="firstName" placeholder="e.g. Ama" required />
+            </Field>
+            <Field label="Last name">
+              <Input name="lastName" placeholder="e.g. Owusu" required />
+            </Field>
+          </div>
+          <Field label="Email">
+            <Input name="email" placeholder="e.g. ama@org.com" required type="email" />
+          </Field>
+          <Field label="Phone">
+            <Input name="phone" placeholder="e.g. +233 24 000 0000 (optional)" type="tel" />
+          </Field>
           <Field label="Role">
             <NativeSelect defaultValue="ADMIN" name="role">
               {CREATABLE_ROLES.map((role) => (
@@ -138,14 +174,11 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
               ))}
             </NativeSelect>
           </Field>
-          <Field hint="8+ chars, mixed case + digit" label="Temporary password">
-            <Input name="password" placeholder="Temporary password" required type="password" />
-          </Field>
-        </div>
-        <Button className="w-full" loading={creating} type="submit" variant="brand">
-          Create account
-        </Button>
-      </form>
+          <Button className="w-full" loading={creating} type="submit" variant="brand">
+            Create account
+          </Button>
+        </form>
+      )}
     </Modal>
   );
 }

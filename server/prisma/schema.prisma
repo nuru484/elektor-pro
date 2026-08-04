@@ -188,6 +188,9 @@ model User {
   unlockedUsers       User[]    @relation("UserUnlocker")
   lastLoginAt         DateTime?
   passwordChangedAt   DateTime?
+  /// Set on admin-created accounts: the user must replace the generated
+  /// temporary password before using the platform.
+  mustChangePassword  Boolean   @default(false)
 
   createdById  String?
   creator      User?   @relation("UserCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)

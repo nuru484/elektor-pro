@@ -323,6 +323,22 @@ function ColorEditor({
   );
 }
 
+function Swatch({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <span
+          aria-hidden
+          className="size-5 rounded-md border border-border"
+          style={{ backgroundColor: value }}
+        />
+        <span className="font-mono text-sm font-medium">{value}</span>
+      </div>
+    </div>
+  );
+}
+
 function ColorsCard({ org }: { org: Organization }) {
   const [editing, setEditing] = useState(false);
   const [primary, setPrimary] = useState(org.primaryColor);
@@ -338,20 +354,6 @@ function ColorsCard({ org }: { org: Organization }) {
       toast.error(getApiErrorMessage(error));
     }
   };
-
-  const Swatch = ({ label, value }: { label: string; value: string }) => (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="mt-1 flex items-center gap-2">
-        <span
-          aria-hidden
-          className="size-5 rounded-md border border-border"
-          style={{ backgroundColor: value }}
-        />
-        <span className="font-mono text-sm font-medium">{value}</span>
-      </div>
-    </div>
-  );
 
   return (
     <Card className={CARD_MOBILE}>

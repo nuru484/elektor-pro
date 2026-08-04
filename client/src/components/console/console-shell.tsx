@@ -261,12 +261,18 @@ export function ConsoleShell({
       router.replace("/login");
       return;
     }
+    if (user?.mustChangePassword) {
+      // Generated temporary passwords must be replaced before the console
+      // can be used.
+      router.replace("/password-setup");
+      return;
+    }
     if (role && !allowed) {
       router.replace("/profile");
     }
   }, [allowed, initialized, isError, isLoading, role, router, user]);
 
-  if (isLoading || !user || !allowed) {
+  if (isLoading || !user || !allowed || user.mustChangePassword) {
     return <LoadingScreen />;
   }
 

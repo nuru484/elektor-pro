@@ -58,6 +58,7 @@ export const STAFF_SELECT = {
   id: true,
   lastLoginAt: true,
   lastName: true,
+  mustChangePassword: true,
   phone: true,
   profilePicture: true,
   role: true,
@@ -345,7 +346,13 @@ export const makeAuthService = (
       throw new UnauthorizedError('Current password is incorrect');
     }
     await prisma.user.update({
-      data: { password: await hashPassword(newPassword), passwordChangedAt: clock.now() },
+      data: {
+        // A change also clears the first-login requirement on generated
+        // temporary passwords.
+        mustChangePassword: false,
+        password: await hashPassword(newPassword),
+        passwordChangedAt: clock.now(),
+      },
       where: { id: userId },
     });
     if (currentSessionId) {

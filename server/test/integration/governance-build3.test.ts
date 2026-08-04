@@ -24,12 +24,25 @@ describe('Build 3 people APIs', () => {
       email: 'desk@test.com',
       firstName: 'Desk',
       lastName: 'Officer',
-      password: 'Password123!',
       role: Role.ACCREDITOR,
     });
     expect(res.status).toBe(201);
+    // The system generates the password and returns it exactly once.
+    const body = bodyOf<{ data: { temporaryPassword: string } }>(res);
+    expect(body.data.temporaryPassword).toMatch(/^[a-zA-Z0-9]{12}$/);
     const created = await prisma.user.findFirst({ where: { email: 'desk@test.com' } });
     expect(created?.role).toBe(Role.ACCREDITOR);
+    expect(created?.mustChangePassword).toBe(true);
+
+    // The temp password signs in, and changing it clears the requirement.
+    const deskCookie = await loginCookie('desk@test.com', body.data.temporaryPassword);
+    const change = await api()
+      .post('/api/v1/auth/password/change')
+      .set('Cookie', deskCookie)
+      .send({ currentPassword: body.data.temporaryPassword, newPassword: 'MyOwnPass123' });
+    expect(change.status).toBe(200);
+    const after = await prisma.user.findFirst({ where: { email: 'desk@test.com' } });
+    expect(after?.mustChangePassword).toBe(false);
   });
 
   it('filters the staff list by role, status and creation date', async () => {

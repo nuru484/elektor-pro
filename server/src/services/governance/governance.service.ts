@@ -15,8 +15,10 @@ import {
 } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { hashPassword } from '../../utils/password.js';
+import { generateTempPassword } from '../../utils/temp-password.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { canApproveChanges } from '../authorization/capability.service.js';
+import { defaultDeps } from '../deps.js';
 
 interface Actor { id: string; role: Role }
 interface Ctx { ipAddress?: string; userAgent?: string }
@@ -32,35 +34,51 @@ export interface StaffUserInput {
   email: string;
   firstName: string;
   lastName: string;
-  password: string;
   phone?: string;
   role: Role;
 }
 
-/** Super-admin creates a staff/agent/candidate account. */
+/**
+ * Super-admin creates a staff/agent/candidate/accreditor account. The system
+ * generates a temporary password (never chosen by the admin), emails it to
+ * the new user, returns it ONCE in the response, and forces a change on
+ * first sign-in before the account can be used.
+ */
 export const createStaffUser = async (
   actor: Actor,
   input: StaffUserInput,
   ctx: Ctx = {},
-): Promise<{ id: string }> => {
+): Promise<{ id: string; temporaryPassword: string }> => {
   if (actor.role !== Role.SUPER_ADMIN) {
     throw new ForbiddenError('Only a super administrator can create accounts');
   }
   if (!STAFF_ROLES.has(input.role)) {
     throw new BadRequestError('Role must be ADMIN, AGENT, CANDIDATE or ACCREDITOR');
   }
+  const temporaryPassword = generateTempPassword();
   const user = await prisma.user.create({
     data: {
       createdById: actor.id,
       email: input.email.toLowerCase(),
       firstName: input.firstName,
       lastName: input.lastName,
-      password: await hashPassword(input.password),
+      mustChangePassword: true,
+      password: await hashPassword(temporaryPassword),
       phone: input.phone ?? null,
       role: input.role,
     },
     select: { id: true },
   });
+  // Best-effort credential delivery; the admin also sees the password once.
+  try {
+    await defaultDeps.mail.send({
+      email: input.email.toLowerCase(),
+      subject: 'Your Elektor Pro account',
+      text: `Hello ${input.firstName},\n\nAn account has been created for you on Elektor Pro.\n\nTemporary password: ${temporaryPassword}\n\nSign in with your email and this password - you will be asked to set your own password before you can continue.`,
+    });
+  } catch {
+    // Delivery failure must not lose the account; the admin has the password.
+  }
   await appendAudit(prisma, {
     action: 'user.created',
     actorId: actor.id,
@@ -71,7 +89,7 @@ export const createStaffUser = async (
     metadata: { role: input.role },
     userAgent: ctx.userAgent,
   });
-  return user;
+  return { id: user.id, temporaryPassword };
 };
 
 export const listStaffUsers = async (
