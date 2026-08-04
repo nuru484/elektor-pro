@@ -77,6 +77,13 @@ export const assertStatusTransition = (
 const ELECTION_INCLUDE = {
   _count: { select: { candidates: true, portfolios: true, voterElections: true } },
   createdBy: { select: { firstName: true, id: true, lastName: true } },
+  eligibilityGroups: {
+    select: {
+      group: {
+        select: { category: { select: { name: true } }, id: true, name: true },
+      },
+    },
+  },
 } as const;
 
 export const listElections = async (
@@ -123,15 +130,67 @@ export const getElection = async (idOrSlug: string) => {
 const slugExists = async (tx: TxClient, slug: string): Promise<boolean> =>
   (await tx.election.findUnique({ select: { id: true }, where: { slug } })) !== null;
 
+/** Replace an election's eligibility groups with the given set (validated). */
+const applyEligibilityGroups = async (
+  tx: TxClient,
+  electionId: string,
+  groupIds: string[],
+): Promise<void> => {
+  const unique = [...new Set(groupIds)];
+  if (unique.length) {
+    const found = await tx.group.count({ where: { id: { in: unique } } });
+    if (found !== unique.length) {
+      throw new BadRequestError('One or more eligibility groups do not exist', {
+        code: 'UNKNOWN_GROUP',
+        layer: 'election',
+      });
+    }
+  }
+  await tx.electionEligibility.deleteMany({
+    where: { electionId, groupId: { notIn: unique } },
+  });
+  if (unique.length) {
+    await tx.electionEligibility.createMany({
+      data: unique.map((groupId) => ({ electionId, groupId })),
+      skipDuplicates: true,
+    });
+  }
+};
+
+/**
+ * A GROUPS-mode election with no eligibility groups would be visible to (and
+ * votable by) nobody; refuse the write. Runs after create/update inside the
+ * same transaction so every permutation (mode change, group change, both) is
+ * checked against the final state.
+ */
+const assertGroupsModeConsistent = async (
+  tx: TxClient,
+  electionId: string,
+): Promise<void> => {
+  const election = await tx.election.findUnique({
+    select: { eligibilityMode: true },
+    where: { id: electionId },
+  });
+  if (election?.eligibilityMode !== 'GROUPS') return;
+  const groups = await tx.electionEligibility.count({ where: { electionId } });
+  if (groups === 0) {
+    throw new BadRequestError(
+      'A group-scoped election needs at least one eligibility group',
+      { code: 'ELIGIBILITY_GROUPS_REQUIRED', layer: 'election' },
+    );
+  }
+};
+
 export const electionApplier: Applier = {
   create: async (tx, payload, actorId) => {
     const input = payload as Record<string, unknown> & {
+      groupIds?: string[];
       name: string;
       slug?: string;
     };
     const slug = await uniqueSlug(input.slug ?? input.name, (s) => slugExists(tx, s));
-    const { slug: _slug, ...rest } = input;
-    return tx.election.create({
+    const { groupIds, slug: _slug, ...rest } = input;
+    const election = await tx.election.create({
       data: {
         ...(rest as unknown as Prisma.ElectionCreateInput),
         createdBy: { connect: { id: actorId } },
@@ -139,31 +198,40 @@ export const electionApplier: Applier = {
       },
       select: { id: true },
     });
+    if (groupIds?.length) await applyEligibilityGroups(tx, election.id, groupIds);
+    await assertGroupsModeConsistent(tx, election.id);
+    return election;
   },
   remove: async (tx, id) => {
     await assertElectionUnlocked(tx, id);
     return tx.election.delete({ select: { id: true }, where: { id } });
   },
   update: async (tx, id, payload) => {
-    const input = payload as { status?: ElectionStatus };
+    const { groupIds, ...rest } = payload as Record<string, unknown> & {
+      groupIds?: string[];
+      status?: ElectionStatus;
+    };
     // The certification lock freezes content, not lifecycle housekeeping: a
     // pure status change (e.g. ENDED -> ARCHIVED) stays possible and is still
     // governed by the state machine below.
     const keys = Object.keys(payload as Record<string, unknown>);
     const statusOnly = keys.length === 1 && keys[0] === 'status';
     if (!statusOnly) await assertElectionUnlocked(tx, id);
-    if (input.status) {
+    if (rest.status) {
       const current = await tx.election.findUnique({
         select: { status: true },
         where: { id },
       });
       if (!current) throw new NotFoundError('Election not found');
-      assertStatusTransition(current.status, input.status);
+      assertStatusTransition(current.status, rest.status);
     }
-    return tx.election.update({
-      data: payload as Prisma.ElectionUpdateInput,
+    const election = await tx.election.update({
+      data: rest as Prisma.ElectionUpdateInput,
       select: { id: true },
       where: { id },
     });
+    if (groupIds) await applyEligibilityGroups(tx, id, groupIds);
+    await assertGroupsModeConsistent(tx, id);
+    return election;
   },
 };

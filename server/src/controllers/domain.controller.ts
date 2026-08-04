@@ -50,6 +50,7 @@ import {
   getPortfolio,
   listPortfolios,
 } from '../services/domain/portfolio.service.js';
+import { previewVoterImport } from '../services/domain/voter-import.service.js';
 import { getVoter, listVoters } from '../services/domain/voter.service.js';
 import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendList, sendOk } from '../utils/http.js';
@@ -207,6 +208,28 @@ export const voterControllers = makeCrud({
   summary: (b) => `Create voter: ${String(b.name)}`,
   updateSchema: updateVoterSchema,
 });
+
+/**
+ * Parse + validate a CSV/XLSX voter file and report per-row problems without
+ * writing anything; the client submits the valid rows via POST /voters/bulk.
+ */
+export const previewVoterImportController: RequestHandler[] = [
+  multerUpload.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) {
+      throw new ValidationError('A CSV or XLSX file is required', {
+        code: 'VALIDATION_ERROR',
+        context: { errors: [{ field: 'file', message: 'A CSV or XLSX file is required' }] },
+      });
+    }
+    const data = await previewVoterImport({
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+      originalname: req.file.originalname,
+    });
+    sendOk(res, 'Import preview generated', data);
+  }),
+];
 
 export const bulkUploadVotersController: RequestHandler[] = [
   ...validationMiddleware.create(bulkVoterSchema),

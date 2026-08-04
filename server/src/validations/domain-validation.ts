@@ -70,6 +70,8 @@ const electionBase = z.object({
   description: z.string().max(2000).optional().nullable(),
   eligibilityMode: z.enum(EligibilityMode).optional(),
   endDate: z.coerce.date(),
+  // Eligibility groups for GROUPS mode (replaced as a set on update).
+  groupIds: z.array(z.string()).max(100).optional(),
   name: z.string().min(2).max(150),
   resultsPolicy: z.enum(ResultsPolicy).optional(),
   settings: jsonRecord.optional().nullable(),

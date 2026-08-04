@@ -15,6 +15,7 @@ import {
   groupControllers,
   listChangeRequestsController,
   portfolioControllers,
+  previewVoterImportController,
   rejectChangeRequestController,
   updateCandidateManifestoController,
   updateCandidatePictureController,
@@ -86,6 +87,12 @@ votersRouter.post(
   authenticateJWT,
   requireCapability(Capability.MANAGE_VOTERS),
   ...bulkUploadVotersController,
+);
+votersRouter.post(
+  '/import/preview',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  ...previewVoterImportController,
 );
 votersRouter.patch(
   '/:id/picture',

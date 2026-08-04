@@ -52,6 +52,9 @@ enum ResultsPolicy {
 // Who may vote at all.
 enum EligibilityMode {
   ALL_VOTERS // every registered voter is eligible (e.g. whole-org SRC election)
+  /// Scoped to one or more groups (e.g. a departmental election): only voters
+  /// belonging to an ElectionEligibility group can SEE or vote in the election.
+  GROUPS
   ROLL // only voters explicitly assigned to the election
 }
 
@@ -324,6 +327,7 @@ model Group {
 
   voterMemberships     VoterGroupMembership[]
   portfolioEligibility PortfolioEligibility[]
+  electionEligibility  ElectionEligibility[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -410,13 +414,14 @@ model Election {
   createdById String?
   createdBy   User?   @relation("ElectionCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
-  portfolios      Portfolio[]
-  candidates      Candidate[]
-  voterElections  VoterElection[]
-  ballots         Ballot[]
-  agentLinks      AgentAssignment[]
-  accessGrants    AccessGrant[]
-  resultSnapshots ResultSnapshot[]
+  portfolios        Portfolio[]
+  candidates        Candidate[]
+  voterElections    VoterElection[]
+  ballots           Ballot[]
+  agentLinks        AgentAssignment[]
+  accessGrants      AccessGrant[]
+  resultSnapshots   ResultSnapshot[]
+  eligibilityGroups ElectionEligibility[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -427,6 +432,25 @@ model Election {
   @@index([startDate])
   @@index([endDate])
   @@index([createdById])
+}
+
+/// Election-level constituency scoping (EligibilityMode.GROUPS): which groups
+/// may see and vote in an election. The election-level counterpart of
+/// PortfolioEligibility - a departmental election lists its department group
+/// here; SRC-style elections use ALL_VOTERS and have no rows.
+model ElectionEligibility {
+  id         String   @id @default(cuid())
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  groupId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([electionId, groupId])
+  // Voter-portal visibility: "elections any of my groups can see".
+  @@index([groupId])
 }
 
 model Portfolio {

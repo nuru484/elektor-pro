@@ -3,6 +3,12 @@ import { Router } from 'express';
 
 import { Capability, Role } from '../../../generated/prisma/client.js';
 import {
+  addToRollController,
+  listRollController,
+  removeFromRollController,
+  setRollEligibilityController,
+} from '../../controllers/roll.controller.js';
+import {
   accreditVoterController,
   castBallotController,
   getBallotController,
@@ -53,6 +59,32 @@ votingRoutes.post(
   authenticateJWT,
   requireCapability(Capability.ACCREDIT_VOTERS),
   accreditVoterController,
+);
+
+// Election roll management (staff with capability)
+votingRoutes.get(
+  '/elections/:electionId/roll',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  listRollController,
+);
+votingRoutes.post(
+  '/elections/:electionId/roll',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  ...addToRollController,
+);
+votingRoutes.patch(
+  '/elections/:electionId/roll/:voterId',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  ...setRollEligibilityController,
+);
+votingRoutes.delete(
+  '/elections/:electionId/roll/:voterId',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  removeFromRollController,
 );
 
 export default votingRoutes;

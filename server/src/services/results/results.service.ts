@@ -85,7 +85,7 @@ export const computeResults = async (electionId: string) => {
   const election = await prisma.election.findFirst({ where: { id: electionId } });
   if (!election) throw new NotFoundError('Election not found');
 
-  const [portfolios, grouped, totalVoted, eligibleCount, allVoterCount] =
+  const [portfolios, grouped, totalVoted, eligibleCount, allVoterCount, groupEligibleCount] =
     await Promise.all([
       prisma.portfolio.findMany({
         include: {
@@ -105,6 +105,14 @@ export const computeResults = async (electionId: string) => {
       prisma.voterElection.count({ where: { electionId, hasVoted: true } }),
       prisma.voterElection.count({ where: { electionId, isEligible: true } }),
       prisma.voter.count(),
+      // GROUPS mode: distinct voters belonging to any scoped group.
+      prisma.voter.count({
+        where: {
+          groupMemberships: {
+            some: { group: { electionEligibility: { some: { electionId } } } },
+          },
+        },
+      }),
     ]);
 
   // Index grouped counts for O(1) lookups (avoids N+1).
@@ -170,7 +178,9 @@ export const computeResults = async (electionId: string) => {
   const totalEligible =
     election.eligibilityMode === EligibilityMode.ALL_VOTERS
       ? allVoterCount
-      : eligibleCount;
+      : election.eligibilityMode === EligibilityMode.GROUPS
+        ? groupEligibleCount
+        : eligibleCount;
 
   return {
     election: {

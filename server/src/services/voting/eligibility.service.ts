@@ -1,7 +1,78 @@
-import { PortfolioEligibilityMode } from '../../../generated/prisma/client.js';
+import {
+  EligibilityMode,
+  PortfolioEligibilityMode,
+  type Prisma,
+} from '../../../generated/prisma/client.js';
 // src/services/voting/eligibility.service.ts
-// Resolves which portfolios a given voter may vote in a given election.
+// Resolves which elections a voter can see and which portfolios they may vote.
 import prisma from '../../lib/prisma.js';
+import { ForbiddenError } from '../../middlewares/error-handler.js';
+
+/**
+ * Election-level visibility filter for the voter portal: a voter sees
+ * ALL_VOTERS elections, GROUPS elections scoped to any of their groups, and
+ * ROLL elections they are explicitly on. Anything else does not exist for
+ * them - scoping hides, it does not just refuse.
+ */
+export const electionVisibilityFilter = async (
+  voterId: string,
+): Promise<Prisma.ElectionWhereInput> => {
+  const memberships = await prisma.voterGroupMembership.findMany({
+    select: { groupId: true },
+    where: { voterId },
+  });
+  const groupIds = memberships.map((m) => m.groupId);
+  return {
+    OR: [
+      { eligibilityMode: EligibilityMode.ALL_VOTERS },
+      ...(groupIds.length
+        ? [
+            {
+              eligibilityGroups: { some: { groupId: { in: groupIds } } },
+              eligibilityMode: EligibilityMode.GROUPS,
+            },
+          ]
+        : []),
+      {
+        eligibilityMode: EligibilityMode.ROLL,
+        voterElections: { some: { isEligible: true, voterId } },
+      },
+    ],
+  };
+};
+
+/**
+ * Assert a voter may participate in an election. An explicit
+ * VoterElection.isEligible = false is an admin exclusion and blocks in every
+ * mode; beyond that, GROUPS requires membership in a scoped group and ROLL
+ * requires an eligible roll entry.
+ */
+export const assertVoterEligibleForElection = async (
+  voterId: string,
+  election: { eligibilityMode: EligibilityMode; id: string },
+  voterElection: null | { isEligible: boolean },
+): Promise<void> => {
+  const refuse = (): never => {
+    throw new ForbiddenError('You are not eligible to vote in this election', {
+      code: 'NOT_ELIGIBLE',
+      layer: 'voting',
+    });
+  };
+  if (voterElection && !voterElection.isEligible) refuse();
+  if (election.eligibilityMode === EligibilityMode.ROLL) {
+    if (!voterElection?.isEligible) refuse();
+  }
+  if (election.eligibilityMode === EligibilityMode.GROUPS) {
+    const member = await prisma.voterGroupMembership.findFirst({
+      select: { id: true },
+      where: {
+        group: { electionEligibility: { some: { electionId: election.id } } },
+        voterId,
+      },
+    });
+    if (!member) refuse();
+  }
+};
 
 export interface EligiblePortfolio {
   allowAbstain: boolean;

@@ -3,7 +3,6 @@ import type { TxClient } from '../../types/prisma.types.js';
 import {
   BallotEntryType,
   ElectionStatus,
-  EligibilityMode,
   VotingMethod,
 } from '../../../generated/prisma/client.js';
 // src/services/voting/voting.service.ts
@@ -21,7 +20,10 @@ import {
 } from '../../middlewares/error-handler.js';
 import { emitElectionUpdate } from '../../realtime/io.js';
 import { chainHash, generateReceiptCode } from '../../utils/crypto.js';
-import { resolveEligiblePortfolios } from './eligibility.service.js';
+import {
+  assertVoterEligibleForElection,
+  resolveEligiblePortfolios,
+} from './eligibility.service.js';
 
 export interface BallotSelection {
   approve?: boolean;
@@ -59,9 +61,7 @@ export const getVoterBallot = async (userId: string, electionId: string) => {
   const voterElection = await prisma.voterElection.findUnique({
     where: { voterId_electionId: { electionId, voterId: voter.id } },
   });
-  if (election.eligibilityMode === EligibilityMode.ROLL && !voterElection?.isEligible) {
-    throw new ForbiddenError('You are not eligible to vote in this election');
-  }
+  await assertVoterEligibleForElection(voter.id, election, voterElection);
 
   const portfolios = await resolveEligiblePortfolios(voter.id, electionId);
   return {
@@ -206,9 +206,7 @@ export const castBallot = async (
   const voterElection = await prisma.voterElection.findUnique({
     where: { voterId_electionId: { electionId, voterId: voter.id } },
   });
-  if (election.eligibilityMode === EligibilityMode.ROLL && !voterElection?.isEligible) {
-    throw new ForbiddenError('You are not eligible to vote in this election');
-  }
+  await assertVoterEligibleForElection(voter.id, election, voterElection);
   if (election.accreditationRequired && !voterElection?.accreditedAt) {
     throw new ForbiddenError('You must be accredited before voting');
   }

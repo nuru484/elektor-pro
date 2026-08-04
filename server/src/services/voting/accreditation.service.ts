@@ -4,6 +4,7 @@ import type { Role } from '../../../generated/prisma/client.js';
 import prisma from '../../lib/prisma.js';
 import { NotFoundError } from '../../middlewares/error-handler.js';
 import { appendAudit } from '../audit/audit.service.js';
+import { electionVisibilityFilter } from './eligibility.service.js';
 
 /** Mark a voter accredited (checked-in) for an election. */
 export const accreditVoter = async (
@@ -37,7 +38,11 @@ export const accreditVoter = async (
   return { accreditedAt };
 };
 
-/** Elections a voter can currently participate in (open + within window). */
+/**
+ * Elections a voter can currently participate in (open + within window),
+ * scoped by election-level eligibility: group-scoped elections outside the
+ * voter's groups are invisible, not merely refused.
+ */
 export const listVoterElections = async (userId: string) => {
   const voter = await prisma.voter.findFirst({
     select: { id: true },
@@ -45,6 +50,7 @@ export const listVoterElections = async (userId: string) => {
   });
   if (!voter) return [];
   const now = new Date();
+  const visibility = await electionVisibilityFilter(voter.id);
   return prisma.election.findMany({
     orderBy: { startDate: 'asc' },
     select: {
@@ -61,6 +67,7 @@ export const listVoterElections = async (userId: string) => {
       },
     },
     where: {
+      ...visibility,
       endDate: { gte: now },
       status: 'IN_PROGRESS',
     },
