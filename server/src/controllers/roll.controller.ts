@@ -46,7 +46,7 @@ export const addToRollController: RequestHandler[] = [
     const data = await addToRoll(
       actorOf(req),
       req.params.electionId,
-      req.body as { groupId?: string; voterIds?: string[] },
+      req.body as { groupId?: string; joinGroupId?: string; voterIds?: string[] },
       requestContextOf(req),
     );
     sendOk(res, 'Roll updated', data);

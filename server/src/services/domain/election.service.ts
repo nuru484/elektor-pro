@@ -87,13 +87,28 @@ const ELECTION_INCLUDE = {
 } as const;
 
 export const listElections = async (
-  filters: { search?: string; status?: ElectionStatus },
+  filters: {
+    /** Inclusive lower bound on startDate. */
+    from?: Date;
+    search?: string;
+    status?: ElectionStatus;
+    /** EXCLUSIVE upper bound on startDate (callers pass day-after). */
+    to?: Date;
+  },
   pagination: PaginationParams,
 ) => {
   const where: Prisma.ElectionWhereInput = {
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.search
       ? { name: { contains: filters.search, mode: 'insensitive' } }
+      : {}),
+    ...(filters.from || filters.to
+      ? {
+          startDate: {
+            ...(filters.from ? { gte: filters.from } : {}),
+            ...(filters.to ? { lt: filters.to } : {}),
+          },
+        }
       : {}),
   };
   const [data, total] = await Promise.all([

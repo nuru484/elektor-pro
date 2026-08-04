@@ -282,46 +282,90 @@ describe('voter group + identity constraints', () => {
 
   it('rejects two groups from a single-select category', async () => {
     const cookie = await superAdminCookie();
+    const { election } = await createElectionFixture();
     const { groupA, groupB } = await seedCategory(false);
 
     const res = await api()
       .post('/api/v1/voters')
       .set('Cookie', cookie)
-      .send({ groupIds: [groupA.id, groupB.id], name: 'Ama', voterId: 'V-1' });
+      .send({
+        electionIds: [election.id],
+        groupIds: [groupA.id, groupB.id],
+        name: 'Ama',
+        voterId: 'V-1',
+      });
     expect(res.status).toBe(400);
     expect(bodyOf<{ code?: string }>(res).code).toBe('SINGLE_GROUP_CATEGORY');
   });
 
   it('allows multiple groups when the category permits it, and unknown groups fail', async () => {
     const cookie = await superAdminCookie();
+    const { election } = await createElectionFixture();
     const { groupA, groupB } = await seedCategory(true);
 
     const ok = await api()
       .post('/api/v1/voters')
       .set('Cookie', cookie)
-      .send({ groupIds: [groupA.id, groupB.id], name: 'Kofi', voterId: 'V-2' });
+      .send({
+        electionIds: [election.id],
+        groupIds: [groupA.id, groupB.id],
+        name: 'Kofi',
+        voterId: 'V-2',
+      });
     expect(ok.status).toBe(201);
 
     const unknown = await api()
       .post('/api/v1/voters')
       .set('Cookie', cookie)
-      .send({ groupIds: ['not-a-group'], name: 'Esi', voterId: 'V-3' });
+      .send({
+        electionIds: [election.id],
+        groupIds: ['not-a-group'],
+        name: 'Esi',
+        voterId: 'V-3',
+      });
     expect(unknown.status).toBe(400);
     expect(bodyOf<{ code?: string }>(unknown).code).toBe('UNKNOWN_GROUP');
   });
 
-  it('enforces voter email uniqueness', async () => {
+  it('enforces voter email uniqueness and requires an election', async () => {
     const cookie = await superAdminCookie();
-    const first = await api()
+    const { election } = await createElectionFixture();
+
+    // Registration without an election is refused outright.
+    const noElection = await api()
       .post('/api/v1/voters')
       .set('Cookie', cookie)
       .send({ email: 'shared@test.com', name: 'Yaw', voterId: 'V-4' });
+    expect(noElection.status).toBe(400);
+
+    const first = await api()
+      .post('/api/v1/voters')
+      .set('Cookie', cookie)
+      .send({
+        electionIds: [election.id],
+        email: 'shared@test.com',
+        name: 'Yaw',
+        voterId: 'V-4',
+      });
     expect(first.status).toBe(201);
+    // Registration lands on the election's roll as eligible.
+    const created = await prisma.voter.findFirst({
+      include: { voterElections: true },
+      where: { voterId: 'V-4' },
+    });
+    expect(created?.voterElections).toHaveLength(1);
+    expect(created?.voterElections[0].electionId).toBe(election.id);
+    expect(created?.voterElections[0].isEligible).toBe(true);
 
     const dup = await api()
       .post('/api/v1/voters')
       .set('Cookie', cookie)
-      .send({ email: 'shared@test.com', name: 'Abena', voterId: 'V-5' });
+      .send({
+        electionIds: [election.id],
+        email: 'shared@test.com',
+        name: 'Abena',
+        voterId: 'V-5',
+      });
     expect(dup.status).toBe(409);
   });
 });

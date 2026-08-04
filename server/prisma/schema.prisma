@@ -129,6 +129,19 @@ enum Capability {
   APPROVE_CHANGES
   CERTIFY_RESULTS
   ACCREDIT_VOTERS
+  /// Score nominations and decide qualification (vetting panel).
+  VET_CANDIDATES
+}
+
+/// Nomination lifecycle. Elections without vetting create candidates directly
+/// as QUALIFIED; vetting-enabled elections start them as DRAFT and only
+/// QUALIFIED candidates ever appear on ballots or in results.
+enum CandidateStatus {
+  DRAFT
+  UNDER_REVIEW
+  QUALIFIED
+  DISQUALIFIED
+  WITHDRAWN
 }
 
 // ===========================================================================
@@ -211,6 +224,8 @@ model User {
   accessGrantsHeld   AccessGrant[]           @relation("GrantHolder")
   accessGrantsIssued AccessGrant[]           @relation("GrantIssuer")
   resultsCertified   ResultSnapshot[]        @relation("ResultsCertifier")
+  candidateReviews   Candidate[]             @relation("CandidateReviewer")
+  vettingScoresGiven VettingScore[]          @relation("VettingScorer")
   auditLogs          AuditLog[]              @relation("AuditActor")
   recoveryCodes      TwoFactorRecoveryCode[]
   passwordResets     PasswordResetToken[]
@@ -406,6 +421,16 @@ model Election {
 
   // Lifecycle / integrity
   accreditationRequired Boolean @default(false)
+  /// When on, new candidates enter as DRAFT and pass through the vetting
+  /// panel; only QUALIFIED candidates reach the ballot.
+  vettingEnabled        Boolean @default(false)
+  /// Auto-decision threshold: once every criterion is scored, a candidate at
+  /// or above this percentage of the maximum total auto-qualifies, below it
+  /// auto-disqualifies. Null = decisions stay manual.
+  vettingPassPercent    Int?
+  /// Accreditation hands each voter a one-time sign-in code (for polling
+  /// stations where SMS/email OTPs are impractical).
+  voteCodeEnabled       Boolean @default(false)
   isLocked              Boolean @default(false) // set on certification
 
   // Per-election role-based UI visibility + branding overrides (over org defaults).
@@ -422,6 +447,7 @@ model Election {
   accessGrants      AccessGrant[]
   resultSnapshots   ResultSnapshot[]
   eligibilityGroups ElectionEligibility[]
+  vettingCriteria   VettingCriterion[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -506,6 +532,19 @@ model Candidate {
   manifestoUrl   String?
   order          Int     @default(0)
 
+  // Nomination lifecycle (Build 6). Existing/non-vetting candidates default
+  // to QUALIFIED so ballots keep working unchanged.
+  status       CandidateStatus @default(QUALIFIED)
+  /// Position on the printed/on-screen ballot, unique within the portfolio.
+  ballotNumber Int?
+  /// Decision note from the vetting panel (why qualified/disqualified).
+  vettingNote  String?
+  reviewedBy   User?           @relation("CandidateReviewer", fields: [reviewedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  vettingScores VettingScore[]
+
   // Optional login account for the candidate (role = CANDIDATE)
   account   User?   @relation("CandidateAccount", fields: [accountId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   accountId String?
@@ -522,10 +561,54 @@ model Candidate {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Ballot positions are unique per portfolio (NULLs, i.e. unassigned, may repeat).
+  @@unique([portfolioId, ballotNumber])
   @@index([electionId])
   @@index([portfolioId])
   @@index([accountId])
+  // Vetting queue: candidates of an election filtered by lifecycle status.
+  @@index([status])
   @@index([deletedAt])
+}
+
+/// One vetting yardstick for an election (e.g. "Academic standing", max 10).
+model VettingCriterion {
+  id          String   @id @default(cuid())
+  election    Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId  String
+  name        String
+  description String?
+  maxScore    Int      @default(10)
+  order       Int      @default(0)
+
+  scores VettingScore[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([electionId, name])
+  @@index([electionId])
+}
+
+/// One panelist's score for one candidate on one criterion.
+model VettingScore {
+  id          String           @id @default(cuid())
+  candidate   Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  candidateId String
+  criterion   VettingCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  criterionId String
+  score       Int
+  note        String?
+  scoredBy    User?            @relation("VettingScorer", fields: [scoredById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  scoredById  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A panelist scores each candidate-criterion pair once (re-submits update).
+  @@unique([candidateId, criterionId, scoredById])
+  @@index([candidateId])
+  @@index([criterionId])
 }
 
 // Agents observe results for a scope (an election, optionally a candidate).
@@ -568,6 +651,12 @@ model VoterElection {
   accreditedById String?
   hasVoted       Boolean   @default(false)
   votedAt        DateTime?
+
+  /// One-time voting code (hashed) issued at accreditation when the election
+  /// enables codes - the polling-station sign-in for voters without phones.
+  voteCodeHash     String?
+  voteCodeIssuedAt DateTime?
+  voteCodeUsedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

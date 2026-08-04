@@ -77,8 +77,11 @@ const isXlsx = (filename: string, mimetype: string): boolean =>
   mimetype ===
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** Raw parse to header->value records; throws on unsupported formats. */
-const parseRecords = async (
+/**
+ * Raw parse to header->value records; throws on unsupported formats. Shared
+ * with the candidate import.
+ */
+export const parseRecords = async (
   file: { buffer: Buffer; mimetype: string; originalname: string },
 ): Promise<Record<string, string>[]> => {
   if (isCsv(file.originalname, file.mimetype)) {

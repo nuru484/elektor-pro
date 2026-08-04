@@ -35,6 +35,12 @@ export const CAPABILITY_CATALOG: ICapabilityGroup[] = [
         description: 'Add and edit candidates and their profiles.',
         label: 'Manage candidates',
       },
+      {
+        capability: Capability.VET_CANDIDATES,
+        description:
+          'Score nominations against the vetting criteria and decide who qualifies for the ballot.',
+        label: 'Vet candidates',
+      },
     ],
     group: 'Election setup',
   },
@@ -125,6 +131,7 @@ export const DEFAULT_ROLE_CAPABILITIES: Record<EditableRole, Capability[]> = {
     Capability.MANAGE_AGENTS,
     Capability.MANAGE_GROUPS,
     Capability.MANAGE_ORGANIZATION,
+    Capability.VET_CANDIDATES,
     Capability.ACCREDIT_VOTERS,
     Capability.VIEW_RESULTS,
   ],

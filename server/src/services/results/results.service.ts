@@ -21,8 +21,20 @@ const isOver = (status: ElectionStatus): boolean =>
   status === ElectionStatus.ENDED || status === ElectionStatus.ARCHIVED;
 
 /**
+ * Roles granted early results access via the election's settings JSON
+ * (settings.resultsVisibleToRoles). An admin customization: "agents may watch
+ * the tally live even though the public sees it only after close".
+ */
+export const rolesWithEarlyResultsAccess = (settings: unknown): string[] => {
+  const roles = (settings as null | { resultsVisibleToRoles?: unknown })
+    ?.resultsVisibleToRoles;
+  return Array.isArray(roles) ? roles.filter((r): r is string => typeof r === 'string') : [];
+};
+
+/**
  * Decide whether a viewer may see an election's results, combining publish
- * state, role, agent assignment, results policy, and capability grants.
+ * state, role, agent assignment, results policy, per-election role settings,
+ * and capability grants.
  */
 export const canViewResults = async (
   viewer: null | ResultsViewer,
@@ -30,6 +42,7 @@ export const canViewResults = async (
     id: string;
     resultsPolicy: ResultsPolicy;
     resultsPublishedAt: Date | null;
+    settings?: unknown;
     status: ElectionStatus;
   },
 ): Promise<boolean> => {
@@ -37,6 +50,11 @@ export const canViewResults = async (
   if (!viewer) return false;
 
   if (viewer.role === Role.SUPER_ADMIN || viewer.role === Role.ADMIN) return true;
+
+  // Per-election override: the admin allowed this role to see results early.
+  if (rolesWithEarlyResultsAccess(election.settings).includes(viewer.role)) {
+    return true;
+  }
 
   if (viewer.role === Role.AGENT) {
     const assigned = await prisma.agentAssignment.findFirst({
@@ -62,6 +80,7 @@ export const assertCanViewResults = async (
     id: string;
     resultsPolicy: ResultsPolicy;
     resultsPublishedAt: Date | null;
+    settings?: unknown;
     status: ElectionStatus;
   },
 ): Promise<void> => {
@@ -72,6 +91,7 @@ export const assertCanViewResults = async (
 
 export interface CandidateResult {
   approveVotes?: number;
+  ballotNumber?: null | number;
   id: string;
   name: string;
   nickname: null | string;
@@ -90,8 +110,17 @@ export const computeResults = async (electionId: string) => {
       prisma.portfolio.findMany({
         include: {
           candidates: {
-            orderBy: { order: 'asc' },
-            select: { id: true, name: true, nickname: true, profilePicture: true },
+            orderBy: [{ ballotNumber: { nulls: 'last', sort: 'asc' } }, { order: 'asc' }],
+            select: {
+              ballotNumber: true,
+              id: true,
+              name: true,
+              nickname: true,
+              profilePicture: true,
+            },
+            // Disqualified/withdrawn candidates leave the tally display; their
+            // cast entries remain in the ballots but are not presented.
+            where: { status: 'QUALIFIED' },
           },
         },
         orderBy: { order: 'asc' },
@@ -146,6 +175,7 @@ export const computeResults = async (electionId: string) => {
     const candidates: CandidateResult[] = p.candidates.map((c) => {
       const key = `${p.id}:${c.id}`;
       const result: CandidateResult = {
+        ballotNumber: c.ballotNumber,
         id: c.id,
         name: c.name,
         nickname: c.nickname,

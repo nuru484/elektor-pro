@@ -77,6 +77,7 @@ export const assertVoterEligibleForElection = async (
 export interface EligiblePortfolio {
   allowAbstain: boolean;
   candidates: {
+    ballotNumber: null | number;
     id: string;
     manifesto: null | string;
     name: string;
@@ -108,8 +109,10 @@ export const resolveEligiblePortfolios = async (
     prisma.portfolio.findMany({
       include: {
         candidates: {
-          orderBy: { order: 'asc' },
+          // Ballot order: assigned number first, then the manual order.
+          orderBy: [{ ballotNumber: { nulls: 'last', sort: 'asc' } }, { order: 'asc' }],
           select: {
+            ballotNumber: true,
             id: true,
             manifesto: true,
             name: true,
@@ -117,6 +120,8 @@ export const resolveEligiblePortfolios = async (
             partySymbol: true,
             profilePicture: true,
           },
+          // Only qualified candidates are on the ballot.
+          where: { status: 'QUALIFIED' },
         },
         eligibilityGroups: { select: { groupId: true } },
       },

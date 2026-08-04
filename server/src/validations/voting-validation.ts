@@ -12,9 +12,16 @@ export const otpVerifySchema = z.object({
   identifier: z.string().min(1),
 });
 
+export const codeLoginSchema = z.object({
+  code: z.string().min(4).max(20),
+  voterId: z.string().min(1).max(60),
+});
+
 export const rollAddSchema = z
   .object({
     groupId: z.string().min(1).optional(),
+    /** Also enrol the added voters into this eligibility group of the election. */
+    joinGroupId: z.string().min(1).optional(),
     voterIds: z.array(z.string().min(1)).max(5000).optional(),
   })
   .refine((d) => Boolean(d.groupId) || Boolean(d.voterIds?.length), {

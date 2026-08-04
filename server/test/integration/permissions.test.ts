@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { Capability, Role } from '../../generated/prisma/client.js';
 import { invalidateRoleCapabilityCache } from '../../src/services/authorization/role-capability.service.js';
-import { api, bodyOf, createUser, loginCookie, prisma, resetDb } from '../helpers.js';
+import {
+  api,
+  bodyOf,
+  createElectionFixture,
+  createUser,
+  loginCookie,
+  prisma,
+  resetDb,
+} from '../helpers.js';
 
 interface MatrixBody {
   data: {
@@ -54,12 +62,13 @@ describe('runtime permission matrix', () => {
     await createUser(Role.ADMIN, { email: 'admin@test.com' });
     const superCookie = await loginCookie('super@test.com');
     const adminCookie = await loginCookie('admin@test.com');
+    const { election } = await createElectionFixture();
 
     // Admin can create a voter today (staged as a change request)
     const before = await api()
       .post('/api/v1/voters')
       .set('Cookie', adminCookie)
-      .send({ name: 'Ama Voter', voterId: 'V-100' });
+      .send({ electionIds: [election.id], name: 'Ama Voter', voterId: 'V-100' });
     expect([200, 201, 202]).toContain(before.status);
 
     // Revoke MANAGE_VOTERS (and everything else) from ADMIN
@@ -73,7 +82,7 @@ describe('runtime permission matrix', () => {
     const after = await api()
       .post('/api/v1/voters')
       .set('Cookie', adminCookie)
-      .send({ name: 'Kwesi Voter', voterId: 'V-101' });
+      .send({ electionIds: [election.id], name: 'Kwesi Voter', voterId: 'V-101' });
     expect(after.status).toBe(403);
 
     // The edit is in the audit chain
@@ -88,6 +97,7 @@ describe('runtime permission matrix', () => {
     await createUser(Role.ADMIN, { email: 'admin@test.com' });
     const superCookie = await loginCookie('super@test.com');
     const adminCookie = await loginCookie('admin@test.com');
+    const { election } = await createElectionFixture();
 
     const grant = await api()
       .put(`/api/v1/permissions/${Role.ADMIN}`)
@@ -103,7 +113,7 @@ describe('runtime permission matrix', () => {
     const res = await api()
       .post('/api/v1/voters')
       .set('Cookie', adminCookie)
-      .send({ name: 'Direct Voter', voterId: 'V-200' });
+      .send({ electionIds: [election.id], name: 'Direct Voter', voterId: 'V-200' });
     expect(res.status).toBe(201);
     expect(await prisma.voter.count({ where: { voterId: 'V-200' } })).toBe(1);
   });

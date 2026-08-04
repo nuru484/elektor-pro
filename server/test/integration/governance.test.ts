@@ -23,7 +23,12 @@ describe('maker-checker governance', () => {
     const created = await api()
       .post('/api/v1/candidates')
       .set('Cookie', adminCookie)
-      .send({ electionId: election.id, name: 'Pending Person', portfolioId: portfolio.id });
+      .send({
+        electionId: election.id,
+        email: 'pending.person@test.com',
+        name: 'Pending Person',
+        portfolioId: portfolio.id,
+      });
     // 202 Accepted — staged, not applied
     expect(created.status).toBe(202);
     expect(bodyOf<{ pending: boolean }>(created).pending).toBe(true);
@@ -70,7 +75,12 @@ describe('maker-checker governance', () => {
     const res = await api()
       .post('/api/v1/candidates')
       .set('Cookie', superCookie)
-      .send({ electionId: election.id, name: 'Direct Person', portfolioId: portfolio.id });
+      .send({
+        electionId: election.id,
+        email: 'direct.person@test.com',
+        name: 'Direct Person',
+        portfolioId: portfolio.id,
+      });
     expect(res.status).toBe(201);
     expect(await prisma.candidate.count({ where: { name: 'Direct Person' } })).toBe(1);
   });

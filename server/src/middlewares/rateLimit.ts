@@ -75,6 +75,16 @@ export const passwordResetLimiter = createRateLimiter(
   "Too many password reset attempts, please try again later.",
 );
 
+/**
+ * Election-day write paths (ballot casting, code sign-in): far above any
+ * legitimate per-person rate, low enough to blunt scripted abuse.
+ */
+export const votingLimiter = createRateLimiter(
+  60 * 1000, // 1 minute
+  30,
+  "Too many voting requests, please slow down.",
+);
+
 export const globalLimiter = createRateLimiter(
   15 * 60 * 1000, // 15 minutes
   1000, // 1000 requests per IP per window

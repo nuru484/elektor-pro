@@ -4,6 +4,7 @@ import { type RequestHandler, Router } from 'express';
 import { Capability } from '../../../generated/prisma/client.js';
 import {
   approveChangeRequestController,
+  bulkUploadCandidatesController,
   bulkUploadVotersController,
   cancelChangeRequestController,
   candidateControllers,
@@ -15,6 +16,7 @@ import {
   groupControllers,
   listChangeRequestsController,
   portfolioControllers,
+  previewCandidateImportController,
   previewVoterImportController,
   rejectChangeRequestController,
   updateCandidateManifestoController,
@@ -26,6 +28,17 @@ import {
   updateVoterPictureController,
   voterControllers,
 } from '../../controllers/domain.controller.js';
+import {
+  autoAssignBallotNumbersController,
+  createCriterionController,
+  decideCandidateController,
+  deleteCriterionController,
+  getCandidateVettingController,
+  listCriteriaController,
+  scoreCandidateController,
+  setBallotNumberController,
+  updateCriterionController,
+} from '../../controllers/vetting.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { requireCapability } from '../../middlewares/require-capability.js';
 
@@ -120,6 +133,18 @@ domainRoutes.use(
 const candidatesRouter = crudRouter(candidateControllers, Capability.MANAGE_CANDIDATES, {
   create: createCandidateController,
 });
+candidatesRouter.post(
+  '/bulk',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES),
+  ...bulkUploadCandidatesController,
+);
+candidatesRouter.post(
+  '/import/preview',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES),
+  ...previewCandidateImportController,
+);
 candidatesRouter.patch(
   '/:id/picture',
   authenticateJWT,
@@ -132,7 +157,57 @@ candidatesRouter.patch(
   requireCapability(Capability.MANAGE_CANDIDATES),
   ...updateCandidateManifestoController,
 );
+candidatesRouter.get('/:id/vetting', authenticateJWT, getCandidateVettingController);
+candidatesRouter.put(
+  '/:id/vetting/score',
+  authenticateJWT,
+  requireCapability(Capability.VET_CANDIDATES),
+  ...scoreCandidateController,
+);
+candidatesRouter.post(
+  '/:id/status',
+  authenticateJWT,
+  requireCapability(Capability.VET_CANDIDATES),
+  ...decideCandidateController,
+);
+candidatesRouter.patch(
+  '/:id/ballot-number',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES),
+  ...setBallotNumberController,
+);
 domainRoutes.use('/candidates', candidatesRouter);
+
+// Vetting criteria + ballot-number auto-assignment (election-scoped)
+domainRoutes.get(
+  '/elections/:electionId/vetting/criteria',
+  authenticateJWT,
+  listCriteriaController,
+);
+domainRoutes.post(
+  '/elections/:electionId/vetting/criteria',
+  authenticateJWT,
+  requireCapability(Capability.VET_CANDIDATES),
+  ...createCriterionController,
+);
+domainRoutes.patch(
+  '/vetting/criteria/:criterionId',
+  authenticateJWT,
+  requireCapability(Capability.VET_CANDIDATES),
+  ...updateCriterionController,
+);
+domainRoutes.delete(
+  '/vetting/criteria/:criterionId',
+  authenticateJWT,
+  requireCapability(Capability.VET_CANDIDATES),
+  deleteCriterionController,
+);
+domainRoutes.post(
+  '/elections/:electionId/ballot-numbers/auto',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES),
+  ...autoAssignBallotNumbersController,
+);
 
 // Change requests (maker-checker queue)
 domainRoutes.get('/change-requests', authenticateJWT, listChangeRequestsController);

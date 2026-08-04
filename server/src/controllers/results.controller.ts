@@ -30,6 +30,7 @@ const loadElectionForResults = async (idOrSlug: string) => {
       id: true,
       resultsPolicy: true,
       resultsPublishedAt: true,
+      settings: true,
       status: true,
     },
     where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },

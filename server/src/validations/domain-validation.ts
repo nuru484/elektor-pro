@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 import {
+  CandidateStatus,
   ElectionStatus,
   EligibilityMode,
   PortfolioEligibilityMode,
@@ -46,20 +47,31 @@ export const createGroupSchema = z.object({
 export const updateGroupSchema = createGroupSchema.partial();
 
 // --- Voters ---
+// Multipart forms deliver a single checkbox as a bare string.
+const idList = z.preprocess(
+  (value) => (typeof value === 'string' ? [value] : value),
+  z.array(z.string().min(1)).optional(),
+);
 const voterBase = z.object({
+  electionIds: idList,
   email: z.email().optional().nullable(),
-  // Multipart forms deliver a single checkbox as a bare string.
-  groupIds: z.preprocess(
-    (value) => (typeof value === 'string' ? [value] : value),
-    z.array(z.string()).optional(),
-  ),
+  groupIds: idList,
   metadata: jsonRecord.optional().nullable(),
   name: z.string().min(1).max(150),
   phoneNumber: z.string().min(6).max(20).optional().nullable(),
   voterId: z.string().min(1).max(60),
 });
-export const createVoterSchema = voterBase;
+// A voter is always registered INTO at least one election; their groups within
+// that election's scope come along on the same form.
+export const createVoterSchema = voterBase.extend({
+  electionIds: z.preprocess(
+    (value) => (typeof value === 'string' ? [value] : value),
+    z.array(z.string().min(1)).min(1, 'Select at least one election'),
+  ),
+});
 export const updateVoterSchema = voterBase.partial();
+// Bulk rows may omit elections: file imports register voters first and the
+// roll/group tools place them afterwards.
 export const bulkVoterSchema = z.object({
   voters: z.array(voterBase).min(1).max(5000),
 });
@@ -77,6 +89,9 @@ const electionBase = z.object({
   settings: jsonRecord.optional().nullable(),
   slug: z.string().max(80).optional(),
   startDate: z.coerce.date(),
+  vettingEnabled: z.boolean().optional(),
+  vettingPassPercent: z.number().int().min(1).max(100).optional().nullable(),
+  voteCodeEnabled: z.boolean().optional(),
 });
 export const createElectionSchema = electionBase.refine(
   (d) => d.endDate > d.startDate,
@@ -114,17 +129,56 @@ export const updatePortfolioSchema = portfolioBase.partial();
 // --- Candidates ---
 const candidateBase = z.object({
   electionId: z.string().min(1),
+  // Contact doubles as the candidate's sign-in identity: an account is
+  // created (or linked) from it, so new nominations must carry at least one.
+  email: z.email().optional().nullable(),
   manifesto: z.string().max(5000).optional().nullable(),
   name: z.string().min(1).max(150),
   nickname: z.string().max(120).optional().nullable(),
   order: z.number().int().min(0).optional(),
   partySymbol: z.string().max(300).optional().nullable(),
+  phone: z.string().min(6).max(20).optional().nullable(),
   portfolioId: z.string().min(1),
   // profilePicture deliberately absent: media URLs may only originate from
   // the upload middleware, never from a request body.
 });
-export const createCandidateSchema = candidateBase;
+const candidateWithContact = candidateBase.refine(
+  (d) => Boolean(d.email) || Boolean(d.phone),
+  {
+    message: 'Provide an email or phone number so the candidate can sign in',
+    path: ['email'],
+  },
+);
+export const createCandidateSchema = candidateWithContact;
 export const updateCandidateSchema = candidateBase.partial();
+export const bulkCandidateSchema = z.object({
+  candidates: z.array(candidateWithContact).min(1).max(1000),
+});
+
+// --- Vetting ---
+const criterionBase = z.object({
+  description: z.string().max(500).optional().nullable(),
+  maxScore: z.number().int().min(1).max(100).optional(),
+  name: z.string().min(1).max(120),
+  order: z.number().int().min(0).optional(),
+});
+export const createCriterionSchema = criterionBase;
+export const updateCriterionSchema = criterionBase.partial();
+export const vettingScoreSchema = z.object({
+  criterionId: z.string().min(1),
+  note: z.string().max(1000).optional().nullable(),
+  score: z.number().int().min(0),
+});
+export const candidateDecisionSchema = z.object({
+  note: z.string().max(1000).optional().nullable(),
+  status: z.enum(CandidateStatus),
+});
+export const ballotNumberSchema = z.object({
+  ballotNumber: z.number().int().min(1).max(999).nullable(),
+});
+export const autoAssignSchema = z.object({
+  strategy: z.enum(['ALPHABETICAL', 'SCORE']),
+});
 
 // --- Change requests ---
 export const reviewChangeSchema = z.object({

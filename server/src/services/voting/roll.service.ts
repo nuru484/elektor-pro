@@ -99,16 +99,49 @@ export const listRoll = async (
 /**
  * Add voters to the roll (marked eligible), by explicit ids and/or by a whole
  * group's membership. Re-adding an excluded voter re-enables them; voters
- * already on the roll are counted, not duplicated.
+ * already on the roll are counted, not duplicated. When joinGroupId names one
+ * of the election's eligibility groups, the added voters are also enrolled in
+ * that group, so they belong to the election's category/group going forward.
  */
 export const addToRoll = async (
   actor: Actor,
   electionId: string,
-  input: { groupId?: string; voterIds?: string[] },
+  input: { groupId?: string; joinGroupId?: string; voterIds?: string[] },
   ctx: Ctx = {},
-): Promise<{ added: number; alreadyEligible: number; reEnabled: number }> => {
+): Promise<{
+  added: number;
+  alreadyEligible: number;
+  joinedGroup: number;
+  reEnabled: number;
+}> => {
   await requireElection(electionId);
   await assertElectionUnlocked(prisma, electionId);
+
+  // The join target must be a group the election is actually scoped to.
+  let joinGroup: null | { categoryAllowsMultiple: boolean; categoryId: string } =
+    null;
+  if (input.joinGroupId) {
+    const group = await prisma.group.findFirst({
+      select: {
+        category: { select: { allowMultiple: true, id: true } },
+        electionEligibility: {
+          select: { id: true },
+          where: { electionId },
+        },
+      },
+      where: { id: input.joinGroupId },
+    });
+    if (!group || group.electionEligibility.length === 0) {
+      throw new BadRequestError(
+        'The group to join must be one of this election\'s eligibility groups',
+        { code: 'GROUP_NOT_IN_ELECTION', layer: 'roll' },
+      );
+    }
+    joinGroup = {
+      categoryAllowsMultiple: group.category.allowMultiple,
+      categoryId: group.category.id,
+    };
+  }
 
   const ids = new Set(input.voterIds ?? []);
   if (input.voterIds?.length) {
@@ -163,6 +196,33 @@ export const addToRoll = async (
       data: { isEligible: true },
       where: { electionId, isEligible: false, voterId: { in: voterIds } },
     });
+
+    // Group enrolment. In a single-choice category, voters already placed in
+    // a sibling group keep their placement (skipped, not moved).
+    let joinedGroup = 0;
+    const joinGroupId = input.joinGroupId;
+    if (joinGroupId && joinGroup) {
+      let enrolIds = voterIds;
+      if (!joinGroup.categoryAllowsMultiple) {
+        const placed = await tx.voterGroupMembership.findMany({
+          select: { voterId: true },
+          where: {
+            group: { categoryId: joinGroup.categoryId },
+            voterId: { in: voterIds },
+          },
+        });
+        const placedIds = new Set(placed.map((p) => p.voterId));
+        enrolIds = voterIds.filter(
+          (id) => !placedIds.has(id),
+        );
+      }
+      const enrolled = await tx.voterGroupMembership.createMany({
+        data: enrolIds.map((voterId) => ({ groupId: joinGroupId, voterId })),
+        skipDuplicates: true,
+      });
+      joinedGroup = enrolled.count;
+    }
+
     await appendAudit(tx, {
       action: 'election.roll_added',
       actorId: actor.id,
@@ -173,6 +233,8 @@ export const addToRoll = async (
       metadata: {
         added: created.count,
         groupId: input.groupId ?? null,
+        joinedGroup,
+        joinGroupId: input.joinGroupId ?? null,
         reEnabled: reEnabled.count,
         selected: voterIds.length,
       },
@@ -181,6 +243,7 @@ export const addToRoll = async (
     return {
       added: created.count,
       alreadyEligible: voterIds.length - created.count - reEnabled.count,
+      joinedGroup,
       reEnabled: reEnabled.count,
     };
   });

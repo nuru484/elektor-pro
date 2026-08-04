@@ -2,6 +2,7 @@
 import type { Request, RequestHandler } from 'express';
 
 import {
+  type CandidateStatus,
   ChangeAction,
   ChangeEntity,
   type ChangeStatus,
@@ -20,6 +21,7 @@ import {
   proposeOrExecute,
   rejectChangeRequest,
 } from '../services/change-request/change-request.service.js';
+import { previewCandidateImport } from '../services/domain/candidate-import.service.js';
 import {
   getCandidate,
   listCandidates,
@@ -55,6 +57,7 @@ import { getVoter, listVoters } from '../services/domain/voter.service.js';
 import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendList, sendOk } from '../utils/http.js';
 import {
+  bulkCandidateSchema,
   bulkVoterSchema,
   createCandidateSchema,
   createElectionSchema,
@@ -86,8 +89,10 @@ export const electionControllers = makeCrud({
   label: 'Election',
   list: listElections,
   parseFilters: (req) => ({
+    from: dayBoundary(req.query.from),
     search: str(req.query.search),
     status: str(req.query.status) as ElectionStatus | undefined,
+    to: dayBoundary(req.query.to, true),
   }),
   summary: (b) => `Create election: ${String(b.name)}`,
   updateSchema: updateElectionSchema,
@@ -188,10 +193,58 @@ export const candidateControllers = makeCrud({
     electionId: str(req.query.electionId),
     portfolioId: str(req.query.portfolioId),
     search: str(req.query.search),
+    status: str(req.query.status) as CandidateStatus | undefined,
   }),
   summary: (b) => `Create candidate: ${String(b.name)}`,
   updateSchema: updateCandidateSchema,
 });
+
+/**
+ * Parse + validate a CSV/XLSX nominations file for one election and report
+ * per-row problems without writing anything; the client submits the valid
+ * rows via POST /candidates/bulk. The election id rides the multipart body.
+ */
+export const previewCandidateImportController: RequestHandler[] = [
+  multerUpload.single('file'),
+  asyncHandler(async (req, res) => {
+    const electionId = (req.body as { electionId?: string }).electionId;
+    if (!req.file || !electionId) {
+      throw new ValidationError('A file and an electionId are required', {
+        code: 'VALIDATION_ERROR',
+        context: {
+          errors: [
+            ...(req.file ? [] : [{ field: 'file', message: 'A CSV or XLSX file is required' }]),
+            ...(electionId ? [] : [{ field: 'electionId', message: 'electionId is required' }]),
+          ],
+        },
+      });
+    }
+    const data = await previewCandidateImport(electionId, {
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+      originalname: req.file.originalname,
+    });
+    sendOk(res, 'Import preview generated', data);
+  }),
+];
+
+export const bulkUploadCandidatesController: RequestHandler[] = [
+  ...validationMiddleware.create(bulkCandidateSchema),
+  asyncHandler(async (req, res) => {
+    const candidates = (req.body as { candidates: unknown[] }).candidates;
+    const outcome = await proposeOrExecute(
+      actorOf(req),
+      {
+        action: ChangeAction.CREATE,
+        entity: ChangeEntity.CANDIDATE,
+        payload: { candidates },
+        summary: `Bulk nominate ${String(candidates.length)} candidates`,
+      },
+      ctxOf(req),
+    );
+    respondToProposal(res, outcome, 'Candidates', HTTP_STATUS_CODES.CREATED);
+  }),
+];
 
 // --- Voters ---
 export const voterControllers = makeCrud({
@@ -202,6 +255,7 @@ export const voterControllers = makeCrud({
   label: 'Voter',
   list: listVoters,
   parseFilters: (req) => ({
+    excludeElectionId: str(req.query.excludeElectionId),
     groupId: str(req.query.groupId),
     search: str(req.query.search),
   }),

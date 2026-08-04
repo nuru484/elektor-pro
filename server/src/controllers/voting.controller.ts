@@ -2,12 +2,20 @@
 import type { Request, RequestHandler, Response } from 'express';
 
 import { Role } from '../../generated/prisma/client.js';
+import { Capability } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
+import prisma from '../lib/prisma.js';
 import { asyncHandler, UnauthorizedError } from '../middlewares/error-handler.js';
+import { ForbiddenError } from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
+import { hasCapability } from '../services/authorization/capability.service.js';
 import {
   accreditVoter,
+  getTurnout,
   listVoterElections,
+  revokeAccreditation,
+  searchVotersForAccreditation,
+  verifyVoteCode,
 } from '../services/voting/accreditation.service.js';
 import {
   requestVoterOtp,
@@ -24,6 +32,7 @@ import { issueSession, requestContextOf } from '../utils/auth-session.js';
 import { sendOk } from '../utils/http.js';
 import {
   castBallotSchema,
+  codeLoginSchema,
   otpRequestSchema,
   otpVerifySchema,
 } from '../validations/voting-validation.js';
@@ -110,3 +119,63 @@ export const accreditVoterController = asyncHandler(
     sendOk(res, 'Voter accredited', data);
   },
 );
+
+export const searchAccreditationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    // Short/empty queries fall back to the election's eligible register
+    // inside the service, so the desk always has voters on screen.
+    const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
+    const data = await searchVotersForAccreditation(req.params.electionId, query);
+    sendOk(res, 'Voters retrieved', data);
+  },
+);
+
+export const revokeAccreditationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    await revokeAccreditation(
+      actorOf(req),
+      req.params.electionId,
+      req.params.voterId,
+      requestContextOf(req),
+    );
+    sendOk(res, 'Accreditation revoked', { voterId: req.params.voterId });
+  },
+);
+
+/**
+ * Live turnout. Visible to admins, agents assigned to the election, and
+ * holders of ACCREDIT_VOTERS or VIEW_RESULTS (scoped grants included).
+ */
+export const getTurnoutController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new UnauthorizedError('Authentication required');
+    const electionId = req.params.electionId;
+    const isStaff = user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+    const isAssignedAgent =
+      user.role === Role.AGENT &&
+      (await prisma.agentAssignment.findFirst({
+        select: { id: true },
+        where: { electionId, userId: user.id },
+      })) !== null;
+    const allowed =
+      isStaff ||
+      isAssignedAgent ||
+      (await hasCapability(user, Capability.ACCREDIT_VOTERS, electionId)) ||
+      (await hasCapability(user, Capability.VIEW_RESULTS, electionId));
+    if (!allowed) {
+      throw new ForbiddenError('Turnout is not available to you');
+    }
+    sendOk(res, 'Turnout retrieved', await getTurnout(electionId));
+  },
+);
+
+export const codeLoginController: RequestHandler[] = [
+  ...validationMiddleware.create(codeLoginSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { code, voterId } = req.body as { code: string; voterId: string };
+    const result = await verifyVoteCode(voterId, code);
+    await issueSession(req, res, { id: result.userId, role: Role.VOTER });
+    sendOk(res, 'Logged in', { voterId: result.voterId });
+  }),
+];

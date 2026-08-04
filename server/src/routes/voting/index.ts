@@ -11,23 +11,28 @@ import {
 import {
   accreditVoterController,
   castBallotController,
+  codeLoginController,
   getBallotController,
+  getTurnoutController,
   listVoterElectionsController,
   requestOtpController,
+  revokeAccreditationController,
+  searchAccreditationController,
   verifyBallotChainController,
   verifyOtpController,
   verifyReceiptController,
 } from '../../controllers/voting.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
-import { authRateLimiter } from '../../middlewares/rateLimit.js';
+import { authRateLimiter, votingLimiter } from '../../middlewares/rateLimit.js';
 import { requireCapability } from '../../middlewares/require-capability.js';
 
 const votingRoutes = Router();
 
-// Voter authentication (phone OTP)
+// Voter authentication (phone OTP, or a one-time accreditation code)
 votingRoutes.post('/voter/otp/request', authRateLimiter, ...requestOtpController);
 votingRoutes.post('/voter/otp/verify', authRateLimiter, ...verifyOtpController);
+votingRoutes.post('/voter/code-login', authRateLimiter, ...codeLoginController);
 
 // Voter ballot flow (role VOTER)
 votingRoutes.get(
@@ -44,6 +49,7 @@ votingRoutes.get(
 );
 votingRoutes.post(
   '/voter/elections/:electionId/ballot',
+  votingLimiter,
   authenticateJWT,
   authorizeRole([Role.VOTER]),
   ...castBallotController,
@@ -53,12 +59,31 @@ votingRoutes.post(
 votingRoutes.get('/elections/:electionId/receipts/:code', verifyReceiptController);
 votingRoutes.get('/elections/:electionId/ballots/verify', verifyBallotChainController);
 
-// Accreditation (staff with capability)
+// Accreditation desk (staff with capability)
+votingRoutes.get(
+  '/elections/:electionId/accreditation/search',
+  authenticateJWT,
+  requireCapability(Capability.ACCREDIT_VOTERS),
+  searchAccreditationController,
+);
 votingRoutes.post(
   '/elections/:electionId/voters/:voterId/accredit',
   authenticateJWT,
   requireCapability(Capability.ACCREDIT_VOTERS),
   accreditVoterController,
+);
+votingRoutes.delete(
+  '/elections/:electionId/voters/:voterId/accredit',
+  authenticateJWT,
+  authorizeRole([Role.SUPER_ADMIN]),
+  revokeAccreditationController,
+);
+
+// Live turnout (admins, assigned agents, accreditors, results viewers)
+votingRoutes.get(
+  '/elections/:electionId/turnout',
+  authenticateJWT,
+  getTurnoutController,
 );
 
 // Election roll management (staff with capability)

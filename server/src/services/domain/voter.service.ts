@@ -51,6 +51,7 @@ const assertGroupSelectionAllowed = async (
 };
 
 export interface VoterInput {
+  electionIds?: string[];
   email?: null | string;
   groupIds?: string[];
   metadata?: null | Record<string, unknown>;
@@ -64,10 +65,19 @@ const VOTER_INCLUDE = {
   groupMemberships: {
     select: { group: { select: { category: { select: { name: true } }, id: true, name: true } } },
   },
-} as const;
+  voterElections: {
+    orderBy: { election: { startDate: 'desc' } },
+    select: {
+      accreditedAt: true,
+      election: { select: { id: true, name: true, slug: true, status: true } },
+      hasVoted: true,
+      isEligible: true,
+    },
+  },
+} as const satisfies Prisma.VoterInclude;
 
 export const listVoters = async (
-  filters: { groupId?: string; search?: string },
+  filters: { excludeElectionId?: string; groupId?: string; search?: string },
   pagination: PaginationParams,
 ) => {
   const where: Prisma.VoterWhereInput = {
@@ -82,6 +92,31 @@ export const listVoters = async (
       : {}),
     ...(filters.groupId
       ? { groupMemberships: { some: { groupId: filters.groupId } } }
+      : {}),
+    // Voters NOT yet part of an election (no roll entry AND not in any of its
+    // scoped groups) - powers the "add existing voters" picker. AND-composed
+    // so it cannot clash with the groupId membership filter above.
+    ...(filters.excludeElectionId
+      ? {
+          AND: [
+            {
+              groupMemberships: {
+                none: {
+                  group: {
+                    electionEligibility: {
+                      some: { electionId: filters.excludeElectionId },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              voterElections: {
+                none: { electionId: filters.excludeElectionId },
+              },
+            },
+          ],
+        }
       : {}),
   };
   const [data, total] = await Promise.all([
@@ -106,6 +141,30 @@ export const getVoter = async (id: string) => {
   return voter;
 };
 
+/** Every id must name an existing election; registration marks them eligible. */
+const registerVoterElections = async (
+  tx: TxClient,
+  voterId: string,
+  electionIds: string[],
+): Promise<void> => {
+  const unique = [...new Set(electionIds)];
+  const found = await tx.election.count({ where: { id: { in: unique } } });
+  if (found !== unique.length) {
+    throw new BadRequestError('One or more selected elections do not exist', {
+      code: 'UNKNOWN_ELECTION',
+      layer: 'voter',
+    });
+  }
+  await tx.voterElection.createMany({
+    data: unique.map((electionId) => ({
+      electionId,
+      isEligible: true,
+      voterId,
+    })),
+    skipDuplicates: true,
+  });
+};
+
 const createVoterInTx = async (
   tx: TxClient,
   input: VoterInput,
@@ -128,6 +187,9 @@ const createVoterInTx = async (
       skipDuplicates: true,
     });
   }
+  if (input.electionIds?.length) {
+    await registerVoterElections(tx, voter.id, input.electionIds);
+  }
   return voter;
 };
 
@@ -146,7 +208,7 @@ export const voterApplier: Applier = {
   },
   remove: (tx, id) => tx.voter.delete({ select: { id: true }, where: { id } }),
   update: async (tx, id, payload) => {
-    const { groupIds, ...rest } = payload as VoterInput;
+    const { electionIds, groupIds, ...rest } = payload as VoterInput;
     await tx.voter.update({
       data: {
         email: rest.email ?? undefined,
@@ -168,6 +230,11 @@ export const voterApplier: Applier = {
         data: groupIds.map((groupId) => ({ groupId, voterId: id })),
         skipDuplicates: true,
       });
+    }
+    // Additive only: registrations gain history (accreditation, ballots), so
+    // removal goes through the roll tools, never a profile edit.
+    if (electionIds?.length) {
+      await registerVoterElections(tx, id, electionIds);
     }
     return { id };
   },
