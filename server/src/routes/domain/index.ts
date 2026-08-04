@@ -250,7 +250,6 @@ domainRoutes.post(
   '/change-requests/:id/cancel',
   authenticateJWT,
   cancelChangeRequestController,
-  cloneElectionController,
 );
 
 export default domainRoutes;
