@@ -62,11 +62,21 @@ export function TableToolbar({
             <div className="relative w-full sm:max-w-xs">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                className="pl-9"
+                className="pr-8 pl-9"
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder={searchPlaceholder}
                 value={search}
               />
+              {search && (
+                <button
+                  aria-label="Clear search"
+                  className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => onSearchChange("")}
+                  type="button"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </div>
           )}
           {actions && (

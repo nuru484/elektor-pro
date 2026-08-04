@@ -10,8 +10,10 @@ import { toast } from "sonner";
 
 import type { AgentAssignment } from "@/types/api";
 
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
@@ -200,18 +202,16 @@ export default function AgentsPage() {
     {
       cell: ({ row }) =>
         isSuperAdmin ? (
-          <div className="flex justify-end">
-            <Button
-              aria-label="Remove assignment"
+          <RowActionsMenu label="Assignment actions">
+            <DropdownMenuItem
               onClick={() => setRemoving(row.original)}
-              size="icon-sm"
-              variant="ghost"
+              variant="destructive"
             >
-              <Trash2 className="size-4 text-destructive" />
-            </Button>
-          </div>
+              <Trash2 className="size-4" /> Remove
+            </DropdownMenuItem>
+          </RowActionsMenu>
         ) : null,
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];

@@ -10,8 +10,10 @@ import { toast } from "sonner";
 
 import type { AccessGrant, PermissionsMatrix } from "@/types/api";
 
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
@@ -214,18 +216,16 @@ export default function GrantsPage() {
     },
     {
       cell: ({ row }) => (
-        <div className="flex justify-end">
-          <Button
-            aria-label="Revoke grant"
+        <RowActionsMenu label="Grant actions">
+          <DropdownMenuItem
             onClick={() => setRevoking(row.original)}
-            size="icon-sm"
-            variant="ghost"
+            variant="destructive"
           >
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
-        </div>
+            <Trash2 className="size-4" /> Revoke
+          </DropdownMenuItem>
+        </RowActionsMenu>
       ),
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];

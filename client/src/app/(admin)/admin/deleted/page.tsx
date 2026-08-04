@@ -10,8 +10,9 @@ import { toast } from "sonner";
 
 import type { DeletedRow } from "@/types/api";
 
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
-import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -42,11 +43,13 @@ const RESOURCES = [
   "elections",
   "portfolios",
   "candidates",
+  "agent-assignments",
   "groups",
   "group-categories",
 ] as const;
 
 const RESOURCE_LABELS: Record<string, string> = {
+  "agent-assignments": "Agent assignments",
   candidates: "Candidates",
   elections: "Elections",
   "group-categories": "Group categories",
@@ -93,8 +96,8 @@ export default function DeletedRecordsPage() {
     { skip: notAllowed },
   );
 
-  const [restore, { isLoading: restoring }] = useRestoreDeletedRecordMutation();
-  const [purge, { isLoading: purging }] = usePurgeDeletedRecordMutation();
+  const [restore] = useRestoreDeletedRecordMutation();
+  const [purge] = usePurgeDeletedRecordMutation();
 
   const rows = data?.data ?? [];
   const totalCount = data?.meta.total ?? 0;
@@ -127,9 +130,8 @@ export default function DeletedRecordsPage() {
     },
     {
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button
-            loading={restoring}
+        <RowActionsMenu label="Record actions">
+          <DropdownMenuItem
             onClick={() =>
               setConfirmAction({
                 id: row.original.id,
@@ -137,13 +139,10 @@ export default function DeletedRecordsPage() {
                 label: row.original.label,
               })
             }
-            size="sm"
-            variant="outline"
           >
             <ArchiveRestore className="size-4" /> Restore
-          </Button>
-          <Button
-            loading={purging}
+          </DropdownMenuItem>
+          <DropdownMenuItem
             onClick={() =>
               setConfirmAction({
                 id: row.original.id,
@@ -151,14 +150,13 @@ export default function DeletedRecordsPage() {
                 label: row.original.label,
               })
             }
-            size="sm"
             variant="destructive"
           >
             <Trash2 className="size-4" /> Purge
-          </Button>
-        </div>
+          </DropdownMenuItem>
+        </RowActionsMenu>
       ),
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];
@@ -228,9 +226,8 @@ export default function DeletedRecordsPage() {
           renderRowCard={(row: Row<DeletedRow>) => (
             <RowCard
               action={
-                <div className="flex gap-1">
-                  <Button
-                    aria-label="Restore"
+                <RowActionsMenu label="Record actions">
+                  <DropdownMenuItem
                     onClick={() =>
                       setConfirmAction({
                         id: row.original.id,
@@ -238,13 +235,10 @@ export default function DeletedRecordsPage() {
                         label: row.original.label,
                       })
                     }
-                    size="icon-sm"
-                    variant="ghost"
                   >
-                    <ArchiveRestore className="size-4" />
-                  </Button>
-                  <Button
-                    aria-label="Purge"
+                    <ArchiveRestore className="size-4" /> Restore
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() =>
                       setConfirmAction({
                         id: row.original.id,
@@ -252,12 +246,11 @@ export default function DeletedRecordsPage() {
                         label: row.original.label,
                       })
                     }
-                    size="icon-sm"
-                    variant="ghost"
+                    variant="destructive"
                   >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                </div>
+                    <Trash2 className="size-4" /> Purge
+                  </DropdownMenuItem>
+                </RowActionsMenu>
               }
               key={row.id}
             >

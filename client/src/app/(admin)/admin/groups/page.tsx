@@ -5,14 +5,16 @@
 // scope eligibility by them. Two tabs, each on the DataTable system; all
 // mutations ride maker-checker (202 = staged for approval).
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { FolderTree, Plus, Trash2 } from "lucide-react";
+import { FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { Group, GroupCategory } from "@/types/api";
 
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
@@ -282,27 +284,18 @@ function GroupsTab({ categories }: { categories: GroupCategory[] }) {
     },
     {
       cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <Button
-            onClick={() => setModal({ group: row.original, open: true })}
-            size="sm"
-            variant="ghost"
-          >
-            Edit
-          </Button>
+        <RowActionsMenu label="Group actions">
+          <DropdownMenuItem onClick={() => setModal({ group: row.original, open: true })}>
+            <Pencil className="size-4" /> Edit
+          </DropdownMenuItem>
           {isSuperAdmin && (
-            <Button
-              aria-label="Delete group"
-              onClick={() => setDeleting(row.original)}
-              size="icon-sm"
-              variant="ghost"
-            >
-              <Trash2 className="size-4 text-destructive" />
-            </Button>
+            <DropdownMenuItem onClick={() => setDeleting(row.original)} variant="destructive">
+              <Trash2 className="size-4" /> Delete
+            </DropdownMenuItem>
           )}
-        </div>
+        </RowActionsMenu>
       ),
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];
@@ -496,27 +489,20 @@ function CategoriesTab() {
     },
     {
       cell: ({ row }) => (
-        <div className="flex justify-end gap-1">
-          <Button
+        <RowActionsMenu label="Category actions">
+          <DropdownMenuItem
             onClick={() => setModal({ category: row.original, open: true })}
-            size="sm"
-            variant="ghost"
           >
-            Edit
-          </Button>
+            <Pencil className="size-4" /> Edit
+          </DropdownMenuItem>
           {isSuperAdmin && (
-            <Button
-              aria-label="Delete category"
-              onClick={() => setDeleting(row.original)}
-              size="icon-sm"
-              variant="ghost"
-            >
-              <Trash2 className="size-4 text-destructive" />
-            </Button>
+            <DropdownMenuItem onClick={() => setDeleting(row.original)} variant="destructive">
+              <Trash2 className="size-4" /> Delete
+            </DropdownMenuItem>
           )}
-        </div>
+        </RowActionsMenu>
       ),
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];

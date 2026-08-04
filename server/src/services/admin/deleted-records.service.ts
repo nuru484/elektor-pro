@@ -44,13 +44,37 @@ interface DeletedRecordShape {
 interface ResourceConfig {
   accessor: SoftDeleteModelAccessor;
   entity: string;
+  /** Relations to join for label building (assignments have no name field). */
+  include?: Record<string, unknown>;
   /** Human labels for the list rows. */
   toRow: (record: DeletedRecordShape) => { label: string; meta: null | string };
 }
 
 const s = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+/** Read a nested string like record.user.firstName defensively. */
+const nested = (record: DeletedRecordShape, path: string[]): string => {
+  let current: unknown = record;
+  for (const key of path) {
+    if (typeof current !== 'object' || current === null) return '';
+    current = (current as Record<string, unknown>)[key];
+  }
+  return s(current);
+};
+
 export const DELETED_RESOURCES = {
+  'agent-assignments': {
+    accessor: 'agentAssignment',
+    entity: 'AgentAssignment',
+    include: {
+      election: { select: { name: true } },
+      user: { select: { firstName: true, lastName: true } },
+    },
+    toRow: (r) => ({
+      label: `${nested(r, ['user', 'firstName'])} ${nested(r, ['user', 'lastName'])}`.trim(),
+      meta: nested(r, ['election', 'name']) || null,
+    }),
+  },
   candidates: {
     accessor: 'candidate',
     entity: 'Candidate',
@@ -100,12 +124,14 @@ export const DELETED_RESOURCE_KEYS = Object.keys(
 interface Delegate {
   count: (args: { where: Record<string, unknown> }) => Promise<number>;
   findMany: (args: {
+    include?: Record<string, unknown>;
     orderBy: Record<string, string>;
     skip: number;
     take: number;
     where: Record<string, unknown>;
   }) => Promise<DeletedRecordShape[]>;
   findUnique: (args: {
+    include?: Record<string, unknown>;
     where: { id: string };
   }) => Promise<DeletedRecordShape | null>;
   update: (args: {
@@ -113,6 +139,10 @@ interface Delegate {
     where: { id: string };
   }) => Promise<unknown>;
 }
+
+/** Widened view (satisfies narrows per-entry; include is optional). */
+const configOf = (resource: DeletedResource): ResourceConfig =>
+  DELETED_RESOURCES[resource];
 
 const delegateFor = (resource: DeletedResource): Delegate =>
   (prisma as unknown as Record<SoftDeleteModelAccessor, Delegate>)[
@@ -148,6 +178,7 @@ export const listDeleted = async (
   };
   const [records, total] = await Promise.all([
     delegate.findMany({
+      include: configOf(resource).include,
       orderBy: { deletedAt: 'desc' },
       skip: pagination.skip,
       take: pagination.limit,
@@ -167,7 +198,10 @@ export const listDeleted = async (
 
 /** Look a soft-deleted row up or fail with the right error. */
 const requireDeleted = async (resource: DeletedResource, id: string) => {
-  const record = await delegateFor(resource).findUnique({ where: { id } });
+  const record = await delegateFor(resource).findUnique({
+    include: configOf(resource).include,
+    where: { id },
+  });
   if (!record) throw new NotFoundError('Record not found');
   if (!record.deletedAt) {
     throw new BadRequestError('This record is not deleted', {

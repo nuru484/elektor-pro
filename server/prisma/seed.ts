@@ -83,6 +83,8 @@ async function main() {
     where: { code: 'ART' },
   });
 
+  await seedRichExtras(superAdmin.id, agent.id);
+
   // --- Demo election (skip if already seeded) ---
   const slug = 'src-general-election';
   if (await prisma.election.findUnique({ where: { slug } })) {
@@ -233,6 +235,263 @@ async function main() {
   console.log('  Admin: admin@elektorpro.com / Password123!');
   console.log('  Agent: agent@elektorpro.com / Password123!');
   console.log('  Voter login: use any voterId like STU1001 (OTP printed to server log in mock mode)');
+}
+
+
+/**
+ * Rich demo data across every module - staff in each role and status, more
+ * categories/groups, elections in several lifecycle states, assignments,
+ * grants, pending change requests, and soft-deleted rows for the
+ * deleted-records manager. Idempotent: gated on its marker election.
+ */
+async function seedRichExtras(superAdminId: string, agentId: string) {
+  if (await prisma.election.findUnique({ where: { slug: 'departmental-election-2026' } })) {
+    console.log('✓ rich demo data already seeded — skipping');
+    return;
+  }
+
+  // Staff across roles and statuses
+  const admin = await prisma.user.findFirst({
+    select: { id: true },
+    where: { email: 'commission@elektorpro.com' },
+  });
+  await upsertUser('accreditor@elektorpro.com', 'Efua', 'Adjei', Role.ACCREDITOR, 'Password123!', '+233200000005');
+  const agent2 = await upsertUser('agent2@elektorpro.com', 'Yaw', 'Boakye', Role.AGENT, 'Password123!', '+233200000006');
+  const candidate2 = await upsertUser('candidate2@elektorpro.com', 'Esi', 'Nyame', Role.CANDIDATE, 'Password123!', '+233200000007');
+  const suspended = await upsertUser('suspended@elektorpro.com', 'Kwame', 'Dadzie', Role.ADMIN, 'Password123!', '+233200000008');
+  await prisma.user.update({ data: { status: 'SUSPENDED' }, where: { id: suspended.id } });
+  const locked = await upsertUser('locked@elektorpro.com', 'Abena', 'Sarpong', Role.ACCREDITOR, 'Password123!', '+233200000009');
+  await prisma.user.update({
+    data: { failedLoginAttempts: 5, lockedAt: new Date(), lockedReason: 'Too many failed sign-in attempts', status: 'LOCKED' },
+    where: { id: locked.id },
+  });
+
+  // More categories and groups
+  const level = await prisma.groupCategory.upsert({
+    create: { code: 'LEVEL', description: 'Year of study', name: 'Level' },
+    select: { id: true },
+    update: {},
+    where: { name: 'Level' },
+  });
+  const levelGroups = [];
+  for (const name of ['Level 100', 'Level 200', 'Level 300', 'Level 400']) {
+    const code = name.replace('Level ', 'L');
+    levelGroups.push(
+      await prisma.group.upsert({
+        create: { categoryId: level.id, code, name },
+        select: { id: true },
+        update: {},
+        where: { code },
+      }),
+    );
+  }
+  const hall = await prisma.groupCategory.upsert({
+    create: { allowMultiple: false, code: 'HALL', description: 'Residence hall', name: 'Hall' },
+    select: { id: true },
+    update: {},
+    where: { name: 'Hall' },
+  });
+  const unity = await prisma.group.upsert({
+    create: { categoryId: hall.id, code: 'UNITY', name: 'Unity Hall' },
+    select: { id: true },
+    update: {},
+    where: { code: 'UNITY' },
+  });
+  await prisma.group.upsert({
+    create: { categoryId: hall.id, code: 'LEGACY', name: 'Legacy Hall' },
+    select: { id: true },
+    update: {},
+    where: { code: 'LEGACY' },
+  });
+
+  // Elections in other lifecycle states
+  const day = 86_400_000;
+  const departmental = await prisma.election.create({
+    data: {
+      createdById: superAdminId,
+      description: 'Departmental executives for the 2026/27 academic year.',
+      eligibilityMode: 'ALL_VOTERS',
+      endDate: new Date(Date.now() + 8 * day),
+      name: 'Departmental Election 2026',
+      resultsPolicy: 'ON_CLOSE',
+      slug: 'departmental-election-2026',
+      startDate: new Date(Date.now() + 7 * day),
+      status: 'SCHEDULED',
+    },
+  });
+  const deptPresident = await prisma.portfolio.create({
+    data: { electionId: departmental.id, name: 'Department President', order: 1 },
+  });
+  const deptSecretary = await prisma.portfolio.create({
+    data: { electionId: departmental.id, name: 'Secretary', order: 2 },
+  });
+  const deptCandidates = await Promise.all([
+    prisma.candidate.create({
+      data: { electionId: departmental.id, name: 'Nana Agyeman', order: 1, party: 'Forward Group', portfolioId: deptPresident.id },
+    }),
+    prisma.candidate.create({
+      data: { electionId: departmental.id, name: 'Akosua Frimpong', order: 2, party: 'Unity Ticket', portfolioId: deptPresident.id },
+    }),
+    prisma.candidate.create({
+      data: { electionId: departmental.id, name: 'Kofi Antwi', order: 1, portfolioId: deptSecretary.id },
+    }),
+    prisma.candidate.create({
+      data: { electionId: departmental.id, name: 'Adjoa Baah', order: 2, portfolioId: deptSecretary.id },
+    }),
+  ]);
+  const ended = await prisma.election.create({
+    data: {
+      createdById: superAdminId,
+      description: 'Staff council for 2025 - closed and published.',
+      eligibilityMode: 'ALL_VOTERS',
+      endDate: new Date(Date.now() - 30 * day),
+      name: 'Staff Council 2025',
+      resultsPolicy: 'ON_CLOSE',
+      resultsPublishedAt: new Date(Date.now() - 29 * day),
+      slug: 'staff-council-2025',
+      startDate: new Date(Date.now() - 31 * day),
+      status: 'ENDED',
+    },
+  });
+  await prisma.election.create({
+    data: {
+      createdById: superAdminId,
+      description: 'Draft: amendments to the constitution.',
+      eligibilityMode: 'ALL_VOTERS',
+      endDate: new Date(Date.now() + 40 * day),
+      name: 'Constitution Referendum',
+      resultsPolicy: 'MANUAL',
+      slug: 'constitution-referendum',
+      startDate: new Date(Date.now() + 39 * day),
+      status: 'DRAFT',
+    },
+  });
+
+  // Extra voters with level/hall memberships
+  for (let i = 1; i <= 30; i += 1) {
+    const voter = await prisma.voter.create({
+      data: {
+        email: i % 4 === 0 ? `dep${String(2000 + i)}@example.com` : null,
+        name: `Dept Voter ${String(i)}`,
+        phoneNumber: `+23355${String(20000 + i).padStart(6, '0')}`,
+        voterId: `DEP${String(2000 + i)}`,
+      },
+    });
+    await prisma.voterGroupMembership.create({
+      data: { groupId: levelGroups[i % levelGroups.length].id, voterId: voter.id },
+    });
+    if (i % 3 === 0) {
+      await prisma.voterGroupMembership.create({
+        data: { groupId: unity.id, voterId: voter.id },
+      });
+    }
+  }
+
+  // Agent assignments (one candidate-scoped, one general)
+  await prisma.agentAssignment.create({
+    data: { candidateId: deptCandidates[0].id, electionId: departmental.id, userId: agentId },
+  });
+  await prisma.agentAssignment.create({
+    data: { electionId: ended.id, userId: agent2.id },
+  });
+
+  // Access grants: scoped + expiring, and a global one
+  await prisma.accessGrant.create({
+    data: {
+      capability: 'ACCREDIT_VOTERS',
+      electionId: departmental.id,
+      expiresAt: new Date(Date.now() + 30 * day),
+      grantedById: superAdminId,
+      userId: agentId,
+    },
+  });
+  await prisma.accessGrant.create({
+    data: { capability: 'VIEW_RESULTS', grantedById: superAdminId, userId: candidate2.id },
+  });
+
+  // Change requests: pending and resolved history for the approvals console
+  if (admin) {
+    await prisma.changeRequest.create({
+      data: {
+        action: 'CREATE',
+        entity: 'VOTER',
+        payload: { name: 'Pending Voter', voterId: 'PEND9001' },
+        requestedById: admin.id,
+        summary: 'Create voter: Pending Voter',
+      },
+    });
+    await prisma.changeRequest.create({
+      data: {
+        action: 'UPDATE',
+        entity: 'ELECTION',
+        entityId: departmental.id,
+        payload: { description: 'Updated description pending review.' },
+        requestedById: admin.id,
+        summary: 'Update election: Departmental Election 2026',
+      },
+    });
+    await prisma.changeRequest.create({
+      data: {
+        action: 'CREATE',
+        entity: 'GROUP',
+        payload: { categoryId: level.id, code: 'L500', name: 'Level 500' },
+        requestedById: admin.id,
+        reviewedAt: new Date(Date.now() - 2 * day),
+        reviewedById: superAdminId,
+        reviewNote: 'No such level in this faculty.',
+        status: 'REJECTED',
+        summary: 'Create group: Level 500',
+      },
+    });
+  }
+
+  // Soft-deleted rows for the deleted-records manager
+  for (let i = 1; i <= 3; i += 1) {
+    await prisma.voter.create({
+      data: {
+        deletedAt: new Date(Date.now() - i * day),
+        name: `Removed Voter ${String(i)}`,
+        voterId: `DEL${String(9000 + i)}`,
+      },
+    });
+  }
+  await prisma.candidate.create({
+    data: {
+      deletedAt: new Date(Date.now() - 4 * day),
+      electionId: departmental.id,
+      name: 'Withdrawn Candidate',
+      portfolioId: deptPresident.id,
+    },
+  });
+  await prisma.election.create({
+    data: {
+      deletedAt: new Date(Date.now() - 10 * day),
+      endDate: new Date(Date.now() - 200 * day),
+      name: 'Old Club Election',
+      slug: 'old-club-election',
+      startDate: new Date(Date.now() - 201 * day),
+      status: 'ARCHIVED',
+    },
+  });
+  const formerStaff = await upsertUser('former-staff@elektorpro.com', 'Kojo', 'Mensimah', Role.ADMIN, 'Password123!', '+233200000010');
+  await prisma.user.update({ data: { deletedAt: new Date(Date.now() - 6 * day) }, where: { id: formerStaff.id } });
+  await prisma.group.upsert({
+    create: {
+      categoryId: hall.id,
+      code: 'CLOSED',
+      deletedAt: new Date(Date.now() - 12 * day),
+      name: 'Closed Hall',
+    },
+    update: {},
+    where: { code: 'CLOSED' },
+  });
+  const removedAssignment = await prisma.agentAssignment.create({
+    data: { electionId: ended.id, userId: agentId },
+  });
+  // The soft-delete extension rewrites this into deletedAt.
+  await prisma.agentAssignment.delete({ where: { id: removedAssignment.id } });
+
+  console.log('✓ rich demo data seeded (staff, groups, elections, agents, grants, change requests, deleted rows)');
 }
 
 async function upsertUser(

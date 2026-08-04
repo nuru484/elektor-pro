@@ -127,6 +127,13 @@
   select:not(:disabled) {
     @apply cursor-pointer;
   }
+  /* Native <select> popups: some engines ignore color-scheme for the
+     option list and paint it white while the text stays inherited-white. */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
   /* Brand-tinted text selection. */
   ::selection {
     background-color: var(--brand);

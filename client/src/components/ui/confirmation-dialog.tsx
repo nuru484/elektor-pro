@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 interface ConfirmationDialogProps {
   cancelText?: string;
@@ -78,12 +77,9 @@ export function ConfirmationDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
-            className={cn(
-              isDestructive &&
-                "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/40",
-            )}
             disabled={confirmDisabled}
             onClick={onConfirm}
+            variant={isDestructive ? "destructive" : "brand"}
           >
             {confirmText}
           </AlertDialogAction>

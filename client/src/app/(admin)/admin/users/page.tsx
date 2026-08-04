@@ -7,7 +7,6 @@
 import { type ColumnDef, type Row } from "@tanstack/react-table";
 import {
   KeyRound,
-  MoreHorizontal,
   Pencil,
   Plus,
   ShieldAlert,
@@ -20,17 +19,15 @@ import { toast } from "sonner";
 
 import type { StaffUser } from "@/types/api";
 
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
@@ -298,13 +295,7 @@ function UserActions({
   const isSelf = me?.id === user.id;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button aria-label="Account actions" size="icon-sm" variant="ghost">
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+    <RowActionsMenu label="Account actions">
         <DropdownMenuItem onClick={() => onEdit(user)}>
           <Pencil className="size-4" /> Edit
         </DropdownMenuItem>
@@ -335,8 +326,7 @@ function UserActions({
             </DropdownMenuItem>
           </>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    </RowActionsMenu>
   );
 }
 
@@ -409,16 +399,14 @@ export default function UsersPage() {
     },
     {
       cell: ({ row }) => (
-        <div className="flex justify-end">
-          <UserActions
-            onDelete={setDeleting}
-            onEdit={setEditing}
-            onRole={setChangingRole}
-            user={row.original}
-          />
-        </div>
+        <UserActions
+          onDelete={setDeleting}
+          onEdit={setEditing}
+          onRole={setChangingRole}
+          user={row.original}
+        />
       ),
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];

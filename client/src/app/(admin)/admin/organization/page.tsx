@@ -26,7 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { useAuthRole } from "@/hooks/use-auth-role";
@@ -35,6 +35,12 @@ import {
   useUpdateOrganizationImageMutation,
   useUpdateOrganizationMutation,
 } from "@/redux/governance-api";
+import {
+  hexToRgb,
+  parseRgbString,
+  rgbToHex,
+  rgbToString,
+} from "@/utils/color";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 
 const pendingAware = (res: unknown, applied: string): string =>
@@ -256,13 +262,6 @@ const identitySchema = asCardSchema(
   }),
 );
 
-const colorsSchema = asCardSchema(
-  z.object({
-    accentColor: z.string().max(20),
-    primaryColor: z.string().max(20),
-  }),
-);
-
 const contactSchema = asCardSchema(
   z.object({
     supportEmail: z.union([z.literal(""), z.email("Enter a valid email")]),
@@ -270,12 +269,232 @@ const contactSchema = asCardSchema(
   }),
 );
 
-const localizationSchema = asCardSchema(
-  z.object({
-    locale: z.string().min(2, "Required").max(10),
-    timezone: z.string().min(2, "Required").max(60),
-  }),
-);
+/** One brand color: native picker + hex + RGB, all kept in sync. */
+function ColorEditor({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (hex: string) => void;
+  value: string;
+}) {
+  const rgb = hexToRgb(value);
+  const [rgbText, setRgbText] = useState(rgb ? rgbToString(rgb) : "");
+
+  const setHex = (hex: string) => {
+    onChange(hex);
+    const parsed = hexToRgb(hex);
+    if (parsed) setRgbText(rgbToString(parsed));
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium">{label}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          aria-label={`${label} picker`}
+          className="size-9 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-0.5"
+          onChange={(e) => setHex(e.target.value)}
+          type="color"
+          value={rgb ? value : "#000000"}
+        />
+        <Input
+          aria-label={`${label} hex`}
+          className="w-28 font-mono"
+          onChange={(e) => setHex(e.target.value)}
+          placeholder="#2563eb"
+          value={value}
+        />
+        <Input
+          aria-label={`${label} RGB`}
+          className="w-36 font-mono"
+          onChange={(e) => {
+            setRgbText(e.target.value);
+            const parsed = parseRgbString(e.target.value);
+            if (parsed) onChange(rgbToHex(parsed));
+          }}
+          placeholder="37, 99, 235"
+          value={rgbText}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">Pick, or type hex / RGB.</p>
+    </div>
+  );
+}
+
+function ColorsCard({ org }: { org: Organization }) {
+  const [editing, setEditing] = useState(false);
+  const [primary, setPrimary] = useState(org.primaryColor);
+  const [accent, setAccent] = useState(org.accentColor);
+  const [update, { isLoading: saving }] = useUpdateOrganizationMutation();
+
+  const onSave = async () => {
+    try {
+      const res = await update({ accentColor: accent, primaryColor: primary }).unwrap();
+      toast.success(pendingAware(res, "Colors updated"));
+      setEditing(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const Swatch = ({ label, value }: { label: string; value: string }) => (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
+        <span
+          aria-hidden
+          className="size-5 rounded-md border border-border"
+          style={{ backgroundColor: value }}
+        />
+        <span className="font-mono text-sm font-medium">{value}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <CardTitle className="text-base">Colors</CardTitle>
+        <CardDescription>Brand colors used where organization theming applies.</CardDescription>
+      </CardHeader>
+      <CardContent className={CARD_PAD_MOBILE}>
+        {editing ? (
+          <div className="max-w-lg space-y-5">
+            <ColorEditor label="Primary color" onChange={setPrimary} value={primary} />
+            <ColorEditor label="Accent color" onChange={setAccent} value={accent} />
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setPrimary(org.primaryColor);
+                  setAccent(org.accentColor);
+                  setEditing(false);
+                }}
+                type="button"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={!hexToRgb(primary) || !hexToRgb(accent)}
+                loading={saving}
+                onClick={onSave}
+                variant="brand"
+              >
+                Save changes
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <dl className="grid flex-1 gap-4 sm:grid-cols-2">
+              <Swatch label="Primary color" value={org.primaryColor} />
+              <Swatch label="Accent color" value={org.accentColor} />
+            </dl>
+            <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** IANA timezones from the runtime; falls back to the current value only. */
+const timezoneOptions = (): string[] => {
+  try {
+    return Intl.supportedValuesOf("timeZone");
+  } catch {
+    return [];
+  }
+};
+
+function LocalizationCard({ org }: { org: Organization }) {
+  const [editing, setEditing] = useState(false);
+  const [timezone, setTimezone] = useState(org.timezone);
+  const [locale, setLocale] = useState(org.locale);
+  const [update, { isLoading: saving }] = useUpdateOrganizationMutation();
+  const zones = timezoneOptions();
+
+  const onSave = async () => {
+    try {
+      const res = await update({ locale, timezone }).unwrap();
+      toast.success(pendingAware(res, "Localization updated"));
+      setEditing(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  return (
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <CardTitle className="text-base">Localization</CardTitle>
+        <CardDescription>Timezone and language used for dates and messages.</CardDescription>
+      </CardHeader>
+      <CardContent className={CARD_PAD_MOBILE}>
+        {editing ? (
+          <div className="max-w-lg space-y-4">
+            <Field label="Timezone">
+              <NativeSelect onChange={(e) => setTimezone(e.target.value)} value={timezone}>
+                {!zones.includes(timezone) && (
+                  <option value={timezone}>{timezone}</option>
+                )}
+                {zones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field hint="BCP 47 language tag, e.g. en or fr." label="Locale">
+              <Input
+                className="max-w-40"
+                onChange={(e) => setLocale(e.target.value)}
+                placeholder="en"
+                value={locale}
+              />
+            </Field>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setTimezone(org.timezone);
+                  setLocale(org.locale);
+                  setEditing(false);
+                }}
+                type="button"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button loading={saving} onClick={onSave} variant="brand">
+                Save changes
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <dl className="grid flex-1 gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-muted-foreground">Timezone</dt>
+                <dd className="mt-0.5 text-sm font-medium">{org.timezone}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Locale</dt>
+                <dd className="mt-0.5 text-sm font-medium">{org.locale}</dd>
+              </div>
+            </dl>
+            <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function OrganizationPage() {
   const { can, initialized } = useAuthRole();
@@ -338,24 +557,7 @@ export default function OrganizationPage() {
             </CardContent>
           </Card>
 
-          <SettingsCard
-            description="Brand colors used where organization theming applies."
-            fields={[
-              {
-                label: "Primary color",
-                name: "primaryColor",
-                placeholder: "#0f172a",
-              },
-              {
-                label: "Accent color",
-                name: "accentColor",
-                placeholder: "#2563eb",
-              },
-            ]}
-            org={org}
-            schema={colorsSchema}
-            title="Colors"
-          />
+          <ColorsCard org={org} />
 
           <SettingsCard
             description="Where voters and staff can reach your election desk."
@@ -378,20 +580,7 @@ export default function OrganizationPage() {
             title="Contact"
           />
 
-          <SettingsCard
-            description="Timezone and language used for dates and messages."
-            fields={[
-              {
-                label: "Timezone",
-                name: "timezone",
-                placeholder: "Africa/Accra",
-              },
-              { label: "Locale", name: "locale", placeholder: "en" },
-            ]}
-            org={org}
-            schema={localizationSchema}
-            title="Localization"
-          />
+          <LocalizationCard org={org} />
         </div>
       )}
     </div>

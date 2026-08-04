@@ -10,8 +10,10 @@ import { toast } from "sonner";
 
 import type { ChangeRequest, ChangeStatus } from "@/types/api";
 
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
@@ -295,15 +297,13 @@ export default function ApprovalsPage() {
     },
     {
       cell: ({ row }) => (
-        <Button
-          onClick={() => setSelectedId(row.original.id)}
-          size="sm"
-          variant="ghost"
-        >
-          <Eye className="size-4" /> View
-        </Button>
+        <RowActionsMenu label="Request actions">
+          <DropdownMenuItem onClick={() => setSelectedId(row.original.id)}>
+            <Eye className="size-4" /> View details
+          </DropdownMenuItem>
+        </RowActionsMenu>
       ),
-      header: "",
+      header: "Actions",
       id: "actions",
     },
   ];

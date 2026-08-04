@@ -306,7 +306,8 @@ export function ConsoleShell({
         <div className="sticky top-0 h-dvh">{sidebar(collapsed)}</div>
       </aside>
 
-      <div className="flex min-w-0 flex-col">
+      {/* min-h-dvh so the footer sits at the bottom even on short pages. */}
+      <div className="flex min-h-dvh min-w-0 flex-col">
         {/* Top bar - h-16 to mirror the sidebar header exactly. */}
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6">
           <div className="flex items-center gap-2">
