@@ -12,7 +12,9 @@ import { userAdminService } from '../../services/users/user-admin.service.js';
 import { requestContextOf } from '../../utils/auth-session.js';
 import { parsePagination, sendList, sendOk } from '../../utils/http.js';
 import {
+  adminContactChangeSchema,
   adminUpdateUserSchema,
+  contactConfirmSchema,
   updateUserRoleSchema,
   userListQuerySchema,
 } from '../../validations/users/user-validation.js';
@@ -39,6 +41,35 @@ const handleListUsers = asyncHandler(async (req: Request, res: Response) => {
 
 const handleGetUser = asyncHandler(async (req: Request, res: Response) => {
   sendOk(res, 'User retrieved', await userAdminService.getUser(req.params.userId));
+});
+
+const handleUpdateContact = asyncHandler(async (req: Request, res: Response) => {
+  const data = await userAdminService.updateUserContact(
+    actorOf(req),
+    req.params.userId,
+    req.body as { email?: string; phone?: string },
+    requestContextOf(req),
+  );
+  sendOk(res, 'Contact details updated', data);
+});
+
+const handleRequestContact = asyncHandler(async (req: Request, res: Response) => {
+  const data = await userAdminService.requestUserContactChange(
+    actorOf(req),
+    req.params.userId,
+    req.body as { email?: string; phone?: string },
+  );
+  sendOk(res, 'Verification code sent to the new contact', data);
+});
+
+const handleConfirmContact = asyncHandler(async (req: Request, res: Response) => {
+  const data = await userAdminService.confirmUserContactChange(
+    actorOf(req),
+    req.params.userId,
+    (req.body as { code: string }).code,
+    requestContextOf(req),
+  );
+  sendOk(res, 'Contact details updated', data);
 });
 
 const handleUpdateUser = asyncHandler(async (req: Request, res: Response) => {
@@ -76,6 +107,21 @@ export const updateUserController: RequestHandler[] = [
   ...validationMiddleware.update(adminUpdateUserSchema),
   handleUpdateUser,
 ];
+export const updateUserContactController: RequestHandler[] = [
+  ...validationMiddleware.update(adminContactChangeSchema),
+  handleUpdateContact,
+];
+
+export const requestUserContactController: RequestHandler[] = [
+  ...validationMiddleware.create(adminContactChangeSchema),
+  handleRequestContact,
+];
+
+export const confirmUserContactController: RequestHandler[] = [
+  ...validationMiddleware.create(contactConfirmSchema),
+  handleConfirmContact,
+];
+
 export const updateUserRoleController: RequestHandler[] = [
   ...validationMiddleware.update(updateUserRoleSchema),
   handleUpdateUserRole,

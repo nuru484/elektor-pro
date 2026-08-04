@@ -6,6 +6,7 @@
 // confirmation-gated and audited by the backend.
 import { type ColumnDef, type Row } from "@tanstack/react-table";
 import {
+  Eye,
   KeyRound,
   Pencil,
   Plus,
@@ -14,11 +15,13 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { StaffUser } from "@/types/api";
 
+import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
@@ -79,24 +82,30 @@ const FILTERS_SPEC: TableFiltersSpec<UserFilters> = {
 function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [create, { isLoading: creating }] = useCreateStaffUserMutation();
   const [tempPassword, setTempPassword] = useState<null | string>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
 
   const close = () => {
     setTempPassword(null);
+    setPhoto(null);
     onClose();
   };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const body = new FormData();
+    body.append("firstName", String(f.get("firstName")));
+    body.append("lastName", String(f.get("lastName")));
+    body.append("email", String(f.get("email")));
+    if (f.get("phone")) body.append("phone", String(f.get("phone")));
+    body.append("role", String(f.get("role")));
+    if (photo) body.append("image", photo);
     try {
-      const res = (await create({
-        email: f.get("email"),
-        firstName: f.get("firstName"),
-        lastName: f.get("lastName"),
-        phone: f.get("phone") || undefined,
-        role: f.get("role"),
-      }).unwrap()) as { data?: { temporaryPassword?: string } };
+      const res = (await create(body).unwrap()) as {
+        data?: { temporaryPassword?: string };
+      };
       toast.success("Account created");
+      setPhoto(null);
       setTempPassword(res.data?.temporaryPassword ?? null);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -166,6 +175,7 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
               ))}
             </NativeSelect>
           </Field>
+          <PhotoInput file={photo} onChange={setPhoto} />
           <Button className="w-full" loading={creating} type="submit" variant="brand">
             Create account
           </Button>
@@ -321,6 +331,11 @@ function UserActions({
 
   return (
     <RowActionsMenu label="Account actions">
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/users/${user.id}`}>
+            <Eye className="size-4" /> View profile
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onEdit(user)}>
           <Pencil className="size-4" /> Edit
         </DropdownMenuItem>

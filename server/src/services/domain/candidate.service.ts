@@ -7,6 +7,7 @@ import { NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
 
 const CANDIDATE_INCLUDE = {
+  election: { select: { id: true, name: true, slug: true } },
   portfolio: { select: { id: true, name: true } },
 } as const;
 

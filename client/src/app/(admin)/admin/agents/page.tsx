@@ -4,12 +4,14 @@
 // specific candidate (results-room and process agents). Assignments apply
 // directly (audited); removal is super-admin only.
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Plus, Trash2, UserCheck } from "lucide-react";
+import { Eye, Plus, Trash2, UserCheck } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { AgentAssignment } from "@/types/api";
 
+import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
@@ -54,23 +56,28 @@ const FILTERS_SPEC: TableFiltersSpec<AgentFilters> = {
 function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [create, { isLoading: creating }] = useCreateStaffUserMutation();
   const [tempPassword, setTempPassword] = useState<null | string>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
 
   const close = () => {
     setTempPassword(null);
+    setPhoto(null);
     onClose();
   };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const body = new FormData();
+    body.append("firstName", String(f.get("firstName")));
+    body.append("lastName", String(f.get("lastName")));
+    body.append("email", String(f.get("email")));
+    if (f.get("phone")) body.append("phone", String(f.get("phone")));
+    body.append("role", "AGENT");
+    if (photo) body.append("image", photo);
     try {
-      const res = (await create({
-        email: f.get("email"),
-        firstName: f.get("firstName"),
-        lastName: f.get("lastName"),
-        phone: f.get("phone") || undefined,
-        role: "AGENT",
-      }).unwrap()) as { data?: { temporaryPassword?: string } };
+      const res = (await create(body).unwrap()) as {
+        data?: { temporaryPassword?: string };
+      };
       toast.success("Agent account created");
       setTempPassword(res.data?.temporaryPassword ?? null);
     } catch (error) {
@@ -131,6 +138,7 @@ function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }
           <Field label="Phone">
             <Input name="phone" placeholder="e.g. +233 24 000 0000 (optional)" type="tel" />
           </Field>
+          <PhotoInput file={photo} onChange={setPhoto} />
           <Button className="w-full" loading={creating} type="submit" variant="brand">
             Create agent
           </Button>
@@ -285,17 +293,23 @@ export default function AgentsPage() {
       header: "Assigned",
     },
     {
-      cell: ({ row }) =>
-        isSuperAdmin ? (
-          <RowActionsMenu label="Assignment actions">
+      cell: ({ row }) => (
+        <RowActionsMenu label="Assignment actions">
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/users/${row.original.user.id}`}>
+              <Eye className="size-4" /> View profile
+            </Link>
+          </DropdownMenuItem>
+          {isSuperAdmin && (
             <DropdownMenuItem
               onClick={() => setRemoving(row.original)}
               variant="destructive"
             >
               <Trash2 className="size-4" /> Remove
             </DropdownMenuItem>
-          </RowActionsMenu>
-        ) : null,
+          )}
+        </RowActionsMenu>
+      ),
       header: "Actions",
       id: "actions",
     },

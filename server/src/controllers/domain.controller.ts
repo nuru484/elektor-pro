@@ -118,6 +118,7 @@ export const portfolioControllers = makeCrud({
 
 // --- Candidates ---
 export const candidateControllers = makeCrud({
+  createImage: { field: 'profilePicture', folder: 'elektor-pro/candidates' },
   createSchema: createCandidateSchema,
   entity: ChangeEntity.CANDIDATE,
   get: getCandidate,
@@ -134,6 +135,7 @@ export const candidateControllers = makeCrud({
 
 // --- Voters ---
 export const voterControllers = makeCrud({
+  createImage: { field: 'profilePicture', folder: 'elektor-pro/voters' },
   createSchema: createVoterSchema,
   entity: ChangeEntity.VOTER,
   get: getVoter,

@@ -7,7 +7,7 @@ import { cloudinaryService } from '../config/cloudinary.js';
 import { isValidBase64Image } from '../utils/validate-base64-image.js';
 import { asyncHandler, ValidationError } from './error-handler.js';
 
-export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUploadOptions> = {}, uploadedResultsName: string) => {
+export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUploadOptions> = {}, uploadedResultsName: string, optional = false) => {
   return asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     try {
       // req.body is untyped at this point (runs before Zod validation); type
@@ -71,6 +71,10 @@ export const handleCloudinaryUpload = (defaultOptions: Partial<ICloudinaryUpload
       }
 
       // No valid files found
+      if (optional) {
+        next();
+        return;
+      }
       next(new ValidationError('No valid files found for upload'));
       return;
     } catch (error) {

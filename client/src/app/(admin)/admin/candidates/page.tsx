@@ -1,14 +1,18 @@
 "use client";
 
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { ListChecks, Plus } from "lucide-react";
+import { Eye, ListChecks, Plus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { Candidate } from "@/types/api";
 
+import { PhotoInput } from "@/components/console/photo-input";
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
@@ -58,10 +62,24 @@ const COLUMNS: ColumnDef<Candidate>[] = [
     header: "Party",
     id: "party",
   },
+  {
+    cell: ({ row }) => (
+      <RowActionsMenu label="Candidate actions">
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/candidates/${row.original.id}`}>
+            <Eye className="size-4" /> View profile
+          </Link>
+        </DropdownMenuItem>
+      </RowActionsMenu>
+    ),
+    header: "Actions",
+    id: "actions",
+  },
 ];
 
 function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [electionId, setElectionId] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
   const { data: elections } = useListElectionsQuery({ limit: 100 });
   const { data: election } = useGetElectionQuery(electionId, { skip: !electionId });
   const [createCandidate, { isLoading: creating }] = useCreateCandidateMutation();
@@ -69,14 +87,16 @@ function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boole
   const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const body = new FormData();
+    body.append("electionId", String(f.get("electionId")));
+    body.append("portfolioId", String(f.get("portfolioId")));
+    body.append("name", String(f.get("name")));
+    if (f.get("party")) body.append("party", String(f.get("party")));
+    if (f.get("manifesto")) body.append("manifesto", String(f.get("manifesto")));
+    if (photo) body.append("image", photo);
     try {
-      const res = await createCandidate({
-        electionId: f.get("electionId"),
-        manifesto: f.get("manifesto") || undefined,
-        name: f.get("name"),
-        party: f.get("party") || undefined,
-        portfolioId: f.get("portfolioId"),
-      }).unwrap();
+      const res = await createCandidate(body).unwrap();
+      setPhoto(null);
       onClose();
       toast.success(
         (res as { pending?: boolean }).pending ? "Submitted for approval" : "Candidate added",
@@ -123,6 +143,7 @@ function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boole
         <Field label="Manifesto">
           <Textarea name="manifesto" placeholder="What the candidate stands for (optional)" />
         </Field>
+        <PhotoInput file={photo} onChange={setPhoto} />
         <Button className="w-full" loading={creating} type="submit" variant="brand">
           Add candidate
         </Button>

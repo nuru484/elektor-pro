@@ -5,9 +5,12 @@ import { Router } from 'express';
 
 import { Role } from '../../../generated/prisma/client.js';
 import {
+  confirmUserContactController,
   deleteUserController,
   getUserController,
   listUsersController,
+  requestUserContactController,
+  updateUserContactController,
   updateUserController,
   updateUserRoleController,
 } from '../../controllers/users/user-admin.controller.js';
@@ -32,6 +35,24 @@ usersRoutes.patch(
   '/:userId',
   authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
   ...updateUserController,
+);
+// Contact edits: super-admins apply directly (typed confirmation in the UI);
+// admins must verify via a code sent to the NEW contact so unreachable
+// details never enter the system.
+usersRoutes.patch(
+  '/:userId/contact',
+  authorizeRole([Role.SUPER_ADMIN]),
+  ...updateUserContactController,
+);
+usersRoutes.post(
+  '/:userId/contact/request',
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
+  ...requestUserContactController,
+);
+usersRoutes.post(
+  '/:userId/contact/confirm',
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
+  ...confirmUserContactController,
 );
 usersRoutes.patch(
   '/:userId/role',

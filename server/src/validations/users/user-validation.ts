@@ -20,6 +20,20 @@ export const updateUserRoleSchema = z.object({
   role: z.enum([Role.SUPER_ADMIN, Role.ADMIN, Role.ACCREDITOR]),
 });
 
+/** Contact edits: exactly one channel per request keeps the OTP unambiguous. */
+export const adminContactChangeSchema = z
+  .object({
+    email: z.email().optional(),
+    phone: z.string().min(6).max(20).optional(),
+  })
+  .refine((data) => Boolean(data.email) !== Boolean(data.phone), {
+    message: 'Provide an email or a phone number (one at a time)',
+  });
+
+export const contactConfirmSchema = z.object({
+  code: z.string().min(4).max(10),
+});
+
 export const userListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   page: z.coerce.number().int().min(1).optional(),

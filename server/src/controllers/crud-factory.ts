@@ -9,7 +9,9 @@ import {
   type ChangeEntity,
 } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
+import multerUpload from '../config/multer.js';
 import { asyncHandler } from '../middlewares/error-handler.js';
+import { handleCloudinaryUpload } from '../middlewares/handle-cloudinary-upload.js';
 import validationMiddleware from '../middlewares/validation.js';
 import { proposeOrExecute } from '../services/change-request/change-request.service.js';
 import {
@@ -22,6 +24,9 @@ import {
 import { actorOf, ctxOf, respondToProposal } from './proposal-response.js';
 
 interface CrudOptions<F> {
+  /** Accept an optional `image` file on create; the trusted secure_url is
+   * written onto the payload under `field` after validation. */
+  createImage?: { field: string; folder: string };
   createSchema: ZodType;
   entity: ChangeEntity;
   get: (id: string) => Promise<unknown>;
@@ -50,7 +55,21 @@ export const makeCrud = <F>(opts: CrudOptions<F>) => {
   });
 
   const create: RequestHandler[] = [
+    // Optional profile image: multer parses the multipart body (and passes
+    // JSON straight through); the upload runs AFTER validation so a planted
+    // URL in the request body can never survive - only the middleware's
+    // trusted secure_url lands on the payload.
+    ...(opts.createImage ? [multerUpload.single('image')] : []),
     ...validationMiddleware.create(opts.createSchema),
+    ...(opts.createImage
+      ? [
+          handleCloudinaryUpload(
+            { folder: opts.createImage.folder },
+            opts.createImage.field,
+            true,
+          ),
+        ]
+      : []),
     asyncHandler(async (req, res) => {
       const outcome = await proposeOrExecute(
         actorOf(req),

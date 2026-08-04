@@ -3,7 +3,9 @@ import type { Request, RequestHandler, Response } from 'express';
 
 import { type Capability, type Role, type Status } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
+import multerUpload from '../config/multer.js';
 import { asyncHandler } from '../middlewares/error-handler.js';
+import { handleCloudinaryUpload } from '../middlewares/handle-cloudinary-upload.js';
 import validationMiddleware from '../middlewares/validation.js';
 import {
   assignAgent,
@@ -30,7 +32,11 @@ const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.length > 0 ? v : undefined;
 
 export const createStaffUserController: RequestHandler[] = [
+  // Optional profile photo: multer parses the multipart body; the upload runs
+  // AFTER validation so only the middleware's trusted URL reaches the input.
+  multerUpload.single('image'),
   ...validationMiddleware.create(createStaffUserSchema),
+  handleCloudinaryUpload({ folder: 'elektor-pro/profiles' }, 'profilePicture', true),
   asyncHandler(async (req: Request, res: Response) => {
     const data = await createStaffUser(
       actorOf(req),

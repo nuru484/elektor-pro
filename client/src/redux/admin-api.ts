@@ -56,7 +56,7 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ["ChangeRequest", "Election", "Candidate", "Voter", "Dashboard"],
       query: ({ id, note }) => ({ body: { note }, method: "POST", url: `/change-requests/${id}/approve` }),
     }),
-    createCandidate: build.mutation<unknown, Record<string, unknown>>({
+    createCandidate: build.mutation<unknown, FormData | Record<string, unknown>>({
       invalidatesTags: ["Candidate", "ChangeRequest", "Dashboard"],
       query: (body) => ({ body, method: "POST", url: "/candidates" }),
     }),
@@ -68,7 +68,7 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ["Portfolio", "ChangeRequest", "Election"],
       query: (body) => ({ body, method: "POST", url: "/portfolios" }),
     }),
-    createVoter: build.mutation<unknown, Record<string, unknown>>({
+    createVoter: build.mutation<unknown, FormData | Record<string, unknown>>({
       invalidatesTags: ["Voter", "ChangeRequest", "Dashboard"],
       query: (body) => ({ body, method: "POST", url: "/voters" }),
     }),
@@ -97,6 +97,14 @@ export const adminApi = apiSlice.injectEndpoints({
     cancelChange: build.mutation<unknown, { id: string }>({
       invalidatesTags: ["ChangeRequest"],
       query: ({ id }) => ({ method: "POST", url: `/change-requests/${id}/cancel` }),
+    }),
+    getCandidate: build.query<ApiResponse<Candidate>, string>({
+      providesTags: ["Candidate"],
+      query: (id) => `/candidates/${id}`,
+    }),
+    getVoter: build.query<ApiResponse<Voter>, string>({
+      providesTags: ["Voter"],
+      query: (id) => `/voters/${id}`,
     }),
     getChangeRequest: build.query<ApiResponse<ChangeRequest>, string>({
       providesTags: ["ChangeRequest"],
@@ -189,7 +197,9 @@ export const {
   useCreateElectionMutation,
   useCreatePortfolioMutation,
   useCreateVoterMutation,
+  useGetCandidateQuery,
   useGetChangeRequestQuery,
+  useGetVoterQuery,
   useGetDashboardQuery,
   useGetDeletedSummaryQuery,
   useGetElectionQuery,

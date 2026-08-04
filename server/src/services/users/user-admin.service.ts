@@ -6,6 +6,7 @@
 // Role changes and deletion stay super-admin-only; nobody can act on their
 // own account here (self-service goes through the profile endpoints).
 import {
+  OtpPurpose,
   type Prisma,
   Role,
   Status,
@@ -15,9 +16,12 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../../middlewares/error-handler.js';
+import { ConflictError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
+import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { type RequestContext, STAFF_SELECT } from '../auth/auth.service.js';
+import { makeOtpService } from '../auth/otp.service.js';
 import { makeSessionService } from '../auth/session.service.js';
 import { type AppDeps, defaultDeps } from '../deps.js';
 
@@ -44,9 +48,179 @@ const USER_ADMIN_SELECT = {
   lockedAt: true,
 } as const;
 
-export const makeUserAdminService = (d: Pick<AppDeps, 'clock' | 'prisma'>) => {
+export const makeUserAdminService = (
+  d: Pick<AppDeps, 'clock' | 'config' | 'logger' | 'mail' | 'prisma' | 'sms'>,
+) => {
   const { prisma } = d;
   const sessions = makeSessionService(d);
+  const otp = makeOtpService(d);
+
+  /** Uniqueness checks shared by both contact-change paths. */
+  const assertContactFree = async (
+    userId: string,
+    contact: { email?: string; phone?: string },
+  ) => {
+    if (contact.email) {
+      const taken = await prisma.user.findUnique({
+        select: { id: true },
+        where: { email: contact.email },
+      });
+      if (taken && taken.id !== userId) {
+        throw new ConflictError('That email address is already in use');
+      }
+    }
+    if (contact.phone) {
+      const taken = await prisma.user.findUnique({
+        select: { id: true },
+        where: { phone: contact.phone },
+      });
+      if (taken && taken.id !== userId) {
+        throw new ConflictError('That phone number is already in use');
+      }
+    }
+  };
+
+  /**
+   * SUPER-ADMIN ONLY: change another account's email/phone directly (the UI
+   * gates it behind a typed confirmation). Admins and self-service must use
+   * the OTP-verified paths so unreachable contacts never enter the system.
+   */
+  const updateUserContact = async (
+    actor: Actor,
+    userId: string,
+    input: { email?: string; phone?: string },
+    ctx: RequestContext,
+  ) => {
+    if (actor.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenError(
+        'Only a super administrator can change contact details without verification',
+      );
+    }
+    if (actor.id === userId) {
+      throw new BadRequestError('Use your profile to edit your own account');
+    }
+    const target = await prisma.user.findFirst({
+      select: { id: true, role: true },
+      where: { id: userId },
+    });
+    if (!target) throw new NotFoundError('User not found');
+
+    const email = input.email?.toLowerCase().trim();
+    const phone = input.phone
+      ? validateAndFormatPhone(input.phone, 'GH').e164Format
+      : undefined;
+    await assertContactFree(userId, { email, phone });
+
+    const updated = await prisma.user.update({
+      data: {
+        ...(email ? { email, emailVerifiedAt: null } : {}),
+        ...(phone ? { phone, phoneVerifiedAt: null } : {}),
+      },
+      select: USER_ADMIN_SELECT,
+      where: { id: userId },
+    });
+    await appendAudit(prisma, {
+      action: 'user.contact_changed',
+      actorId: actor.id,
+      actorRole: actor.role,
+      entity: 'User',
+      entityId: userId,
+      ipAddress: ctx.ipAddress,
+      metadata: { direct: true, email: email ?? null, phone: phone ?? null },
+      userAgent: ctx.userAgent,
+    });
+    return updated;
+  };
+
+  /**
+   * Admin path step 1: stage the new contact and send a code TO IT - the
+   * code proves the address/number is live and reachable before it can be
+   * attached to the account.
+   */
+  const requestUserContactChange = async (
+    actor: Actor,
+    userId: string,
+    input: { email?: string; phone?: string },
+  ): Promise<{ ttlMinutes: number }> => {
+    if (actor.id === userId) {
+      throw new BadRequestError('Use your profile to edit your own account');
+    }
+    const target = await prisma.user.findFirst({
+      select: { id: true },
+      where: { id: userId },
+    });
+    if (!target) throw new NotFoundError('User not found');
+
+    if (input.email) {
+      const email = input.email.toLowerCase().trim();
+      await assertContactFree(userId, { email });
+      await prisma.user.update({ data: { pendingEmail: email }, where: { id: userId } });
+      const issued = await otp.issue(userId, OtpPurpose.EMAIL_CHANGE);
+      await d.mail.send({
+        email,
+        subject: 'Confirm this email for your Elektor Pro account',
+        text: `An administrator is setting this email on an Elektor Pro account. Confirmation code: ${issued.code}. It expires in ${issued.ttlMinutes} minutes.`,
+      });
+      return { ttlMinutes: issued.ttlMinutes };
+    }
+    if (input.phone) {
+      const phone = validateAndFormatPhone(input.phone, 'GH').e164Format;
+      await assertContactFree(userId, { phone });
+      await prisma.user.update({ data: { pendingPhone: phone }, where: { id: userId } });
+      const issued = await otp.issue(userId, OtpPurpose.PHONE_CHANGE);
+      await d.sms.send(
+        phone,
+        `Elektor Pro confirmation code: ${issued.code}. It expires in ${issued.ttlMinutes} minutes.`,
+      );
+      return { ttlMinutes: issued.ttlMinutes };
+    }
+    throw new BadRequestError('Provide an email or a phone number');
+  };
+
+  /** Admin path step 2: the code from the new contact applies the change. */
+  const confirmUserContactChange = async (
+    actor: Actor,
+    userId: string,
+    code: string,
+    ctx: RequestContext,
+  ) => {
+    const target = await prisma.user.findFirst({
+      select: { id: true, pendingEmail: true, pendingPhone: true, role: true },
+      where: { id: userId },
+    });
+    if (!target) throw new NotFoundError('User not found');
+    if (!target.pendingEmail && !target.pendingPhone) {
+      throw new BadRequestError('No contact change in progress');
+    }
+
+    if (target.pendingEmail) {
+      await otp.verify(userId, OtpPurpose.EMAIL_CHANGE, code);
+    } else {
+      await otp.verify(userId, OtpPurpose.PHONE_CHANGE, code);
+    }
+    const updated = await prisma.user.update({
+      data: target.pendingEmail
+        ? { email: target.pendingEmail, emailVerifiedAt: d.clock.now(), pendingEmail: null }
+        : { pendingPhone: null, phone: target.pendingPhone, phoneVerifiedAt: d.clock.now() },
+      select: USER_ADMIN_SELECT,
+      where: { id: userId },
+    });
+    await appendAudit(prisma, {
+      action: 'user.contact_changed',
+      actorId: actor.id,
+      actorRole: actor.role,
+      entity: 'User',
+      entityId: userId,
+      ipAddress: ctx.ipAddress,
+      metadata: {
+        email: target.pendingEmail ?? null,
+        phone: target.pendingPhone ?? null,
+        verified: true,
+      },
+      userAgent: ctx.userAgent,
+    });
+    return updated;
+  };
 
   const listUsers = async (filters: UserQueryFilters, pagination: PaginationParams) => {
     const where: Prisma.UserWhereInput = {
@@ -201,7 +375,16 @@ export const makeUserAdminService = (d: Pick<AppDeps, 'clock' | 'prisma'>) => {
     });
   };
 
-  return { deleteUser, getUser, listUsers, updateUser, updateUserRole };
+  return {
+    confirmUserContactChange,
+    deleteUser,
+    getUser,
+    listUsers,
+    requestUserContactChange,
+    updateUser,
+    updateUserContact,
+    updateUserRole,
+  };
 };
 
 export type UserAdminService = ReturnType<typeof makeUserAdminService>;

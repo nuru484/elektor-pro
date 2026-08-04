@@ -45,7 +45,7 @@ export const governanceApi = apiSlice.injectEndpoints({
       invalidatesTags: ["GroupCategory", "ChangeRequest"],
       query: (body) => ({ body, method: "POST", url: "/group-categories" }),
     }),
-    createStaffUser: build.mutation<unknown, Record<string, unknown>>({
+    createStaffUser: build.mutation<unknown, FormData | Record<string, unknown>>({
       invalidatesTags: ["StaffUser"],
       query: (body) => ({ body, method: "POST", url: "/staff-users" }),
     }),
@@ -64,6 +64,18 @@ export const governanceApi = apiSlice.injectEndpoints({
     getAgentDashboard: build.query<ApiResponse<AgentDashboardRow[]>, void>({
       providesTags: ["Dashboard"],
       query: () => "/dashboard/agent",
+    }),
+    confirmUserContact: build.mutation<unknown, { code: string; id: string }>({
+      invalidatesTags: ["StaffUser", "Agents"],
+      query: ({ code, id }) => ({
+        body: { code },
+        method: "POST",
+        url: `/users/${id}/contact/confirm`,
+      }),
+    }),
+    getStaffUser: build.query<ApiResponse<StaffUser>, string>({
+      providesTags: ["StaffUser"],
+      query: (id) => `/users/${id}`,
     }),
     getOrganization: build.query<ApiResponse<Organization>, void>({
       providesTags: ["Organization"],
@@ -108,6 +120,16 @@ export const governanceApi = apiSlice.injectEndpoints({
       providesTags: ["StaffUser"],
       query: (params) => `/staff-users${qs(params)}`,
     }),
+    requestUserContact: build.mutation<
+      unknown,
+      { email?: string; id: string; phone?: string }
+    >({
+      query: ({ email, id, phone }) => ({
+        body: { email, phone },
+        method: "POST",
+        url: `/users/${id}/contact/request`,
+      }),
+    }),
     removeAgent: build.mutation<unknown, string>({
       invalidatesTags: ["Agents"],
       query: (id) => ({ method: "DELETE", url: `/agents/${id}` }),
@@ -150,6 +172,17 @@ export const governanceApi = apiSlice.injectEndpoints({
         return { body, method: "PATCH", url: `/organization/${field}` };
       },
     }),
+    updateUserContact: build.mutation<
+      unknown,
+      { email?: string; id: string; phone?: string }
+    >({
+      invalidatesTags: ["StaffUser", "Agents"],
+      query: ({ email, id, phone }) => ({
+        body: { email, phone },
+        method: "PATCH",
+        url: `/users/${id}/contact`,
+      }),
+    }),
     updateStaffUser: build.mutation<
       unknown,
       { data: Record<string, unknown>; id: string }
@@ -170,6 +203,7 @@ export const governanceApi = apiSlice.injectEndpoints({
 
 export const {
   useAssignAgentMutation,
+  useConfirmUserContactMutation,
   useCreateGroupCategoryMutation,
   useCreateGroupMutation,
   useCreateStaffUserMutation,
@@ -178,6 +212,7 @@ export const {
   useDeleteStaffUserMutation,
   useGetAgentDashboardQuery,
   useGetOrganizationQuery,
+  useGetStaffUserQuery,
   useGrantCapabilityMutation,
   useListAgentsQuery,
   useListGrantsQuery,
@@ -185,6 +220,7 @@ export const {
   useListGroupsQuery,
   useListStaffUsersQuery,
   useRemoveAgentMutation,
+  useRequestUserContactMutation,
   useRevokeGrantMutation,
   useUnlockUserMutation,
   useUpdateGroupCategoryMutation,
@@ -192,5 +228,6 @@ export const {
   useUpdateOrganizationImageMutation,
   useUpdateOrganizationMutation,
   useUpdateStaffUserMutation,
+  useUpdateUserContactMutation,
   useUpdateUserRoleMutation,
 } = governanceApi;

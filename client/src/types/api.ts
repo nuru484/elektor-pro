@@ -121,6 +121,10 @@ export interface Organization {
 
 export interface StaffUser {
   createdAt: string;
+  creator?: null | { firstName: string; id: string; lastName: string };
+  lastLoginAt?: null | string;
+  mustChangePassword?: boolean;
+  profilePicture?: null | string;
   email: null | string;
   firstName: string;
   id: string;
@@ -202,6 +206,8 @@ export interface Election {
 }
 
 export interface Candidate {
+  createdAt?: string;
+  election?: { id: string; name: string; slug?: string };
   id: string;
   manifesto?: null | string;
   name: string;
@@ -223,10 +229,13 @@ export interface Portfolio {
 }
 
 export interface Voter {
+  createdAt?: string;
+  email?: null | string;
   groupMemberships?: { group: { id: string; name: string } }[];
   id: string;
   name: string;
   phoneNumber: null | string;
+  profilePicture?: null | string;
   voterId: string;
 }
 

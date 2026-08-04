@@ -48,7 +48,11 @@ export const updateGroupSchema = createGroupSchema.partial();
 // --- Voters ---
 const voterBase = z.object({
   email: z.email().optional().nullable(),
-  groupIds: z.array(z.string()).optional(),
+  // Multipart forms deliver a single checkbox as a bare string.
+  groupIds: z.preprocess(
+    (value) => (typeof value === 'string' ? [value] : value),
+    z.array(z.string()).optional(),
+  ),
   metadata: jsonRecord.optional().nullable(),
   name: z.string().min(1).max(150),
   phoneNumber: z.string().min(6).max(20).optional().nullable(),
@@ -114,7 +118,8 @@ const candidateBase = z.object({
   party: z.string().max(120).optional().nullable(),
   partySymbol: z.string().max(300).optional().nullable(),
   portfolioId: z.string().min(1),
-  profilePicture: z.string().max(500).optional().nullable(),
+  // profilePicture deliberately absent: media URLs may only originate from
+  // the upload middleware, never from a request body.
 });
 export const createCandidateSchema = candidateBase;
 export const updateCandidateSchema = candidateBase.partial();

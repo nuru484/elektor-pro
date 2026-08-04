@@ -35,6 +35,8 @@ export interface StaffUserInput {
   firstName: string;
   lastName: string;
   phone?: string;
+  /** Set by the upload middleware only - never client-supplied. */
+  profilePicture?: string;
   role: Role;
 }
 
@@ -65,6 +67,7 @@ export const createStaffUser = async (
       mustChangePassword: true,
       password: await hashPassword(temporaryPassword),
       phone: input.phone ?? null,
+      profilePicture: input.profilePicture ?? null,
       role: input.role,
     },
     select: { id: true },

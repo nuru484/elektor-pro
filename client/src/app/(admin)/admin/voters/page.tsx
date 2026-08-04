@@ -1,14 +1,18 @@
 "use client";
 
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Plus, Users } from "lucide-react";
+import { Eye, Plus, Users } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { Voter } from "@/types/api";
 
+import { PhotoInput } from "@/components/console/photo-input";
+import { RowActionsMenu } from "@/components/console/row-actions";
 import { TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
@@ -66,25 +70,41 @@ const COLUMNS: ColumnDef<Voter>[] = [
     header: "Groups",
     id: "groups",
   },
+  {
+    cell: ({ row }) => (
+      <RowActionsMenu label="Voter actions">
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/voters/${row.original.id}`}>
+            <Eye className="size-4" /> View profile
+          </Link>
+        </DropdownMenuItem>
+      </RowActionsMenu>
+    ),
+    header: "Actions",
+    id: "actions",
+  },
 ];
 
 function AddVoterModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [createVoter, { isLoading: creating }] = useCreateVoterMutation();
+  const [photo, setPhoto] = useState<File | null>(null);
   const { data: groupsData } = useListGroupsQuery({ limit: 100 }, { skip: !open });
   const groups = groupsData?.data ?? [];
 
   const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const groupIds = f.getAll("groupIds").map(String);
+    // Multipart body: only meaningful fields, plus the staged photo.
+    const body = new FormData();
+    body.append("name", String(f.get("name")));
+    body.append("voterId", String(f.get("voterId")));
+    if (f.get("phoneNumber")) body.append("phoneNumber", String(f.get("phoneNumber")));
+    if (f.get("email")) body.append("email", String(f.get("email")));
+    for (const groupId of f.getAll("groupIds")) body.append("groupIds", String(groupId));
+    if (photo) body.append("image", photo);
     try {
-      const res = await createVoter({
-        email: f.get("email") || undefined,
-        groupIds: groupIds.length > 0 ? groupIds : undefined,
-        name: f.get("name"),
-        phoneNumber: f.get("phoneNumber") || undefined,
-        voterId: f.get("voterId"),
-      }).unwrap();
+      const res = await createVoter(body).unwrap();
+      setPhoto(null);
       onClose();
       toast.success(
         (res as { pending?: boolean }).pending ? "Submitted for approval" : "Voter added",
@@ -109,6 +129,7 @@ function AddVoterModal({ onClose, open }: { onClose: () => void; open: boolean }
         <Field hint="Fallback for their one-time login code" label="Email">
           <Input name="email" placeholder="e.g. ama@example.com (optional)" type="email" />
         </Field>
+        <PhotoInput file={photo} onChange={setPhoto} />
         {groups.length > 0 && (
           <Field
             hint="Group membership decides which scoped elections they can vote in."
