@@ -40,6 +40,7 @@ import {
   useRemoveAgentMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, isValidEmail, validateRequired } from "@/utils/form-validate";
 
 interface AgentFilters extends Record<string, string | undefined> {
   electionId?: string;
@@ -60,6 +61,7 @@ function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }
   const [create, { isLoading: creating }] = useCreateStaffUserMutation();
   const [tempPassword, setTempPassword] = useState<null | string>(null);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const close = () => {
     setTempPassword(null);
@@ -70,6 +72,15 @@ function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, {
+      email: "Email",
+      firstName: "First name",
+      lastName: "Last name",
+    });
+    const emailValue = String(f.get("email") ?? "");
+    if (emailValue && !isValidEmail(emailValue)) errs.email = "Enter a valid email address";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const body = new FormData();
     body.append("firstName", String(f.get("firstName")));
     body.append("lastName", String(f.get("lastName")));
@@ -126,16 +137,16 @@ function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }
           </Button>
         </div>
       ) : (
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-4" noValidate onSubmit={onSubmit}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="First name">
+            <Field error={errors.firstName} label="First name">
               <Input name="firstName" placeholder="e.g. Kojo" required />
             </Field>
-            <Field label="Last name">
+            <Field error={errors.lastName} label="Last name">
               <Input name="lastName" placeholder="e.g. Asare" required />
             </Field>
           </div>
-          <Field label="Email">
+          <Field error={errors.email} label="Email">
             <Input name="email" placeholder="e.g. agent@org.com" required type="email" />
           </Field>
           <Field label="Phone">
@@ -154,6 +165,7 @@ function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }
 function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [electionId, setElectionId] = useState("");
   const [assign, { isLoading: assigning }] = useAssignAgentMutation();
+  const [errors, setErrors] = useState<FormErrors>({});
   const { data: agents } = useListStaffUsersQuery(
     { limit: 100, role: "AGENT" },
     { skip: !open },
@@ -167,6 +179,9 @@ function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolea
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, { electionId: "Election", userId: "Agent" });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     try {
       await assign({
         candidateId: String(f.get("candidateId") ?? "") || undefined,
@@ -187,8 +202,8 @@ function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolea
       open={open}
       title="Assign agent"
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <Field label="Agent">
+      <form className="space-y-4" noValidate onSubmit={onSubmit}>
+        <Field error={errors.userId} label="Agent">
           <NativeSelect name="userId" required>
             <option value="">Select agent…</option>
             {agents?.data.map((agent) => (
@@ -199,7 +214,7 @@ function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolea
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Election">
+        <Field error={errors.electionId} label="Election">
           <NativeSelect
             name="electionId"
             onChange={(e) => setElectionId(e.target.value)}

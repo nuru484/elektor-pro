@@ -3,8 +3,7 @@
 // Candidate nomination as a full page (the form outgrew a dialog): contest,
 // identity, nickname, manifesto as text and/or PDF, and photo. Rides
 // maker-checker - admins' submissions are staged for approval.
-import { ArrowLeft, FileText, X } from "lucide-react";
-import Link from "next/link";
+import { FileText, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -16,12 +15,14 @@ import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/states";
 import { useCreateCandidateMutation, useGetElectionQuery, useListElectionsQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, validateRequired } from "@/utils/form-validate";
 
 export default function NewCandidatePage() {
   const router = useRouter();
   const [electionId, setElectionId] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [manifestoPdf, setManifestoPdf] = useState<File | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const { data: elections } = useListElectionsQuery({ limit: 100 });
   const { data: election } = useGetElectionQuery(electionId, { skip: !electionId });
@@ -30,6 +31,13 @@ export default function NewCandidatePage() {
   const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, {
+      electionId: "Election",
+      name: "Full name",
+      portfolioId: "Portfolio",
+    });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const body = new FormData();
     body.append("electionId", String(f.get("electionId")));
     body.append("portfolioId", String(f.get("portfolioId")));
@@ -51,12 +59,6 @@ export default function NewCandidatePage() {
 
   return (
     <div className="space-y-6">
-      <Link
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        href="/admin/candidates"
-      >
-        <ArrowLeft className="size-4" /> Back to candidates
-      </Link>
       <PageHeader
         description="Nominate a candidate for a portfolio in one of your elections."
         title="Add candidate"
@@ -64,10 +66,11 @@ export default function NewCandidatePage() {
 
       <form
         className="max-w-2xl space-y-5 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-6"
+        noValidate
         onSubmit={onCreate}
       >
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Election">
+          <Field error={errors.electionId} label="Election">
             <NativeSelect
               name="electionId"
               onChange={(e) => setElectionId(e.target.value)}
@@ -82,7 +85,7 @@ export default function NewCandidatePage() {
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Portfolio">
+          <Field error={errors.portfolioId} label="Portfolio">
             <NativeSelect disabled={!electionId} name="portfolioId" required>
               <option value="">Select portfolio…</option>
               {election?.data.portfolios?.map((portfolio) => (
@@ -94,7 +97,7 @@ export default function NewCandidatePage() {
           </Field>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Full name">
+          <Field error={errors.name} label="Full name">
             <Input name="name" placeholder="e.g. Kwame Mensah" required />
           </Field>
           <Field

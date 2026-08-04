@@ -54,6 +54,7 @@ import {
   useUpdateUserRoleMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, isValidEmail, validateRequired } from "@/utils/form-validate";
 
 // Staff only: agents, candidates, and voters live in their own modules.
 const CREATABLE_ROLES = ["ADMIN", "ACCREDITOR"] as const;
@@ -86,6 +87,7 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
   const [create, { isLoading: creating }] = useCreateStaffUserMutation();
   const [tempPassword, setTempPassword] = useState<null | string>(null);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const close = () => {
     setTempPassword(null);
@@ -96,6 +98,15 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, {
+      email: "Email",
+      firstName: "First name",
+      lastName: "Last name",
+    });
+    const emailValue = String(f.get("email") ?? "");
+    if (emailValue && !isValidEmail(emailValue)) errs.email = "Enter a valid email address";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const body = new FormData();
     body.append("firstName", String(f.get("firstName")));
     body.append("lastName", String(f.get("lastName")));
@@ -154,16 +165,16 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
           </Button>
         </div>
       ) : (
-        <form className="space-y-4" onSubmit={onSubmit}>
+        <form className="space-y-4" noValidate onSubmit={onSubmit}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="First name">
+            <Field error={errors.firstName} label="First name">
               <Input name="firstName" placeholder="e.g. Ama" required />
             </Field>
-            <Field label="Last name">
+            <Field error={errors.lastName} label="Last name">
               <Input name="lastName" placeholder="e.g. Owusu" required />
             </Field>
           </div>
-          <Field label="Email">
+          <Field error={errors.email} label="Email">
             <Input name="email" placeholder="e.g. ama@org.com" required type="email" />
           </Field>
           <Field label="Phone">

@@ -39,6 +39,7 @@ import {
   useUpdateGroupMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, validateRequired } from "@/utils/form-validate";
 
 const pendingToast = (res: unknown, applied: string) => {
   toast.success(
@@ -59,10 +60,14 @@ function CategoryModal({
 }) {
   const [create, { isLoading: creating }] = useCreateGroupCategoryMutation();
   const [update, { isLoading: updating }] = useUpdateGroupCategoryMutation();
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, { code: "Code", name: "Name" });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const body = {
       allowMultiple: f.get("allowMultiple") === "on",
       code: f.get("code"),
@@ -86,8 +91,8 @@ function CategoryModal({
       open={open}
       title={category ? "Edit category" : "New category"}
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <Field label="Name">
+      <form className="space-y-4" noValidate onSubmit={onSubmit}>
+        <Field error={errors.name} label="Name">
           <Input
             defaultValue={category?.name ?? ""}
             name="name"
@@ -95,7 +100,7 @@ function CategoryModal({
             required
           />
         </Field>
-        <Field hint="Short unique identifier used in imports." label="Code">
+        <Field error={errors.code} hint="Short unique identifier used in imports." label="Code">
           <Input
             className="max-w-40 font-mono"
             defaultValue={category?.code ?? ""}
@@ -143,10 +148,18 @@ function GroupModal({
 }) {
   const [create, { isLoading: creating }] = useCreateGroupMutation();
   const [update, { isLoading: updating }] = useUpdateGroupMutation();
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, {
+      categoryId: "Category",
+      code: "Code",
+      name: "Name",
+    });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const body = {
       categoryId: f.get("categoryId"),
       code: f.get("code"),
@@ -166,8 +179,8 @@ function GroupModal({
 
   return (
     <Modal onClose={onClose} open={open} title={group ? "Edit group" : "New group"}>
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <Field label="Category">
+      <form className="space-y-4" noValidate onSubmit={onSubmit}>
+        <Field error={errors.categoryId} label="Category">
           <NativeSelect
             defaultValue={group?.categoryId ?? ""}
             name="categoryId"
@@ -181,7 +194,7 @@ function GroupModal({
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Name">
+        <Field error={errors.name} label="Name">
           <Input
             defaultValue={group?.name ?? ""}
             name="name"
@@ -189,7 +202,7 @@ function GroupModal({
             required
           />
         </Field>
-        <Field hint="Short unique identifier used in imports." label="Code">
+        <Field error={errors.code} hint="Short unique identifier used in imports." label="Code">
           <Input
             className="max-w-40 font-mono"
             defaultValue={group?.code ?? ""}

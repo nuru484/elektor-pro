@@ -34,6 +34,7 @@ import {
   useRevokeGrantMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, validateRequired } from "@/utils/form-validate";
 import { formatDateTime } from "@/utils/format-date";
 
 const capabilityLabel = (catalog: PermissionsMatrix["catalog"], capability: string) =>
@@ -63,6 +64,7 @@ function GrantModal({
   open: boolean;
 }) {
   const [grant, { isLoading: granting }] = useGrantCapabilityMutation();
+  const [errors, setErrors] = useState<FormErrors>({});
   // Staff, agents, and candidates are separate modules - fetch each pool so
   // any signable account can receive a grant.
   const { data: staff } = useListStaffUsersQuery({ limit: 100 }, { skip: !open });
@@ -79,6 +81,9 @@ function GrantModal({
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, { capability: "Capability", userId: "User" });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     const expires = String(f.get("expiresAt") ?? "");
     try {
       await grant({
@@ -101,8 +106,8 @@ function GrantModal({
       open={open}
       title="Grant capability"
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <Field label="User">
+      <form className="space-y-4" noValidate onSubmit={onSubmit}>
+        <Field error={errors.userId} label="User">
           <NativeSelect name="userId" required>
             <option value="">Select user…</option>
             <optgroup label="Staff">
@@ -134,7 +139,7 @@ function GrantModal({
             )}
           </NativeSelect>
         </Field>
-        <Field label="Capability">
+        <Field error={errors.capability} label="Capability">
           <NativeSelect name="capability" required>
             <option value="">Select capability…</option>
             {catalog.map((group) => (

@@ -3,9 +3,8 @@
 // Candidate profile. Identity rail left, editable candidacy right; ?edit=1
 // opens the form straight from the table. The photo updates on its own;
 // field edits ride maker-checker (202 = staged for approval).
-import { ArrowLeft, FileText, Pencil, Upload } from "lucide-react";
+import { FileText, Pencil, Upload } from "lucide-react";
 import { useRef } from "react";
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast as sonnerToast } from "sonner";
@@ -38,6 +37,7 @@ import {
   useUpdateCandidatePictureMutation,
 } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, validateRequired } from "@/utils/form-validate";
 import { formatDateTime } from "@/utils/format-date";
 
 function CandidacyCard({
@@ -48,11 +48,15 @@ function CandidacyCard({
   editingInitially: boolean;
 }) {
   const [editing, setEditing] = useState(editingInitially);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [update, { isLoading: saving }] = useUpdateCandidateMutation();
 
   const onSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, { name: "Full name" });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     try {
       const res = await update({
         data: {
@@ -92,8 +96,8 @@ function CandidacyCard({
       </CardHeader>
       <CardContent className={CARD_PAD_MOBILE}>
         {editing ? (
-          <form className="max-w-lg space-y-4" onSubmit={onSave}>
-            <Field label="Full name">
+          <form className="max-w-lg space-y-4" noValidate onSubmit={onSave}>
+            <Field error={errors.name} label="Full name">
               <Input defaultValue={candidate.name} name="name" required />
             </Field>
             <Field label="Nickname / campaign name">
@@ -223,13 +227,6 @@ function CandidateProfileContent() {
 
   return (
     <div className="space-y-6">
-      <Link
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        href="/admin/candidates"
-      >
-        <ArrowLeft className="size-4" /> Back to candidates
-      </Link>
-
       <PageHeader description="View and manage this candidacy." title="Candidate profile" />
 
       {isLoading ? (

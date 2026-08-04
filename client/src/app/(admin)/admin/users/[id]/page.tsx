@@ -6,8 +6,7 @@
 // updates on its own; contact edits follow the trust ladder - super admins
 // apply directly behind a typed confirmation, admins verify via a code sent
 // to the NEW contact.
-import { ArrowLeft, Mail, Pencil, Phone, ShieldAlert } from "lucide-react";
-import Link from "next/link";
+import { Mail, Pencil, Phone, ShieldAlert } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
@@ -45,6 +44,7 @@ import {
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { formatDateTime } from "@/utils/format-date";
+import { type FormErrors, validateRequired } from "@/utils/form-validate";
 
 const ROLE_LABELS: Record<string, string> = {
   ACCREDITOR: "Accreditor",
@@ -235,12 +235,19 @@ function DetailsCard({
 }) {
   const { isAdmin, user: me } = useAuthRole();
   const [editing, setEditing] = useState(editingInitially);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [update, { isLoading: saving }] = useUpdateStaffUserMutation();
   const isSelf = me?.id === user.id;
 
   const onSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, {
+      firstName: "First name",
+      lastName: "Last name",
+    });
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     try {
       await update({
         data: {
@@ -274,33 +281,31 @@ function DetailsCard({
       </CardHeader>
       <CardContent className={CARD_PAD_MOBILE}>
         {editing ? (
-          <form className="max-w-lg space-y-4" onSubmit={onSave}>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="First name">
+          <form className="space-y-4" noValidate onSubmit={onSave}>
+            {/* One desktop row: first name, last name, status. */}
+            <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
+              <Field error={errors.firstName} label="First name">
                 <Input defaultValue={user.firstName} name="firstName" required />
               </Field>
-              <Field label="Last name">
+              <Field error={errors.lastName} label="Last name">
                 <Input defaultValue={user.lastName} name="lastName" required />
               </Field>
-            </div>
-            {isAdmin && !isSelf && (
-              <Field
-                hint="Suspending signs the user out of every device."
-                label="Status"
-              >
-                <NativeSelect
-                  className="max-w-48"
-                  defaultValue={
-                    user.status === "LOCKED" ? "ACTIVE" : user.status
-                  }
-                  name="status"
+              {isAdmin && !isSelf && (
+                <Field
+                  hint="Suspending signs the user out everywhere."
+                  label="Status"
                 >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="SUSPENDED">Suspended</option>
-                </NativeSelect>
-              </Field>
-            )}
+                  <NativeSelect
+                    defaultValue={user.status === "LOCKED" ? "ACTIVE" : user.status}
+                    name="status"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="SUSPENDED">Suspended</option>
+                  </NativeSelect>
+                </Field>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button onClick={() => setEditing(false)} type="button" variant="ghost">
                 Cancel
@@ -355,13 +360,6 @@ function UserProfileContent() {
 
   return (
     <div className="space-y-6">
-      <Link
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        href="/admin/users"
-      >
-        <ArrowLeft className="size-4" /> Back to users
-      </Link>
-
       <PageHeader
         description="View and manage this account."
         title="User profile"
@@ -384,11 +382,39 @@ function UserProfileContent() {
                 onUpload={(file) => updatePicture({ file, id: user.id }).unwrap()}
                 url={user.profilePicture}
               />
-              {/* Rail keeps it minimal: the photo and the name. Everything
-                  else lives in the cards on the right. */}
               <h1 className="min-w-0 truncate text-xl font-semibold">
                 {user.firstName} {user.lastName}
               </h1>
+              <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-xs text-muted-foreground">Two-factor</dt>
+                  <dd className="text-xs font-medium">
+                    {user.twoFactorEnabled ? "Enabled" : "Off"}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-xs text-muted-foreground">Last sign-in</dt>
+                  <dd className="text-xs font-medium">{formatDateTime(user.lastLoginAt)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-xs text-muted-foreground">Created</dt>
+                  <dd className="text-xs font-medium">{formatDateTime(user.createdAt)}</dd>
+                </div>
+                {user.creator && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-xs text-muted-foreground">Created by</dt>
+                    <dd className="truncate text-xs font-medium">
+                      {user.creator.firstName} {user.creator.lastName}
+                    </dd>
+                  </div>
+                )}
+                {user.mustChangePassword && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-xs text-muted-foreground">Password</dt>
+                    <dd className="text-xs font-medium text-warning">Temporary</dd>
+                  </div>
+                )}
+              </dl>
             </CardContent>
           </Card>
 
@@ -406,49 +432,6 @@ function UserProfileContent() {
               <CardContent className={`${CARD_PAD_MOBILE} space-y-5`}>
                 <ContactChannel channel="email" current={user.email} user={user} />
                 <ContactChannel channel="phone" current={user.phone} user={user} />
-              </CardContent>
-            </Card>
-            <Card className={CARD_MOBILE}>
-              <CardHeader className={CARD_PAD_MOBILE}>
-                <CardTitle className="text-base">Account</CardTitle>
-              </CardHeader>
-              <CardContent className={CARD_PAD_MOBILE}>
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Two-factor</dt>
-                    <dd className="mt-0.5 text-sm font-medium">
-                      {user.twoFactorEnabled ? "Enabled" : "Off"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Last sign-in</dt>
-                    <dd className="mt-0.5 text-sm font-medium">
-                      {formatDateTime(user.lastLoginAt)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Created</dt>
-                    <dd className="mt-0.5 text-sm font-medium">
-                      {formatDateTime(user.createdAt)}
-                    </dd>
-                  </div>
-                  {user.creator && (
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Created by</dt>
-                      <dd className="mt-0.5 text-sm font-medium">
-                        {user.creator.firstName} {user.creator.lastName}
-                      </dd>
-                    </div>
-                  )}
-                  {user.mustChangePassword && (
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Password</dt>
-                      <dd className="mt-0.5 text-sm font-medium text-warning">
-                        Temporary - not yet replaced
-                      </dd>
-                    </div>
-                  )}
-                </dl>
               </CardContent>
             </Card>
           </div>

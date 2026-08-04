@@ -3,8 +3,7 @@
 // Voter profile. Identity rail left, editable details right; ?edit=1 opens
 // the form straight from the table. The photo updates on its own; field
 // edits ride maker-checker (202 = staged for approval).
-import { ArrowLeft, Pencil } from "lucide-react";
-import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
@@ -36,6 +35,7 @@ import {
 } from "@/redux/admin-api";
 import { useListGroupsQuery } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors, isValidEmail, validateRequired } from "@/utils/form-validate";
 import { formatDateTime } from "@/utils/format-date";
 
 function VoterDetailsCard({
@@ -46,6 +46,7 @@ function VoterDetailsCard({
   voter: Voter;
 }) {
   const [editing, setEditing] = useState(editingInitially);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [update, { isLoading: saving }] = useUpdateVoterMutation();
   const { data: groupsData } = useListGroupsQuery({ limit: 100 }, { skip: !editing });
   const groups = groupsData?.data ?? [];
@@ -54,6 +55,11 @@ function VoterDetailsCard({
   const onSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const errs = validateRequired(f, { name: "Full name", voterId: "Voter ID" });
+    const email = String(f.get("email") ?? "");
+    if (email && !isValidEmail(email)) errs.email = "Enter a valid email address";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     try {
       const res = await update({
         data: {
@@ -95,12 +101,12 @@ function VoterDetailsCard({
       </CardHeader>
       <CardContent className={CARD_PAD_MOBILE}>
         {editing ? (
-          <form className="max-w-lg space-y-4" onSubmit={onSave}>
-            <Field label="Full name">
+          <form className="max-w-lg space-y-4" noValidate onSubmit={onSave}>
+            <Field error={errors.name} label="Full name">
               <Input defaultValue={voter.name} name="name" required />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Voter ID">
+              <Field error={errors.voterId} label="Voter ID">
                 <Input
                   className="font-mono"
                   defaultValue={voter.voterId}
@@ -117,7 +123,7 @@ function VoterDetailsCard({
                 />
               </Field>
             </div>
-            <Field label="Email">
+            <Field error={errors.email} label="Email">
               <Input
                 defaultValue={voter.email ?? ""}
                 name="email"
@@ -196,13 +202,6 @@ function VoterProfileContent() {
 
   return (
     <div className="space-y-6">
-      <Link
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        href="/admin/voters"
-      >
-        <ArrowLeft className="size-4" /> Back to voters
-      </Link>
-
       <PageHeader description="View and manage this voter." title="Voter profile" />
 
       {isLoading ? (
