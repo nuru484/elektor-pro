@@ -93,6 +93,21 @@ async function ensureFullContactDetails() {
       where: { id: candidate.id },
     });
   }
+  // EVERY user account signs in with the shared dev password - including
+  // voter accounts that were lazily created without one (voters normally use
+  // OTP, but the accounts should still be consistent).
+  const passwordless = await prisma.user.findMany({
+    select: { id: true },
+    where: { password: null },
+  });
+  if (passwordless.length > 0) {
+    const hashed = await hashPassword(SEED_PASSWORD);
+    await prisma.user.updateMany({
+      data: { password: hashed },
+      where: { id: { in: passwordless.map((u) => u.id) } },
+    });
+  }
+
   // Manifestos for anyone still missing one (account-linked candidates too).
   await prisma.candidate.updateMany({
     data: {
@@ -103,7 +118,7 @@ async function ensureFullContactDetails() {
   });
 
   console.log(
-    `✓ contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts)`,
+    `✓ contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts, ${String(passwordless.length)} accounts given the shared password)`,
   );
 }
 

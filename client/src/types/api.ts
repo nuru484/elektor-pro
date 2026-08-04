@@ -185,8 +185,24 @@ export interface AccessGrant {
 
 /** One assignment row from the agent's own dashboard. */
 export interface AgentDashboardRow {
-  candidate: null | { id: string; name: string };
-  election: { id: string; name: string; slug: string; status: ElectionStatus };
+  candidate: null | {
+    ballotNumber: null | number;
+    id: string;
+    name: string;
+    nickname: null | string;
+    portfolio: { id: string; name: string };
+    profilePicture: null | string;
+    status: CandidateStatus;
+  };
+  election: {
+    _count?: { candidates: number; portfolios: number; voterElections: number };
+    endDate: string;
+    id: string;
+    name: string;
+    slug: string;
+    startDate: string;
+    status: ElectionStatus;
+  };
   id: string;
 }
 

@@ -47,13 +47,36 @@ export const getAdminDashboard = async () => {
   };
 };
 
-/** Elections + assignments visible to an agent. */
+/**
+ * Elections + assignments visible to an agent, with everything they watch
+ * for: their candidate's full card (portfolio, ballot number, status, photo)
+ * and the election's shape (window, registered voters, candidate and
+ * portfolio counts). Live turnout rides the separate polling endpoint.
+ */
 export const getAgentDashboard = (userId: string) =>
   prisma.agentAssignment.findMany({
     include: {
-      candidate: { select: { id: true, name: true } },
+      candidate: {
+        select: {
+          ballotNumber: true,
+          id: true,
+          name: true,
+          nickname: true,
+          portfolio: { select: { id: true, name: true } },
+          profilePicture: true,
+          status: true,
+        },
+      },
       election: {
-        select: { id: true, name: true, slug: true, status: true },
+        select: {
+          _count: { select: { candidates: true, portfolios: true, voterElections: true } },
+          endDate: true,
+          id: true,
+          name: true,
+          slug: true,
+          startDate: true,
+          status: true,
+        },
       },
     },
     where: { userId },
