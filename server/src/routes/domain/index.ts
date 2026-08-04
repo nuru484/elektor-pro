@@ -182,6 +182,7 @@ domainRoutes.use('/candidates', candidatesRouter);
 domainRoutes.get(
   '/elections/:electionId/vetting/criteria',
   authenticateJWT,
+  requireCapability(Capability.VET_CANDIDATES, (req) => req.params.electionId),
   listCriteriaController,
 );
 domainRoutes.post(

@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { Role } from '../../generated/prisma/client.js';
+import { hashPassword } from '../../src/utils/password.js';
 import {
   api,
   bodyOf,
@@ -256,5 +257,89 @@ describe('nomination vetting', () => {
       where: { id: candidates[0].id },
     });
     expect(after).toEqual({ ballotNumber: null, status: 'DISQUALIFIED' });
+  });
+});
+
+describe('vetting read authorization', () => {
+  beforeEach(resetDb);
+
+  it('hides vetting from outsiders, redacts the panel for the candidate themselves', async () => {
+    const cookie = await superAdminCookie();
+    const { candidates, election } = await createElectionFixture();
+    const target = candidates[0];
+
+    // Panel material: criteria + one score.
+    const criterion = await api()
+      .post(`/api/v1/elections/${election.id}/vetting/criteria`)
+      .set('Cookie', cookie)
+      .send({ maxScore: 10, name: 'CV review' });
+    const criterionId = bodyOf<{ data: { id: string } }>(criterion).data.id;
+    await api()
+      .put(`/api/v1/candidates/${target.id}/vetting/score`)
+      .set('Cookie', cookie)
+      .send({ criterionId, score: 7 });
+
+    // A plain voter can read neither the criteria nor another candidate's file.
+    await createVoterFixture('VETSEC1', '+233550000081');
+    const voterCookie = await voterLogin('VETSEC1');
+    expect(
+      (
+        await api()
+          .get(`/api/v1/elections/${election.id}/vetting/criteria`)
+          .set('Cookie', voterCookie)
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await api()
+          .get(`/api/v1/candidates/${target.id}/vetting`)
+          .set('Cookie', voterCookie)
+      ).status,
+    ).toBe(403);
+
+    // The candidate sees their own record, but with panelists stripped.
+    const account = await prisma.user.create({
+      data: {
+        email: 'own.candidate@test.com',
+        firstName: 'Alice',
+        lastName: 'Own',
+        role: Role.CANDIDATE,
+      },
+    });
+    await prisma.candidate.update({
+      data: { accountId: account.id },
+      where: { id: target.id },
+    });
+    const password = 'own-pass-123';
+    await prisma.user.update({
+      data: {
+        mustChangePassword: false,
+        password: await hashPassword(password),
+      },
+      where: { id: account.id },
+    });
+    const login = await api()
+      .post('/api/v1/auth/login')
+      .send({ emailOrPhone: 'own.candidate@test.com', password });
+    const ownCookie = toCookieHeader(login.headers['set-cookie']);
+
+    const own = await api()
+      .get(`/api/v1/candidates/${target.id}/vetting`)
+      .set('Cookie', ownCookie);
+    expect(own.status).toBe(200);
+    const payload = bodyOf<{
+      data: { byCriterion: { average: null | number; scores: unknown[] }[]; total: number };
+    }>(own).data;
+    expect(payload.byCriterion[0].average).toBe(7);
+    expect(payload.byCriterion[0].scores).toHaveLength(0);
+
+    // The panel keeps the full view (scorer identities included).
+    const panel = await api()
+      .get(`/api/v1/candidates/${target.id}/vetting`)
+      .set('Cookie', cookie);
+    expect(
+      bodyOf<{ data: { byCriterion: { scores: unknown[] }[] } }>(panel).data
+        .byCriterion[0].scores,
+    ).toHaveLength(1);
   });
 });

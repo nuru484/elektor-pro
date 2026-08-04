@@ -2,10 +2,17 @@
 // Nomination vetting endpoints: criteria, scoring, decisions, ballot numbers.
 import type { Request, RequestHandler, Response } from 'express';
 
-import { type CandidateStatus } from '../../generated/prisma/client.js';
+import { type CandidateStatus, Capability } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
-import { asyncHandler } from '../middlewares/error-handler.js';
+import prisma from '../lib/prisma.js';
+import {
+  asyncHandler,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
+import { hasCapability } from '../services/authorization/capability.service.js';
 import {
   autoAssignBallotNumbers,
   type BallotNumberStrategy,
@@ -73,9 +80,41 @@ export const deleteCriterionController = asyncHandler(
   },
 );
 
+/**
+ * Vetting details are panel material: full payload (per-panelist scores and
+ * identities) only for VET_CANDIDATES holders; the candidate may see their
+ * OWN record with the panel redacted (averages only); everyone else is
+ * refused.
+ */
 export const getCandidateVettingController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'Vetting retrieved', await getCandidateVetting(req.params.id));
+    const user = req.user;
+    if (!user) throw new UnauthorizedError('Authentication required');
+    const candidate = await prisma.candidate.findFirst({
+      select: { accountId: true, electionId: true },
+      where: { id: req.params.id },
+    });
+    if (!candidate) throw new NotFoundError('Candidate not found');
+
+    const isPanel = await hasCapability(
+      { id: user.id, role: user.role },
+      Capability.VET_CANDIDATES,
+      candidate.electionId,
+    );
+    const isSelf = candidate.accountId !== null && candidate.accountId === user.id;
+    if (!isPanel && !isSelf) {
+      throw new ForbiddenError('Vetting details are not available to you');
+    }
+
+    const data = await getCandidateVetting(req.params.id);
+    if (!isPanel) {
+      // Own-candidate view: averages and totals, never who scored what.
+      data.byCriterion = data.byCriterion.map((entry) => ({
+        ...entry,
+        scores: [],
+      }));
+    }
+    sendOk(res, 'Vetting retrieved', data);
   },
 );
 
