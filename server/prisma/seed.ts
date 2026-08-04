@@ -25,7 +25,7 @@ import { hashPassword } from '../src/utils/password.js';
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 /** Every seeded user account signs in with this (development data only). */
-const SEED_PASSWORD = 'ORACLE1995@B9';
+const SEED_PASSWORD = 'ORACLE1995@B9s';
 
 async function main() {
   // --- Organization (singleton) ---
