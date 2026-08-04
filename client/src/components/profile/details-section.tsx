@@ -171,6 +171,8 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
   const [requestPhone] = useRequestPhoneChangeMutation();
   const [confirmPhone] = useConfirmPhoneChangeMutation();
   const [dialog, setDialog] = useState<"email" | "phone" | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; url: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<UpdateProfileValues>({
@@ -187,13 +189,27 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
     }
   });
 
-  const onPickPhoto = async (file: File | undefined) => {
+  /** Selecting a file only stages a preview - nothing is uploaded yet. */
+  const onPickPhoto = (file: File | undefined) => {
     if (!file) return;
+    setPendingPhoto({ file, url: URL.createObjectURL(file) });
+  };
+
+  const discardPendingPhoto = () => {
+    if (pendingPhoto) URL.revokeObjectURL(pendingPhoto.url);
+    setPendingPhoto(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  /** The upload happens only after the user confirms the preview. */
+  const onConfirmPhoto = async () => {
+    if (!pendingPhoto) return;
     const body = new FormData();
-    body.append("image", file);
+    body.append("image", pendingPhoto.file);
     try {
       await uploadPicture(body).unwrap();
       toast.success("Profile photo updated");
+      discardPendingPhoto();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     }
@@ -209,24 +225,29 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
           <CardDescription>Shown on your account and, for candidates, the ballot.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
-          <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-lg font-semibold text-brand-foreground">
+          <button
+            aria-label={user.profilePicture ? "View profile photo" : "No profile photo yet"}
+            className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-lg font-semibold text-brand-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            disabled={!user.profilePicture}
+            onClick={() => setViewOpen(true)}
+            type="button"
+          >
             {user.profilePicture ? (
               // eslint-disable-next-line @next/next/no-img-element -- Cloudinary avatar
               <img alt="Profile photo" className="size-full object-cover" src={user.profilePicture} />
             ) : (
               initials
             )}
-          </span>
+          </button>
           <div>
             <input
               accept="image/png,image/jpeg,image/webp"
               className="hidden"
-              onChange={(e) => void onPickPhoto(e.target.files?.[0])}
+              onChange={(e) => onPickPhoto(e.target.files?.[0])}
               ref={fileRef}
               type="file"
             />
             <Button
-              loading={uploading}
               onClick={() => fileRef.current?.click()}
               size="sm"
               type="button"
@@ -234,7 +255,9 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
             >
               <Camera className="size-4" /> Change photo
             </Button>
-            <p className="mt-1.5 text-xs text-muted-foreground">JPEG, PNG or WebP, up to 10 MB.</p>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              JPEG, PNG or WebP, up to 10 MB. Tap the photo to view it full size.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -248,10 +271,10 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
           <form className="space-y-4" onSubmit={onSave}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field error={form.formState.errors.firstName?.message} label="First name">
-                <Input {...form.register("firstName")} />
+                <Input placeholder="e.g. Ama" {...form.register("firstName")} />
               </Field>
               <Field error={form.formState.errors.lastName?.message} label="Last name">
-                <Input {...form.register("lastName")} />
+                <Input placeholder="e.g. Owusu" {...form.register("lastName")} />
               </Field>
             </div>
             <Button loading={saving} type="submit" variant="brand">
@@ -311,6 +334,51 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
         title="Change email address"
         type="email"
       />
+      {/* Preview + confirm before anything is uploaded. */}
+      <Dialog onOpenChange={(next) => !next && discardPendingPhoto()} open={pendingPhoto !== null}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Use this photo?</DialogTitle>
+            <DialogDescription>
+              This is how your profile photo will look. Confirm to save it.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingPhoto && (
+            // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+            <img
+              alt="New profile photo preview"
+              className="aspect-square w-full rounded-xl border border-border object-cover"
+              src={pendingPhoto.url}
+            />
+          )}
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={discardPendingPhoto} type="button" variant="outline">
+              Cancel
+            </Button>
+            <Button className="flex-1" loading={uploading} onClick={onConfirmPhoto} type="button" variant="brand">
+              Save photo
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full-size square view of the current photo. */}
+      <Dialog onOpenChange={setViewOpen} open={viewOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Profile photo</DialogTitle>
+          </DialogHeader>
+          {user.profilePicture && (
+            // eslint-disable-next-line @next/next/no-img-element -- Cloudinary image
+            <img
+              alt="Profile photo, full size"
+              className="aspect-square w-full rounded-xl border border-border object-cover"
+              src={user.profilePicture}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ContactChangeDialog
         confirm={(code) => confirmPhone({ code }).unwrap()}
         description="We'll text a verification code to the new number."

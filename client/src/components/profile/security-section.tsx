@@ -293,17 +293,17 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
               error={form.formState.errors.currentPassword?.message}
               label="Current password"
             >
-              <Input type="password" {...form.register("currentPassword")} />
+              <Input placeholder="Your current password" type="password" {...form.register("currentPassword")} />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field error={form.formState.errors.newPassword?.message} label="New password">
-                <Input type="password" {...form.register("newPassword")} />
+                <Input placeholder="At least 8 characters" type="password" {...form.register("newPassword")} />
               </Field>
               <Field
                 error={form.formState.errors.confirmPassword?.message}
                 label="Confirm new password"
               >
-                <Input type="password" {...form.register("confirmPassword")} />
+                <Input placeholder="Repeat the new password" type="password" {...form.register("confirmPassword")} />
               </Field>
             </div>
             <Button loading={changing} type="submit" variant="brand">
