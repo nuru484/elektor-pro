@@ -1,19 +1,115 @@
 "use client";
 
+import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { ScrollText, ShieldCheck, ShieldX } from "lucide-react";
-import { useState } from "react";
 
+import { TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Pagination } from "@/components/ui/pagination";
-import { TableRowsSkeleton } from "@/components/ui/skeleton";
-import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
-import { useListAuditLogsQuery, useVerifyAuditQuery } from "@/redux/admin-api";
+import { DataTable, useDataTable } from "@/components/ui/data-table";
+import { Select } from "@/components/ui/input";
+import { EmptyState, PageHeader } from "@/components/ui/states";
+import { RowCard } from "@/components/ui/table-bits";
+import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
+import {
+  type TableFiltersSpec,
+} from "@/hooks/table-query-state-logic";
+import { useTableQueryState } from "@/hooks/use-table-query-state";
+import { type AuditLogRow, useListAuditLogsQuery, useVerifyAuditQuery } from "@/redux/admin-api";
+
+const ENTITIES = [
+  "User",
+  "Voter",
+  "Election",
+  "Candidate",
+  "ChangeRequest",
+  "AccessGrant",
+  "AgentAssignment",
+  "Organization",
+] as const;
+
+interface AuditFilters extends Record<string, string | undefined> {
+  entity?: string;
+  search?: string;
+}
+
+const FILTERS_SPEC: TableFiltersSpec<AuditFilters> = {
+  entity: { kind: "enum", values: ENTITIES },
+  search: { kind: "string" },
+};
+
+const actorName = (log: AuditLogRow): string =>
+  log.actor ? `${log.actor.firstName} ${log.actor.lastName}` : "System";
+
+const COLUMNS: ColumnDef<AuditLogRow>[] = [
+  {
+    accessorKey: "createdAt",
+    cell: ({ row }) => (
+      <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
+        {new Date(row.original.createdAt).toLocaleString()}
+      </time>
+    ),
+    header: "Time",
+  },
+  {
+    accessorKey: "action",
+    cell: ({ row }) => <span className="font-medium">{row.original.action}</span>,
+    header: "Action",
+  },
+  {
+    cell: ({ row }) => (
+      <div className="min-w-0">
+        <p className="text-sm">{actorName(row.original)}</p>
+        {row.original.actor && (
+          <p className="text-xs text-muted-foreground">
+            {row.original.actor.role.replace("_", " ").toLowerCase()}
+          </p>
+        )}
+      </div>
+    ),
+    header: "By",
+    id: "actor",
+  },
+  {
+    accessorKey: "entity",
+    cell: ({ row }) => <Badge variant="outline">{row.original.entity}</Badge>,
+    header: "Entity",
+  },
+  {
+    cell: ({ row }) => (
+      <span className="font-mono text-xs text-muted-foreground">
+        {row.original.ipAddress ?? "—"}
+      </span>
+    ),
+    header: "IP address",
+    id: "ip",
+  },
+];
 
 export default function AuditPage() {
-  const [page, setPage] = useState(1);
-  const { data, isError, isFetching } = useListAuditLogsQuery({ limit: 20, page });
+  const {
+    filters,
+    handleFiltersChange,
+    handlePageChange,
+    handlePageSizeChange,
+    page,
+    pageSize,
+    queryParams,
+  } = useTableQueryState<AuditFilters>({ defaultPageSize: 20, spec: FILTERS_SPEC });
+
+  const { data, isFetching, isLoading } = useListAuditLogsQuery(queryParams);
   const { data: integrity } = useVerifyAuditQuery();
+
+  const rows = data?.data ?? [];
+  const totalCount = data?.meta.total ?? 0;
+
+  const table = useDataTable({
+    columns: COLUMNS,
+    data: rows,
+    enableRowSelection: false,
+    getRowId: (row) => row.id,
+    pageSize,
+    totalCount,
+  });
 
   return (
     <div className="space-y-6">
@@ -21,46 +117,70 @@ export default function AuditPage() {
         action={
           integrity &&
           (integrity.data.valid ? (
-            <Badge variant="success"><ShieldCheck className="size-3" /> Chain verified</Badge>
+            <Badge variant="success">
+              <ShieldCheck className="size-3" /> Chain verified
+            </Badge>
           ) : (
-            <Badge variant="destructive"><ShieldX className="size-3" /> Tampered at #{integrity.data.brokenAt}</Badge>
+            <Badge variant="destructive">
+              <ShieldX className="size-3" /> Tampered at #{integrity.data.brokenAt}
+            </Badge>
           ))
         }
-        description="A tamper-evident, hash-chained record of every action."
+        description="A tamper-evident, hash-chained record of every action - who did it, and from where."
         title="Audit trail"
       />
 
-      <Card className="overflow-hidden">
-        {isFetching ? (
-          <TableRowsSkeleton cols={3} />
-        ) : isError ? (
-          <div className="p-4"><ErrorState /></div>
-        ) : data && data.data.length > 0 ? (
-          <div className="divide-y divide-border">
-            {data.data.map((log) => (
-              <div className="flex items-center justify-between gap-3 px-4 py-3" key={log.id}>
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="size-1.5 shrink-0 rounded-full bg-brand" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{log.action}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {log.entity}
-                      {log.actor ? ` · ${log.actor.firstName} ${log.actor.lastName}` : " · system"}
-                    </p>
-                  </div>
-                </div>
-                <time className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {new Date(log.createdAt).toLocaleString()}
-                </time>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-4"><EmptyState icon={ScrollText} title="No activity yet" /></div>
+      <DataTable
+        emptyState={<EmptyState icon={ScrollText} title="No activity yet" />}
+        entityLabel="audit entries"
+        filters={filters}
+        loading={isLoading || isFetching}
+        onClearFilters={() => handleFiltersChange(clearAllFiltersPatch(filters))}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+        page={page}
+        pageSize={pageSize}
+        renderRowCard={(row: Row<AuditLogRow>) => (
+          <RowCard key={row.id}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-sm font-medium">
+                {row.original.action}
+              </span>
+              <time className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                {new Date(row.original.createdAt).toLocaleString()}
+              </time>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {actorName(row.original)} · {row.original.entity}
+              {row.original.ipAddress ? ` · ${row.original.ipAddress}` : ""}
+            </p>
+          </RowCard>
         )}
-      </Card>
-
-      {data && <Pagination meta={data.meta} onPageChange={setPage} />}
+        table={table}
+        toolbar={
+          <TableToolbar
+            filters={filters}
+            onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
+            onSearchChange={(value) => handleFiltersChange({ search: value || undefined })}
+            search={filters.search ?? ""}
+            searchPlaceholder="Search action, entity, actor, or IP…"
+          >
+            <Select
+              className="sm:w-44"
+              onChange={(e) => handleFiltersChange({ entity: e.target.value || undefined })}
+              value={filters.entity ?? ""}
+            >
+              <option value="">All entities</option>
+              {ENTITIES.map((entity) => (
+                <option key={entity} value={entity}>
+                  {entity}
+                </option>
+              ))}
+            </Select>
+          </TableToolbar>
+        }
+        totalCount={totalCount}
+      />
     </div>
   );
 }

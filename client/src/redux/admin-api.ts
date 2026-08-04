@@ -24,6 +24,18 @@ const qs = (params: object): string => {
   return str ? `?${str}` : "";
 };
 
+export interface AuditLogRow {
+  action: string;
+  actor: null | { firstName: string; id: string; lastName: string; role: string };
+  createdAt: string;
+  entity: string;
+  entityId: null | string;
+  id: string;
+  ipAddress: null | string;
+  sequence: number;
+  userAgent: null | string;
+}
+
 interface DashboardData {
   recentActivity: { action: string; createdAt: string; entity: string; id: string }[];
   recentElections: Election[];
@@ -59,14 +71,8 @@ export const adminApi = apiSlice.injectEndpoints({
       query: (body) => ({ body, method: "POST", url: "/voters" }),
     }),
     listAuditLogs: build.query<
-      PaginatedResponse<{
-        action: string;
-        actor: null | { firstName: string; lastName: string; role: string };
-        createdAt: string;
-        entity: string;
-        id: string;
-      }>,
-      ListQuery
+      PaginatedResponse<AuditLogRow>,
+      ListQuery & { entity?: string }
     >({
       providesTags: ["AuditLog"],
       query: (params) => `/audit-logs${qs(params)}`,
