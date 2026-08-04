@@ -7,7 +7,8 @@ const required = (name: string, value: string | undefined): string => {
 export const env = {
   apiUrl: required(
     "NEXT_PUBLIC_API_URL",
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1",
+    // Fallback matches .env.example and the server's configured PORT (4040).
+    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4040/api/v1",
   ),
 };
 

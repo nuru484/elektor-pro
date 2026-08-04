@@ -106,7 +106,8 @@ const ENV: IENV = {
   OTP_LENGTH: envNumber('OTP_LENGTH', 6),
   OTP_MODE: envEnum('OTP_MODE', ['live', 'mock'] as const, isProduction ? 'live' : 'mock'),
   OTP_TTL_MINUTES: envNumber('OTP_TTL_MINUTES', 10),
-  PORT: envNumber('PORT', 4000),
+  // Default matches .env.example and the client's NEXT_PUBLIC_API_URL fallback.
+  PORT: envNumber('PORT', 4040),
   RATE_LIMIT_BYPASS_SECRET: envOptional('RATE_LIMIT_BYPASS_SECRET'),
   REDIS_URL: envOptional('REDIS_URL'),
   REFRESH_TOKEN_EXPIRY: envOptional('REFRESH_TOKEN_EXPIRY', '7d'),

@@ -361,7 +361,9 @@ model Voter {
   name           String
   voterId        String  @unique // index / membership / registration number
   phoneNumber    String? @unique
-  email          String?
+  // Unique like phoneNumber: both are OTP login identifiers, and the email
+  // fallback must resolve to exactly one voter.
+  email          String? @unique
   profilePicture String?
   // Free-form org-specific attributes (staff id, year, etc.).
   metadata       Json?

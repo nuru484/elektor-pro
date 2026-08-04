@@ -8,6 +8,7 @@ import {
   getBallotController,
   listVoterElectionsController,
   requestOtpController,
+  verifyBallotChainController,
   verifyOtpController,
   verifyReceiptController,
 } from '../../controllers/voting.controller.js';
@@ -42,8 +43,9 @@ votingRoutes.post(
   ...castBallotController,
 );
 
-// Public receipt verification
+// Public integrity verification (receipt inclusion + whole-chain re-derivation)
 votingRoutes.get('/elections/:electionId/receipts/:code', verifyReceiptController);
+votingRoutes.get('/elections/:electionId/ballots/verify', verifyBallotChainController);
 
 // Accreditation (staff with capability)
 votingRoutes.post(

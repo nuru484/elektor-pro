@@ -24,6 +24,7 @@ initErrorReporting();
 // entry modules are imported here as they land; each registers itself with
 // jobs/lifecycle.ts so shutdown and failure reporting pick it up automatically.
 await import('./src/workers/election-status.worker.js');
+await import('./src/workers/auth-maintenance.worker.js');
 
 // Background job failures have no HTTP error handler to report them; forward
 // every registered worker's `failed` events to the tracker.

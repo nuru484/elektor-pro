@@ -7,6 +7,7 @@ import app from '../app.js';
 import { Role } from '../generated/prisma/client.js';
 import { DEFAULT_ROLE_CAPABILITIES, EDITABLE_ROLES } from '../src/config/capabilities.js';
 import prisma from '../src/lib/prisma.js';
+import { _resetPasswordGateForTests } from '../src/services/auth/password-gate.service.js';
 import { invalidateRoleCapabilityCache } from '../src/services/authorization/role-capability.service.js';
 import { hashPassword } from '../src/utils/password.js';
 
@@ -34,6 +35,7 @@ export const resetDb = async (): Promise<void> => {
     ),
   });
   invalidateRoleCapabilityCache();
+  _resetPasswordGateForTests();
 };
 
 export const createUser = async (

@@ -10,6 +10,7 @@ import {
   activateEmailTwoFactor,
   activateTwoFactor,
   disableTwoFactor,
+  regenerateRecoveryCodes,
   requestEmailTwoFactor,
   setupTwoFactor,
 } from '../../services/auth/auth.service.js';
@@ -66,6 +67,23 @@ const handleActivateEmail = asyncHandler(async (req: Request, res: Response) => 
   });
 });
 
+const handleRegenerateRecoveryCodes = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { password } = req.body as { password: string };
+    const data = await regenerateRecoveryCodes(
+      userIdOf(req),
+      password,
+      requestContextOf(req),
+    );
+    res.status(200).json({
+      data,
+      message:
+        'New recovery codes generated. Previous codes no longer work - save these.',
+      success: true,
+    });
+  },
+);
+
 const handleDisable = asyncHandler(async (req: Request, res: Response) => {
   const { password } = req.body as { password: string };
   await disableTwoFactor(userIdOf(req), password, requestContextOf(req));
@@ -87,4 +105,10 @@ export const activateEmailTwoFactorController: RequestHandler[] = [
 export const disableTwoFactorController: RequestHandler[] = [
   ...validationMiddleware.create(twoFactorDisableSchema),
   handleDisable,
+];
+
+// Password-confirmed like disable, hence the shared schema.
+export const regenerateRecoveryCodesController: RequestHandler[] = [
+  ...validationMiddleware.create(twoFactorDisableSchema),
+  handleRegenerateRecoveryCodes,
 ];

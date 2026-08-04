@@ -4,8 +4,51 @@ import type { Applier } from '../change-request/types.js';
 
 // src/services/domain/voter.service.ts
 import prisma from '../../lib/prisma.js';
-import { NotFoundError } from '../../middlewares/error-handler.js';
+import { BadRequestError, NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
+
+/**
+ * Validate a group selection: every id must exist, and a category with
+ * allowMultiple = false contributes at most one group. Enforced here (not in
+ * Zod) because it needs the category rows.
+ */
+const assertGroupSelectionAllowed = async (
+  tx: TxClient,
+  groupIds: string[],
+): Promise<void> => {
+  const unique = [...new Set(groupIds)];
+  const groups = await tx.group.findMany({
+    select: {
+      category: { select: { allowMultiple: true, id: true, name: true } },
+      id: true,
+    },
+    where: { id: { in: unique } },
+  });
+  if (groups.length !== unique.length) {
+    throw new BadRequestError('One or more selected groups do not exist', {
+      code: 'UNKNOWN_GROUP',
+      layer: 'voter',
+    });
+  }
+  const perCategory = new Map<string, { count: number; name: string }>();
+  for (const group of groups) {
+    if (group.category.allowMultiple) continue;
+    const entry = perCategory.get(group.category.id) ?? {
+      count: 0,
+      name: group.category.name,
+    };
+    entry.count += 1;
+    perCategory.set(group.category.id, entry);
+  }
+  for (const { count, name } of perCategory.values()) {
+    if (count > 1) {
+      throw new BadRequestError(
+        `Only one group from the "${name}" category may be selected`,
+        { code: 'SINGLE_GROUP_CATEGORY', layer: 'voter' },
+      );
+    }
+  }
+};
 
 export interface VoterInput {
   email?: null | string;
@@ -79,6 +122,7 @@ const createVoterInTx = async (
     select: { id: true },
   });
   if (input.groupIds?.length) {
+    await assertGroupSelectionAllowed(tx, input.groupIds);
     await tx.voterGroupMembership.createMany({
       data: input.groupIds.map((groupId) => ({ groupId, voterId: voter.id })),
       skipDuplicates: true,
@@ -114,6 +158,9 @@ export const voterApplier: Applier = {
       where: { id },
     });
     if (groupIds) {
+      // The final membership set is exactly groupIds, so validating the
+      // incoming selection is sufficient.
+      if (groupIds.length) await assertGroupSelectionAllowed(tx, groupIds);
       await tx.voterGroupMembership.deleteMany({
         where: { groupId: { notIn: groupIds }, voterId: id },
       });

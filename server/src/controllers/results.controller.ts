@@ -90,7 +90,11 @@ export const certifyResultsController = asyncHandler(
 
 export const getCertificationController = asyncHandler(
   async (req: Request, res: Response) => {
-    const data = await getCertification(req.params.electionId);
+    // The snapshot carries the full tally, so it is gated by the same
+    // visibility rules as the live results endpoint.
+    const election = await loadElectionForResults(req.params.electionId);
+    await assertCanViewResults(viewerOf(req), election);
+    const data = await getCertification(election.id);
     sendOk(res, 'Certification retrieved', data);
   },
 );

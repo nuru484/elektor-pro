@@ -8,6 +8,16 @@ import prisma from '../../lib/prisma.js';
 import { NotFoundError } from '../../middlewares/error-handler.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { type AppDeps, defaultDeps } from '../deps.js';
+import { assertElectionUnlocked } from './election.service.js';
+
+/** Candidate assets are election-scoped: certification freezes them too. */
+const assertCandidateElectionUnlocked = async (candidateId: string): Promise<void> => {
+  const candidate = await prisma.candidate.findUnique({
+    select: { electionId: true },
+    where: { id: candidateId },
+  });
+  if (candidate) await assertElectionUnlocked(prisma, candidate.electionId);
+};
 
 interface Actor {
   id: string;
@@ -29,6 +39,7 @@ export const makeEntityPictureService = (
     actor: Actor,
     ctx: Ctx,
   ) => {
+    if (entity === 'candidate') await assertCandidateElectionUnlocked(id);
     const delegate = entity === 'voter' ? prisma.voter : prisma.candidate;
     const existing = (await (delegate as typeof prisma.voter).findFirst({
       select: { id: true, profilePicture: true },
@@ -71,6 +82,7 @@ export const makeEntityPictureService = (
     actor: Actor,
     ctx: Ctx = {},
   ) => {
+    await assertCandidateElectionUnlocked(id);
     const existing = await prisma.candidate.findFirst({
       select: { id: true, manifestoUrl: true },
       where: { id },

@@ -1,5 +1,11 @@
 import { defineConfig } from 'vitest/config';
 
+// Single source of truth for the test DB shared with test/global-setup.ts;
+// override with TEST_DATABASE_URL to run the suite elsewhere (CI, containers).
+const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ??
+  'postgresql://nuru:0553997465@localhost:5432/elektor_pro_test';
+
 export default defineConfig({
   test: {
     env: {
@@ -9,8 +15,7 @@ export default defineConfig({
       CLOUDINARY_CLOUD_NAME: 'test',
       COOKIE_DOMAIN: '',
       CORS_ACCESS: 'http://localhost:3000',
-      DATABASE_URL:
-        'postgresql://nuru:0553997465@localhost:5432/elektor_pro_test',
+      DATABASE_URL: TEST_DATABASE_URL,
       NODE_ENV: 'test',
       OTP_MODE: 'mock',
       REFRESH_TOKEN_SECRET: 'test_refresh_secret_fedcba9876543210fedcba9876543210',

@@ -46,7 +46,7 @@ cp .env.example .env            # adjust DATABASE_URL etc.
 npm install
 npx prisma migrate deploy
 npm run seed                    # demo org, accounts, and a live election
-npm run dev                     # http://localhost:4000
+npm run dev                     # http://localhost:4040 (PORT in .env)
 
 # 2. Client (in another terminal)
 cd client

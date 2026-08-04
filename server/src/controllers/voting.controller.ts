@@ -17,6 +17,7 @@ import {
   type BallotSelection,
   castBallot,
   getVoterBallot,
+  verifyBallotChain,
   verifyReceipt,
 } from '../services/voting/voting.service.js';
 import { issueSession, requestContextOf } from '../utils/auth-session.js';
@@ -88,6 +89,13 @@ export const verifyReceiptController = asyncHandler(
       req.params.code,
     );
     sendOk(res, 'Receipt verified', data);
+  },
+);
+
+export const verifyBallotChainController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const data = await verifyBallotChain(req.params.electionId);
+    sendOk(res, 'Ballot chain verified', data);
   },
 );
 

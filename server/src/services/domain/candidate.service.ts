@@ -1,10 +1,22 @@
 import type { Prisma } from '../../../generated/prisma/client.js';
+// src/services/domain/candidate.service.ts
+import type { TxClient } from '../../types/prisma.types.js';
 import type { Applier } from '../change-request/types.js';
 
-// src/services/domain/candidate.service.ts
 import prisma from '../../lib/prisma.js';
 import { NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
+import { assertElectionUnlocked } from './election.service.js';
+
+/** Resolve a candidate's election and refuse writes once it is certified. */
+const assertCandidateUnlocked = async (tx: TxClient, id: string): Promise<void> => {
+  const candidate = await tx.candidate.findUnique({
+    select: { electionId: true },
+    where: { id },
+  });
+  if (!candidate) throw new NotFoundError('Candidate not found');
+  await assertElectionUnlocked(tx, candidate.electionId);
+};
 
 const CANDIDATE_INCLUDE = {
   election: { select: { id: true, name: true, slug: true } },
@@ -50,8 +62,9 @@ interface CandidatePayload extends Record<string, unknown> {
 }
 
 export const candidateApplier: Applier = {
-  create: (tx, payload) => {
+  create: async (tx, payload) => {
     const { electionId, portfolioId, ...rest } = payload as CandidatePayload;
+    if (electionId) await assertElectionUnlocked(tx, electionId);
     return tx.candidate.create({
       data: {
         ...(rest as unknown as Prisma.CandidateCreateInput),
@@ -61,8 +74,12 @@ export const candidateApplier: Applier = {
       select: { id: true },
     });
   },
-  remove: (tx, id) => tx.candidate.delete({ select: { id: true }, where: { id } }),
-  update: (tx, id, payload) => {
+  remove: async (tx, id) => {
+    await assertCandidateUnlocked(tx, id);
+    return tx.candidate.delete({ select: { id: true }, where: { id } });
+  },
+  update: async (tx, id, payload) => {
+    await assertCandidateUnlocked(tx, id);
     const { electionId: _e, portfolioId, ...rest } = payload as CandidatePayload;
     return tx.candidate.update({
       data: {

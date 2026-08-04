@@ -15,6 +15,7 @@ import {
   logout,
   me,
   refreshToken,
+  regenerateRecoveryCodesController,
   requestEmailChangeController,
   requestEmailTwoFactorController,
   requestPhoneChangeController,
@@ -75,6 +76,11 @@ authRoutes.post('/2fa/activate', authenticateJWT, ...activateTwoFactorController
 authRoutes.post('/2fa/email/request', authenticateJWT, requestEmailTwoFactorController);
 authRoutes.post('/2fa/email/activate', authenticateJWT, ...activateEmailTwoFactorController);
 authRoutes.post('/2fa/disable', authenticateJWT, ...disableTwoFactorController);
+authRoutes.post(
+  '/2fa/recovery-codes',
+  authenticateJWT,
+  ...regenerateRecoveryCodesController,
+);
 
 // Super-admin only
 authRoutes.post(

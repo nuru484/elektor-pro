@@ -1,10 +1,22 @@
 import type { Prisma } from '../../../generated/prisma/client.js';
+// src/services/domain/portfolio.service.ts
+import type { TxClient } from '../../types/prisma.types.js';
 import type { Applier } from '../change-request/types.js';
 
-// src/services/domain/portfolio.service.ts
 import prisma from '../../lib/prisma.js';
 import { NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
+import { assertElectionUnlocked } from './election.service.js';
+
+/** Resolve a portfolio's election and refuse writes once it is certified. */
+const assertPortfolioUnlocked = async (tx: TxClient, id: string): Promise<void> => {
+  const portfolio = await tx.portfolio.findUnique({
+    select: { electionId: true },
+    where: { id },
+  });
+  if (!portfolio) throw new NotFoundError('Portfolio not found');
+  await assertElectionUnlocked(tx, portfolio.electionId);
+};
 
 const PORTFOLIO_INCLUDE = {
   _count: { select: { candidates: true } },
@@ -51,6 +63,7 @@ interface PortfolioPayload extends Record<string, unknown> {
 export const portfolioApplier: Applier = {
   create: async (tx, payload) => {
     const { electionId, groupIds, ...rest } = payload as PortfolioPayload;
+    if (electionId) await assertElectionUnlocked(tx, electionId);
     const portfolio = await tx.portfolio.create({
       data: {
         ...(rest as unknown as Prisma.PortfolioCreateInput),
@@ -66,8 +79,12 @@ export const portfolioApplier: Applier = {
     }
     return portfolio;
   },
-  remove: (tx, id) => tx.portfolio.delete({ select: { id: true }, where: { id } }),
+  remove: async (tx, id) => {
+    await assertPortfolioUnlocked(tx, id);
+    return tx.portfolio.delete({ select: { id: true }, where: { id } });
+  },
   update: async (tx, id, payload) => {
+    await assertPortfolioUnlocked(tx, id);
     const { electionId: _electionId, groupIds, ...rest } = payload as PortfolioPayload;
     await tx.portfolio.update({
       data: rest as Prisma.PortfolioUpdateInput,

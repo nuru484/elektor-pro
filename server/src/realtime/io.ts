@@ -11,6 +11,16 @@ let io: SocketServer | undefined;
 
 const electionRoom = (electionId: string): string => `election:${electionId}`;
 
+/**
+ * Room subscriptions are unauthenticated (results pages are public and the
+ * only event payload is an "invalidate" ping), but the room name is
+ * client-supplied - so it is validated to id-shaped input to keep arbitrary
+ * strings out of the room registry.
+ */
+const isValidElectionId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= 64 &&
+  /^[A-Za-z0-9_-]+$/.test(value);
+
 export const initRealtime = (httpServer: HttpServer): SocketServer => {
   const allowedOrigins = ENV.CORS_ACCESS.split(',').map((o) => o.trim());
   io = new SocketServer(httpServer, {
@@ -19,12 +29,12 @@ export const initRealtime = (httpServer: HttpServer): SocketServer => {
 
   io.on('connection', (socket) => {
     socket.on('election:subscribe', (electionId: unknown) => {
-      if (typeof electionId === 'string' && electionId.length > 0) {
+      if (isValidElectionId(electionId)) {
         void socket.join(electionRoom(electionId));
       }
     });
     socket.on('election:unsubscribe', (electionId: unknown) => {
-      if (typeof electionId === 'string') {
+      if (isValidElectionId(electionId)) {
         void socket.leave(electionRoom(electionId));
       }
     });

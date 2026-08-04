@@ -32,6 +32,7 @@ import { getEffectiveCapabilities } from '../authorization/capability.service.js
 import { type AppDeps, defaultDeps } from '../deps.js';
 import { makeSecurityNoticeService } from '../notifications/security-notice.service.js';
 import { makeOtpService } from './otp.service.js';
+import { invalidatePasswordGate } from './password-gate.service.js';
 import { makeSessionService } from './session.service.js';
 import {
   buildOtpAuthUrl,
@@ -355,6 +356,7 @@ export const makeAuthService = (
       },
       where: { id: userId },
     });
+    invalidatePasswordGate(userId);
     if (currentSessionId) {
       await sessions.revokeOtherSessions(userId, currentSessionId);
     } else {
@@ -414,6 +416,9 @@ export const makeAuthService = (
         data: {
           failedLoginAttempts: 0,
           lockedAt: null,
+          // A completed reset proves control of the account's contact channel;
+          // it satisfies the first-login change requirement too.
+          mustChangePassword: false,
           password: await hashPassword(newPassword),
           passwordChangedAt: clock.now(),
           status: Status.ACTIVE,
@@ -425,6 +430,7 @@ export const makeAuthService = (
         where: { id: record.id },
       });
     });
+    invalidatePasswordGate(record.userId);
     await sessions.revokeAllSessions(record.userId);
     await appendAudit(prisma, {
       action: 'auth.password_reset',
@@ -453,6 +459,40 @@ export const makeAuthService = (
       });
     });
     return recoveryCodes;
+  };
+
+  /**
+   * Replace the recovery-code set (password-confirmed). The escape hatch for
+   * a user running low on codes - without it, spending the last code strands
+   * the account behind a super-admin 2FA reset.
+   */
+  const regenerateRecoveryCodes = async (
+    userId: string,
+    password: string,
+    ctx: RequestContext,
+  ): Promise<{ recoveryCodes: string[] }> => {
+    const user = await prisma.user.findUnique({
+      select: { password: true, role: true, twoFactorEnabled: true },
+      where: { id: userId },
+    });
+    if (!user?.password) throw new NotFoundError('User not found');
+    if (!user.twoFactorEnabled) {
+      throw new BadRequestError('Two-factor authentication is not enabled');
+    }
+    if (!(await verifyPassword(password, user.password))) {
+      throw new UnauthorizedError('Password is incorrect');
+    }
+    const recoveryCodes = await issueRecoveryCodes(userId);
+    await appendAudit(prisma, {
+      action: 'auth.recovery_codes_regenerated',
+      actorId: userId,
+      actorRole: user.role,
+      entity: 'User',
+      entityId: userId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    });
+    return { recoveryCodes };
   };
 
   /** Begin TOTP enrollment: store a candidate secret, return the QR + URL. */
@@ -618,6 +658,12 @@ export const makeAuthService = (
     return {
       ...user,
       capabilities: await getEffectiveCapabilities({ id: user.id, role: user.role }),
+      // Lets the client warn when the user is running out of codes.
+      twoFactorRecoveryCodesRemaining: user.twoFactorEnabled
+        ? await prisma.twoFactorRecoveryCode.count({
+            where: { usedAt: null, userId },
+          })
+        : null,
     };
   };
 
@@ -628,6 +674,7 @@ export const makeAuthService = (
     changePassword,
     disableTwoFactor,
     getProfile,
+    regenerateRecoveryCodes,
     requestEmailTwoFactor,
     requestPasswordReset,
     resetPassword,
@@ -649,6 +696,7 @@ export const {
   changePassword,
   disableTwoFactor,
   getProfile,
+  regenerateRecoveryCodes,
   requestEmailTwoFactor,
   requestPasswordReset,
   resetPassword,

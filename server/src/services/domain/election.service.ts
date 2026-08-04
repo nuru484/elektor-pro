@@ -1,15 +1,78 @@
-import type { TxClient } from '../../types/prisma.types.js';
+import type { DbClient, TxClient } from '../../types/prisma.types.js';
 import type { Applier } from '../change-request/types.js';
 
 import {
-  type ElectionStatus,
+  ElectionStatus,
   type Prisma,
 } from '../../../generated/prisma/client.js';
 // src/services/domain/election.service.ts
 import prisma from '../../lib/prisma.js';
-import { NotFoundError } from '../../middlewares/error-handler.js';
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { uniqueSlug } from '../../utils/slug.js';
+
+/**
+ * Certification locks an election: once results are certified the election,
+ * its portfolios, and its candidates are immutable. Every election-scoped
+ * applier calls this before writing (covers both the direct super-admin path
+ * and staged change requests, which are applied at approval time).
+ */
+export const assertElectionUnlocked = async (
+  client: DbClient,
+  electionId: string,
+): Promise<void> => {
+  const election = await client.election.findUnique({
+    select: { isLocked: true },
+    where: { id: electionId },
+  });
+  if (election?.isLocked) {
+    throw new ConflictError(
+      'This election has certified results and is locked against changes',
+      { code: 'ELECTION_LOCKED', layer: 'election' },
+    );
+  }
+};
+
+/**
+ * The election lifecycle state machine. A manual status change must follow an
+ * edge here; re-asserting the current status is an allowed no-op. The
+ * scheduler's automatic transitions (SCHEDULED -> IN_PROGRESS/ENDED,
+ * IN_PROGRESS -> ENDED) are all legal edges of the same machine.
+ */
+const ELECTION_STATUS_TRANSITIONS: Record<ElectionStatus, ElectionStatus[]> = {
+  [ElectionStatus.ARCHIVED]: [],
+  [ElectionStatus.CANCELLED]: [ElectionStatus.ARCHIVED],
+  [ElectionStatus.DRAFT]: [ElectionStatus.CANCELLED, ElectionStatus.SCHEDULED],
+  [ElectionStatus.ENDED]: [ElectionStatus.ARCHIVED],
+  [ElectionStatus.IN_PROGRESS]: [ElectionStatus.ENDED, ElectionStatus.PAUSED],
+  [ElectionStatus.PAUSED]: [
+    ElectionStatus.CANCELLED,
+    ElectionStatus.ENDED,
+    ElectionStatus.IN_PROGRESS,
+  ],
+  [ElectionStatus.SCHEDULED]: [
+    ElectionStatus.CANCELLED,
+    ElectionStatus.DRAFT,
+    ElectionStatus.IN_PROGRESS,
+  ],
+};
+
+export const assertStatusTransition = (
+  from: ElectionStatus,
+  to: ElectionStatus,
+): void => {
+  if (from === to) return; // idempotent re-assert
+  if (!ELECTION_STATUS_TRANSITIONS[from].includes(to)) {
+    throw new BadRequestError(
+      `An election cannot move from ${from} to ${to}`,
+      { code: 'INVALID_STATUS_TRANSITION', layer: 'election' },
+    );
+  }
+};
 
 const ELECTION_INCLUDE = {
   _count: { select: { candidates: true, portfolios: true, voterElections: true } },
@@ -77,11 +140,30 @@ export const electionApplier: Applier = {
       select: { id: true },
     });
   },
-  remove: (tx, id) => tx.election.delete({ select: { id: true }, where: { id } }),
-  update: (tx, id, payload) =>
-    tx.election.update({
+  remove: async (tx, id) => {
+    await assertElectionUnlocked(tx, id);
+    return tx.election.delete({ select: { id: true }, where: { id } });
+  },
+  update: async (tx, id, payload) => {
+    const input = payload as { status?: ElectionStatus };
+    // The certification lock freezes content, not lifecycle housekeeping: a
+    // pure status change (e.g. ENDED -> ARCHIVED) stays possible and is still
+    // governed by the state machine below.
+    const keys = Object.keys(payload as Record<string, unknown>);
+    const statusOnly = keys.length === 1 && keys[0] === 'status';
+    if (!statusOnly) await assertElectionUnlocked(tx, id);
+    if (input.status) {
+      const current = await tx.election.findUnique({
+        select: { status: true },
+        where: { id },
+      });
+      if (!current) throw new NotFoundError('Election not found');
+      assertStatusTransition(current.status, input.status);
+    }
+    return tx.election.update({
       data: payload as Prisma.ElectionUpdateInput,
       select: { id: true },
       where: { id },
-    }),
+    });
+  },
 };

@@ -278,6 +278,59 @@ export const castBallot = async (
   return result;
 };
 
+/**
+ * Re-derive an election's entire ballot chain, the counterpart of the audit
+ * log's /verify: every ballot must link to its predecessor (sequence is
+ * contiguous from 1, prevHash matches, and the stored hash recomputes from the
+ * stored entries). Public by design - anyone may prove no ballot was inserted,
+ * removed, or altered. Loads the whole chain; fine at institutional scale.
+ */
+export const verifyBallotChain = async (idOrSlug: string) => {
+  const election = await prisma.election.findFirst({
+    select: { id: true },
+    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+  });
+  if (!election) throw new NotFoundError('Election not found');
+
+  const ballots = await prisma.ballot.findMany({
+    orderBy: { sequence: 'asc' },
+    select: {
+      castAt: true,
+      entries: {
+        select: { approve: true, candidateId: true, portfolioId: true, type: true },
+      },
+      hash: true,
+      prevHash: true,
+      sequence: true,
+    },
+    where: { electionId: election.id },
+  });
+
+  for (let i = 0; i < ballots.length; i += 1) {
+    const ballot = ballots[i];
+    const expectedPrev = i === 0 ? GENESIS_HASH : ballots[i - 1].hash;
+    const recomputed = chainHash(ballot.prevHash, {
+      castAt: ballot.castAt.toISOString(),
+      electionId: election.id,
+      entries: hashEntries(ballot.entries),
+      sequence: ballot.sequence,
+    });
+    if (
+      ballot.sequence !== i + 1 ||
+      ballot.prevHash !== expectedPrev ||
+      recomputed !== ballot.hash
+    ) {
+      return {
+        brokenAt: ballot.sequence,
+        electionId: election.id,
+        total: ballots.length,
+        valid: false,
+      };
+    }
+  }
+  return { electionId: election.id, total: ballots.length, valid: true };
+};
+
 /** Verify a ballot by its receipt code, proving inclusion + chain integrity. */
 export const verifyReceipt = async (electionId: string, receiptCode: string) => {
   const ballot = await prisma.ballot.findFirst({
