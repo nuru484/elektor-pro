@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
 import { setSessionMarker } from "@/lib/session-marker";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { type FormErrors } from "@/utils/form-validate";
 import {
   useListVoterElectionsQuery,
   useRequestOtpMutation,
@@ -68,9 +69,15 @@ export default function VotePage() {
   const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"done" | "identify" | "verify">("identify");
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const onRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!identifier.trim()) {
+      setErrors({ identifier: "Voter ID is required" });
+      return;
+    }
+    setErrors({});
     try {
       const res = await requestOtp({ identifier }).unwrap();
       setStage("verify");
@@ -85,6 +92,11 @@ export default function VotePage() {
 
   const onVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!code.trim()) {
+      setErrors({ code: "Enter the code we sent you" });
+      return;
+    }
+    setErrors({});
     try {
       await verifyOtp({ code, identifier }).unwrap();
       // Voters can visit proxy-gated pages like /profile, so mark the
@@ -122,8 +134,8 @@ export default function VotePage() {
     >
       <>
         {stage === "identify" ? (
-          <form className="space-y-5" onSubmit={onRequest}>
-            <Field label="Voter ID">
+          <form className="space-y-5" noValidate onSubmit={onRequest}>
+            <Field error={errors.identifier} label="Voter ID">
               <Input
                 autoFocus
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -136,8 +148,8 @@ export default function VotePage() {
             </Button>
           </form>
         ) : (
-          <form className="space-y-5" onSubmit={onVerify}>
-            <Field label="One-time code">
+          <form className="space-y-5" noValidate onSubmit={onVerify}>
+            <Field error={errors.code} label="One-time code">
               <Input
                 autoFocus
                 inputMode="numeric"

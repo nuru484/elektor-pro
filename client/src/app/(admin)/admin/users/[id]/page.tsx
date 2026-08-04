@@ -151,7 +151,7 @@ function ContactChannel({
             />
           </Field>
           <div className="flex gap-2">
-            <Button onClick={reset} size="sm" type="button" variant="ghost">
+            <Button onClick={reset} size="sm" type="button" variant="outline">
               Cancel
             </Button>
             {isSuperAdmin ? (
@@ -195,7 +195,7 @@ function ContactChannel({
             />
           </Field>
           <div className="flex gap-2">
-            <Button onClick={reset} size="sm" type="button" variant="ghost">
+            <Button onClick={reset} size="sm" type="button" variant="outline">
               Cancel
             </Button>
             <Button
@@ -307,7 +307,7 @@ function DetailsCard({
               )}
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => setEditing(false)} type="button" variant="ghost">
+              <Button onClick={() => setEditing(false)} type="button" variant="outline">
                 Cancel
               </Button>
               <Button loading={saving} type="submit" variant="brand">

@@ -115,7 +115,7 @@ function CandidacyCard({
               />
             </Field>
             <div className="flex gap-2">
-              <Button onClick={() => setEditing(false)} type="button" variant="ghost">
+              <Button onClick={() => setEditing(false)} type="button" variant="outline">
                 Cancel
               </Button>
               <Button loading={saving} type="submit" variant="brand">

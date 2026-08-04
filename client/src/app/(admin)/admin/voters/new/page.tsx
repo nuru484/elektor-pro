@@ -109,7 +109,7 @@ export default function NewVoterPage() {
           <Button
             onClick={() => router.push("/admin/voters")}
             type="button"
-            variant="ghost"
+            variant="outline"
           >
             Cancel
           </Button>

@@ -116,7 +116,7 @@ export function AvatarUpdater({
             }}
             size="sm"
             type="button"
-            variant="ghost"
+            variant="outline"
           >
             Discard
           </Button>

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Courier_Prime, Instrument_Sans } from "next/font/google";
 
 import { SiteBackground } from "@/components/site-background";
+import { ThemeProvider } from "@/components/theme-provider";
 import { siteConfig, siteUrl } from "@/lib/site";
 import { ReduxProvider } from "@/redux/provider";
 
@@ -72,14 +73,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    // Dark-only product: the `dark` class stays on <html> permanently so
-    // component-level dark: variants keep applying.
-    <html className="dark" lang="en">
+    // suppressHydrationWarning: next-themes stamps the theme class on <html>
+    // before hydration.
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${instrument.variable} ${bodoni.variable} ${courier.variable} font-sans`}
       >
-        <SiteBackground />
-        <ReduxProvider>{children}</ReduxProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          disableTransitionOnChange
+          enableSystem
+        >
+          <SiteBackground />
+          <ReduxProvider>{children}</ReduxProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

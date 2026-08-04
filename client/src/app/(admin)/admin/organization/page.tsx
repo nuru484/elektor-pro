@@ -125,7 +125,7 @@ function SettingsCard({
                   setEditing(false);
                 }}
                 type="button"
-                variant="ghost"
+                variant="outline"
               >
                 Cancel
               </Button>
@@ -230,7 +230,7 @@ function BrandingImage({
               <Button loading={uploading} onClick={confirm} size="sm" variant="brand">
                 Confirm upload
               </Button>
-              <Button onClick={clearStaged} size="sm" type="button" variant="ghost">
+              <Button onClick={clearStaged} size="sm" type="button" variant="outline">
                 Discard
               </Button>
             </>
@@ -374,7 +374,7 @@ function ColorsCard({ org }: { org: Organization }) {
                   setEditing(false);
                 }}
                 type="button"
-                variant="ghost"
+                variant="outline"
               >
                 Cancel
               </Button>
@@ -467,7 +467,7 @@ function LocalizationCard({ org }: { org: Organization }) {
                   setEditing(false);
                 }}
                 type="button"
-                variant="ghost"
+                variant="outline"
               >
                 Cancel
               </Button>

@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Tooltip,
@@ -209,7 +210,7 @@ function ConsoleFooter() {
   return (
     <footer className="border-t border-border bg-background/95">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-4 py-4 text-center sm:px-6 lg:flex-row lg:px-8 lg:text-left">
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="flex items-center gap-2">
           <Logo href={null} showText={false} />
           <span className="text-xs font-semibold">Elektor Pro</span>
         </div>
@@ -358,11 +359,9 @@ export function ConsoleShell({
             >
               {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
             </Button>
-            <span className="lg:hidden">
-              <Logo href="/" />
-            </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <ThemeToggle />
             <UserMenu />
           </div>
         </header>

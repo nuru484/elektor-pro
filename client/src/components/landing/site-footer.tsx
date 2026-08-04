@@ -8,6 +8,7 @@ import { ArrowUp, ArrowUpRight, Facebook, Linkedin, Youtube } from "lucide-react
 import Link from "next/link";
 
 import { Logo } from "@/components/brand/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const COLUMNS = [
   {
@@ -131,13 +132,16 @@ export function SiteFooter() {
               </a>
             </span>
           </p>
-          <button
-            className="flex items-center gap-2 transition-colors hover:text-muted-foreground"
-            onClick={() => window.scrollTo({ behavior: "smooth", top: 0 })}
-            type="button"
-          >
-            Scroll to top <ArrowUp className="size-4" />
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <button
+              className="flex items-center gap-2 transition-colors hover:text-muted-foreground"
+              onClick={() => window.scrollTo({ behavior: "smooth", top: 0 })}
+              type="button"
+            >
+              Scroll to top <ArrowUp className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
     </footer>

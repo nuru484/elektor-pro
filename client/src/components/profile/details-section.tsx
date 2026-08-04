@@ -131,7 +131,7 @@ function ContactChangeInline({
             />
           </Field>
           <div className="flex gap-2">
-            <Button onClick={onClose} size="sm" type="button" variant="ghost">
+            <Button onClick={onClose} size="sm" type="button" variant="outline">
               Cancel
             </Button>
             <Button loading={busy} size="sm" type="submit" variant="brand">
@@ -155,7 +155,7 @@ function ContactChangeInline({
             />
           </Field>
           <div className="flex gap-2">
-            <Button onClick={onClose} size="sm" type="button" variant="ghost">
+            <Button onClick={onClose} size="sm" type="button" variant="outline">
               Cancel
             </Button>
             <Button loading={busy} size="sm" type="submit" variant="brand">
@@ -212,7 +212,7 @@ function NameCard({ user }: { user: CurrentUser }) {
                   setEditing(false);
                 }}
                 type="button"
-                variant="ghost"
+                variant="outline"
               >
                 Cancel
               </Button>

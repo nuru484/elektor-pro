@@ -315,7 +315,7 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
                 </Field>
               </div>
               <div className="flex gap-2">
-                <Button onClick={closePasswordForm} type="button" variant="ghost">
+                <Button onClick={closePasswordForm} type="button" variant="outline">
                   Cancel
                 </Button>
                 <Button loading={changing} type="submit" variant="brand">

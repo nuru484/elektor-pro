@@ -166,7 +166,7 @@ export default function NewCandidatePage() {
           <Button
             onClick={() => router.push("/admin/candidates")}
             type="button"
-            variant="ghost"
+            variant="outline"
           >
             Cancel
           </Button>

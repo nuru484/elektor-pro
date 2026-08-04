@@ -170,7 +170,7 @@ function ChangeRequestModal({
                   loading={cancelling}
                   onClick={() => setConfirm("cancel")}
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                 >
                   Cancel request
                 </Button>

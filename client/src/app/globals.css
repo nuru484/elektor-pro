@@ -51,16 +51,63 @@
 }
 
 :root {
-  /* Native form controls (select popups, date pickers, scrollbars) render
-     in the OS light theme unless told otherwise - this keeps them dark. */
-  color-scheme: dark;
+  /* Light theme. Brand system stays DEEP BLUE + WHITE + NEUTRAL GRAY in
+     both themes: near-white blue-cast page, white surfaces, deep blue-black
+     type, one civic blue accent. `color-scheme` keeps native controls
+     (select popups, date pickers, scrollbars) matching the theme. */
+  color-scheme: light;
 
   --radius: 0.625rem;
 
-  /* Elektor Pro is dark-only. Brand system: DEEP BLUE + WHITE + NEUTRAL
-     GRAY. The page sits on a deep blue-black; surfaces are neutral grays
-     stepping lighter; type is white; the single accent is a civic deep
-     blue. Shade within these three families only. */
+  --background: oklch(0.985 0.003 258);
+  --foreground: oklch(0.21 0.025 258);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.025 258);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.025 258);
+  --primary: oklch(0.25 0.025 258);
+  --primary-foreground: oklch(0.985 0.003 258);
+  --secondary: oklch(0.955 0.005 258);
+  --secondary-foreground: oklch(0.25 0.025 258);
+  --muted: oklch(0.955 0.005 258);
+  --muted-foreground: oklch(0.5 0.015 258);
+  --accent: oklch(0.93 0.008 258);
+  --accent-foreground: oklch(0.21 0.025 258);
+  --destructive: oklch(0.55 0.2 25);
+  --success: oklch(0.55 0.14 155);
+  --warning: oklch(0.6 0.15 75);
+  --border: oklch(0.9 0.008 258);
+  --input: oklch(0.88 0.008 258);
+  --ring: oklch(0.5 0.17 255);
+  /* Deep blue - the brand accent (darker here for contrast on white). */
+  --brand: oklch(0.5 0.17 255);
+  --brand-foreground: oklch(0.985 0.003 258);
+  --brand-muted: oklch(0.93 0.03 255);
+  --sidebar: oklch(0.97 0.004 258);
+  --sidebar-foreground: oklch(0.21 0.025 258);
+  --sidebar-primary: oklch(0.5 0.17 255);
+  --sidebar-primary-foreground: oklch(0.985 0.003 258);
+  --sidebar-accent: oklch(0.93 0.008 258);
+  --sidebar-accent-foreground: oklch(0.21 0.025 258);
+  --sidebar-border: oklch(0.9 0.008 258);
+  --sidebar-ring: oklch(0.5 0.17 255);
+  --chart-1: oklch(0.5 0.17 255);
+  --chart-2: oklch(0.55 0.14 155);
+  --chart-3: oklch(0.6 0.15 75);
+  --chart-4: oklch(0.55 0.2 25);
+  --chart-5: oklch(0.5 0.015 258);
+
+  /* Ambient background (public pages). */
+  --bg-glow-1: oklch(0.5 0.17 255 / 0.08);
+  --bg-glow-2: oklch(0.5 0.17 255 / 0.05);
+  --bg-fade: oklch(0.93 0.01 258 / 0.5);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Dark theme: the page sits on a deep blue-black; surfaces are neutral
+     grays stepping lighter; type is white. */
   --background: oklch(0.21 0.025 258);
   --foreground: oklch(0.97 0.002 258);
   --card: oklch(0.255 0.02 258);
