@@ -11,6 +11,7 @@ import {
   type ChangeEntity,
   ChangeStatus,
   type Prisma,
+  Role,
 } from '../../../generated/prisma/client.js';
 // src/services/change-request/change-request.service.ts
 // Maker-checker governance engine. Admin mutations are staged as pending change
@@ -69,7 +70,10 @@ export const proposeOrExecute = async (
   const applier = appliers[input.entity];
   if (!applier) throw new BadRequestError(`Unsupported entity: ${input.entity}`);
 
-  if (await canActorApproveChanges(actor)) {
+  // A super administrator IS the approver: their actions always apply
+  // directly - there is nobody above them to approve. Other roles apply
+  // directly only when the matrix or a grant gives them APPROVE_CHANGES.
+  if (actor.role === Role.SUPER_ADMIN || (await canActorApproveChanges(actor))) {
     const result = await prisma.$transaction(async (tx) => {
       const r = await runApplier(
         applier,

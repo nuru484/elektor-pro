@@ -97,10 +97,16 @@ export const createElectionSchema = electionBase.refine(
   (d) => d.endDate > d.startDate,
   { message: 'End date must be after start date', path: ['endDate'] },
 );
-export const updateElectionSchema = electionBase.partial().refine(
-  (d) => !d.startDate || !d.endDate || d.endDate > d.startDate,
-  { message: 'End date must be after start date', path: ['endDate'] },
-);
+// status may ride a general update so an admin can adjust the dates and the
+// status in ONE submit ("bring the start forward and open now") - the service
+// judges the transition against the new window.
+export const updateElectionSchema = electionBase
+  .extend({ status: z.enum(ElectionStatus).optional() })
+  .partial()
+  .refine((d) => !d.startDate || !d.endDate || d.endDate > d.startDate, {
+    message: 'End date must be after start date',
+    path: ['endDate'],
+  });
 export const electionStatusSchema = z.object({
   status: z.enum(ElectionStatus),
 });
@@ -142,6 +148,11 @@ const candidateBase = z.object({
   // profilePicture deliberately absent: media URLs may only originate from
   // the upload middleware, never from a request body.
 });
+export const allocateCandidatesSchema = z.object({
+  candidateIds: z.array(z.string().min(1)).min(1).max(500),
+  portfolioId: z.string().min(1),
+});
+
 const candidateWithContact = candidateBase.refine(
   (d) => Boolean(d.email) || Boolean(d.phone),
   {

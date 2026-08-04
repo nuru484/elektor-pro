@@ -13,6 +13,7 @@ import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { hashPassword } from '../../utils/password.js';
 import { generateTempPassword } from '../../utils/temp-password.js';
 import { validateAndFormatPhone } from '../../utils/validate-phone.js';
+import { appendAudit } from '../audit/audit.service.js';
 import { defaultDeps } from '../deps.js';
 import { assertElectionUnlocked } from './election.service.js';
 
@@ -43,6 +44,7 @@ const CANDIDATE_INCLUDE = {
 export const listCandidates = async (
   filters: {
     electionId?: string;
+    excludeElectionId?: string;
     portfolioId?: string;
     search?: string;
     status?: CandidateStatus;
@@ -55,6 +57,25 @@ export const listCandidates = async (
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.search
       ? { name: { contains: filters.search, mode: 'insensitive' } }
+      : {}),
+    // People NOT yet contesting in an election - powers the allocation
+    // picker. Excludes candidacies of that election AND candidacies whose
+    // person (login account) already contests there through another row.
+    ...(filters.excludeElectionId
+      ? {
+          AND: [
+            { electionId: { not: filters.excludeElectionId } },
+            {
+              NOT: {
+                account: {
+                  candidates: {
+                    some: { electionId: filters.excludeElectionId },
+                  },
+                },
+              },
+            },
+          ],
+        }
       : {}),
   };
   const [data, total] = await Promise.all([
@@ -135,6 +156,115 @@ export const listMyCandidacies = async (userId: string) =>
     },
     where: { accountId: userId },
   });
+
+/**
+ * Allocate EXISTING candidates (people already in the system) to a portfolio
+ * in another election - the same person contesting again, without retyping
+ * their details. Their login account carries over, so their candidacy
+ * history links up. Refused for people already contesting in the target
+ * election, and for locked elections.
+ */
+export const allocateCandidates = async (
+  actor: { id: string; role: Role },
+  electionId: string,
+  input: { candidateIds: string[]; portfolioId: string },
+  ctx: { ipAddress?: string; userAgent?: string } = {},
+): Promise<{ added: number; skipped: number }> => {
+  const election = await prisma.election.findFirst({
+    select: { id: true, vettingEnabled: true },
+    where: { id: electionId },
+  });
+  if (!election) throw new NotFoundError('Election not found');
+  await assertElectionUnlocked(prisma, electionId);
+
+  const portfolio = await prisma.portfolio.findFirst({
+    select: { id: true },
+    where: { electionId, id: input.portfolioId },
+  });
+  if (!portfolio) {
+    throw new BadRequestError('The portfolio must belong to this election', {
+      code: 'PORTFOLIO_NOT_IN_ELECTION',
+      layer: 'candidate',
+    });
+  }
+
+  const sources = await prisma.candidate.findMany({
+    select: {
+      accountId: true,
+      id: true,
+      manifesto: true,
+      name: true,
+      nickname: true,
+      partySymbol: true,
+      profilePicture: true,
+    },
+    where: { id: { in: [...new Set(input.candidateIds)] } },
+  });
+  if (sources.length === 0) {
+    throw new BadRequestError('No matching candidates to allocate', {
+      code: 'EMPTY_ALLOCATION',
+      layer: 'candidate',
+    });
+  }
+
+  // People already contesting in this election (by account, or by name for
+  // account-less legacy rows) are skipped, not duplicated.
+  const [existingAccounts, existingNames] = await Promise.all([
+    prisma.candidate.findMany({
+      select: { accountId: true },
+      where: { accountId: { not: null }, electionId },
+    }),
+    prisma.candidate.findMany({ select: { name: true }, where: { electionId } }),
+  ]);
+  const takenAccounts = new Set(existingAccounts.map((c) => c.accountId));
+  const takenNames = new Set(existingNames.map((c) => c.name.trim().toLowerCase()));
+
+  let added = 0;
+  await prisma.$transaction(async (tx) => {
+    for (const source of sources) {
+      const duplicate = source.accountId
+        ? takenAccounts.has(source.accountId)
+        : takenNames.has(source.name.trim().toLowerCase());
+      if (duplicate) continue;
+      if (source.accountId) takenAccounts.add(source.accountId);
+      takenNames.add(source.name.trim().toLowerCase());
+      await tx.candidate.create({
+        data: {
+          ...(source.accountId
+            ? { account: { connect: { id: source.accountId } } }
+            : {}),
+          election: { connect: { id: electionId } },
+          manifesto: source.manifesto,
+          name: source.name,
+          nickname: source.nickname,
+          partySymbol: source.partySymbol,
+          portfolio: { connect: { id: input.portfolioId } },
+          profilePicture: source.profilePicture,
+          status: election.vettingEnabled
+            ? CandidateStatus.DRAFT
+            : CandidateStatus.QUALIFIED,
+        },
+        select: { id: true },
+      });
+      added += 1;
+    }
+    await appendAudit(tx, {
+      action: 'candidate.allocated',
+      actorId: actor.id,
+      actorRole: actor.role,
+      entity: 'Election',
+      entityId: electionId,
+      ipAddress: ctx.ipAddress,
+      metadata: {
+        added,
+        portfolioId: input.portfolioId,
+        selected: input.candidateIds.length,
+      },
+      userAgent: ctx.userAgent,
+    });
+  });
+  return { added, skipped: sources.length - added };
+};
 
 interface CandidatePayload extends Record<string, unknown> {
   electionId?: string;

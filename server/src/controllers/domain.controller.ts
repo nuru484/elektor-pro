@@ -27,6 +27,7 @@ import {
 } from '../services/change-request/change-request.service.js';
 import { previewCandidateImport } from '../services/domain/candidate-import.service.js';
 import {
+  allocateCandidates,
   getCandidate,
   listCandidates,
   listMyCandidacies,
@@ -62,6 +63,7 @@ import { getVoter, listVoters } from '../services/domain/voter.service.js';
 import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendList, sendOk } from '../utils/http.js';
 import {
+  allocateCandidatesSchema,
   bulkCandidateSchema,
   bulkVoterSchema,
   createCandidateSchema,
@@ -196,6 +198,7 @@ export const candidateControllers = makeCrud({
   list: listCandidates,
   parseFilters: (req) => ({
     electionId: str(req.query.electionId),
+    excludeElectionId: str(req.query.excludeElectionId),
     portfolioId: str(req.query.portfolioId),
     search: str(req.query.search),
     status: str(req.query.status) as CandidateStatus | undefined,
@@ -248,6 +251,20 @@ export const bulkUploadCandidatesController: RequestHandler[] = [
       ctxOf(req),
     );
     respondToProposal(res, outcome, 'Candidates', HTTP_STATUS_CODES.CREATED);
+  }),
+];
+
+/** Allocate existing candidates (people) to a portfolio in this election. */
+export const allocateCandidatesController: RequestHandler[] = [
+  ...validationMiddleware.create(allocateCandidatesSchema),
+  asyncHandler(async (req, res) => {
+    const data = await allocateCandidates(
+      actorOf(req),
+      req.params.electionId,
+      req.body as { candidateIds: string[]; portfolioId: string },
+      ctxOf(req),
+    );
+    sendOk(res, 'Candidates allocated', data);
   }),
 ];
 

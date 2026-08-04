@@ -303,3 +303,96 @@ describe('contact uniqueness and normalization', () => {
     expect(accounts).toBe(1);
   });
 });
+
+describe('candidate allocation to another election', () => {
+  beforeEach(resetDb);
+
+  it('allocates existing people to a portfolio, skipping those already in', async () => {
+    const cookie = await superAdminCookie();
+    const source = await createElectionFixture(); // Alice + Bob
+    // A clean target (no candidates of its own, so no name collisions).
+    const targetElection = await prisma.election.create({
+      data: {
+        endDate: new Date(Date.now() + 86_400_000),
+        name: 'Target Election',
+        slug: `target-${Date.now()}`,
+        startDate: new Date(Date.now() - 3600_000),
+        status: 'IN_PROGRESS',
+      },
+    });
+    const targetPortfolio = await prisma.portfolio.create({
+      data: {
+        electionId: targetElection.id,
+        name: 'Chair',
+        votingMethod: 'SINGLE_CHOICE',
+      },
+    });
+    const target = { election: targetElection, portfolio: targetPortfolio };
+
+    // Link Alice to an account so allocation carries her identity over.
+    const account = await prisma.user.create({
+      data: {
+        email: 'alice.alloc@test.com',
+        firstName: 'Alice',
+        lastName: 'Alloc',
+        role: Role.CANDIDATE,
+      },
+    });
+    await prisma.candidate.update({
+      data: { accountId: account.id },
+      where: { id: source.candidates[0].id },
+    });
+
+    // The picker lists people not yet in the target election.
+    const pickable = await api()
+      .get(`/api/v1/candidates?excludeElectionId=${target.election.id}`)
+      .set('Cookie', cookie);
+    const ids = bodyOf<{ data: { id: string }[] }>(pickable).data.map((c) => c.id);
+    expect(ids).toContain(source.candidates[0].id);
+
+    // A portfolio outside the target election is refused.
+    const wrongPortfolio = await api()
+      .post(`/api/v1/elections/${target.election.id}/candidates/allocate`)
+      .set('Cookie', cookie)
+      .send({
+        candidateIds: [source.candidates[0].id],
+        portfolioId: source.portfolio.id,
+      });
+    expect(wrongPortfolio.status).toBe(400);
+
+    const res = await api()
+      .post(`/api/v1/elections/${target.election.id}/candidates/allocate`)
+      .set('Cookie', cookie)
+      .send({
+        candidateIds: [source.candidates[0].id, source.candidates[1].id],
+        portfolioId: target.portfolio.id,
+      });
+    expect(res.status).toBe(200);
+    expect(bodyOf<{ data: { added: number } }>(res).data.added).toBe(2);
+
+    // Alice's new candidacy carries her account (history links up).
+    const allocated = await prisma.candidate.findFirst({
+      where: { accountId: account.id, electionId: target.election.id },
+    });
+    expect(allocated).not.toBeNull();
+
+    // Re-allocating the same people adds nothing.
+    const again = await api()
+      .post(`/api/v1/elections/${target.election.id}/candidates/allocate`)
+      .set('Cookie', cookie)
+      .send({
+        candidateIds: [source.candidates[0].id],
+        portfolioId: target.portfolio.id,
+      });
+    expect(bodyOf<{ data: { added: number; skipped: number } }>(again).data).toMatchObject(
+      { added: 0, skipped: 1 },
+    );
+
+    // And the picker no longer offers them for this election.
+    const after = await api()
+      .get(`/api/v1/candidates?excludeElectionId=${target.election.id}`)
+      .set('Cookie', cookie);
+    const afterIds = bodyOf<{ data: { id: string }[] }>(after).data.map((c) => c.id);
+    expect(afterIds).not.toContain(source.candidates[0].id);
+  });
+});

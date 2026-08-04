@@ -64,12 +64,45 @@ const ELECTION_STATUS_TRANSITIONS: Record<ElectionStatus, ElectionStatus[]> = {
 export const assertStatusTransition = (
   from: ElectionStatus,
   to: ElectionStatus,
+  window?: { endDate: Date; startDate: Date },
 ): void => {
   if (from === to) return; // idempotent re-assert
   if (!ELECTION_STATUS_TRANSITIONS[from].includes(to)) {
     throw new BadRequestError(
       `An election cannot move from ${from} to ${to}`,
       { code: 'INVALID_STATUS_TRANSITION', layer: 'election' },
+    );
+  }
+  if (!window) return;
+
+  // Statuses mirror the real calendar, they don't override it: an election
+  // opens only inside its window and closes only after it. To act outside
+  // the window, the admin first adjusts the start/close dates.
+  const now = new Date();
+  if (to === ElectionStatus.SCHEDULED && window.endDate <= now) {
+    throw new BadRequestError(
+      'This election\'s close date has already passed; move the dates forward before scheduling it',
+      { code: 'WINDOW_ALREADY_OVER', layer: 'election' },
+    );
+  }
+  if (to === ElectionStatus.IN_PROGRESS) {
+    if (now < window.startDate) {
+      throw new BadRequestError(
+        'Voting cannot open before the start date; bring the start date forward to open now',
+        { code: 'WINDOW_NOT_STARTED', layer: 'election' },
+      );
+    }
+    if (now > window.endDate) {
+      throw new BadRequestError(
+        'This election\'s close date has already passed; extend the dates to reopen voting',
+        { code: 'WINDOW_ALREADY_OVER', layer: 'election' },
+      );
+    }
+  }
+  if (to === ElectionStatus.ENDED && now < window.endDate) {
+    throw new BadRequestError(
+      'The voting window is still open; bring the close date forward to end voting now',
+      { code: 'WINDOW_STILL_OPEN', layer: 'election' },
     );
   }
 };
@@ -234,11 +267,17 @@ export const electionApplier: Applier = {
     if (!statusOnly) await assertElectionUnlocked(tx, id);
     if (rest.status) {
       const current = await tx.election.findUnique({
-        select: { status: true },
+        select: { endDate: true, startDate: true, status: true },
         where: { id },
       });
       if (!current) throw new NotFoundError('Election not found');
-      assertStatusTransition(current.status, rest.status);
+      // When the same submit also moves the dates, the status is judged
+      // against the NEW window ("adjust the dates to open now" in one step).
+      const patch = rest as { endDate?: Date | string; startDate?: Date | string };
+      assertStatusTransition(current.status, rest.status, {
+        endDate: patch.endDate ? new Date(patch.endDate) : current.endDate,
+        startDate: patch.startDate ? new Date(patch.startDate) : current.startDate,
+      });
     }
     const election = await tx.election.update({
       data: rest as Prisma.ElectionUpdateInput,

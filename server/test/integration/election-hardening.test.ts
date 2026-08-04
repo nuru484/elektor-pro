@@ -173,22 +173,50 @@ describe('election status state machine', () => {
     expect(bodyOf<{ code?: string }>(res).code).toBe('INVALID_STATUS_TRANSITION');
   });
 
-  it('walks a legal lifecycle and allows an idempotent re-assert', async () => {
+  it('walks a legal lifecycle, enforcing the real calendar at every step', async () => {
     const cookie = await superAdminCookie();
-    const election = await draftElection();
+    const election = await draftElection(); // starts in 1h, ends in 24h
     const setStatus = (status: ElectionStatus) =>
       api()
         .patch(`/api/v1/elections/${election.id}/status`)
         .set('Cookie', cookie)
         .send({ status });
+    const patch = (body: Record<string, unknown>) =>
+      api()
+        .patch(`/api/v1/elections/${election.id}`)
+        .set('Cookie', cookie)
+        .send(body);
 
     expect((await setStatus(ElectionStatus.SCHEDULED)).status).toBe(200);
     // Re-asserting the current status is a no-op, not an error.
     expect((await setStatus(ElectionStatus.SCHEDULED)).status).toBe(200);
-    expect((await setStatus(ElectionStatus.IN_PROGRESS)).status).toBe(200);
+
+    // The start date is still an hour away: opening is refused until the
+    // admin brings the window forward.
+    const early = await setStatus(ElectionStatus.IN_PROGRESS);
+    expect(early.status).toBe(400);
+    expect(bodyOf<{ code?: string }>(early).code).toBe('WINDOW_NOT_STARTED');
+
+    // Dates and status adjusted in ONE submit: judged against the new window.
+    const openNow = await patch({
+      startDate: new Date(Date.now() - 60_000).toISOString(),
+      status: ElectionStatus.IN_PROGRESS,
+    });
+    expect(openNow.status).toBe(200);
+
     expect((await setStatus(ElectionStatus.PAUSED)).status).toBe(200);
     expect((await setStatus(ElectionStatus.IN_PROGRESS)).status).toBe(200);
-    expect((await setStatus(ElectionStatus.ENDED)).status).toBe(200);
+
+    // The window is still open: ending early requires closing the window.
+    const earlyEnd = await setStatus(ElectionStatus.ENDED);
+    expect(earlyEnd.status).toBe(400);
+    expect(bodyOf<{ code?: string }>(earlyEnd).code).toBe('WINDOW_STILL_OPEN');
+    const endNow = await patch({
+      endDate: new Date(Date.now() - 1000).toISOString(),
+      status: ElectionStatus.ENDED,
+    });
+    expect(endNow.status).toBe(200);
+
     expect((await setStatus(ElectionStatus.DRAFT)).status).toBe(400);
     expect((await setStatus(ElectionStatus.ARCHIVED)).status).toBe(200);
   });

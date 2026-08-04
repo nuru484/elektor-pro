@@ -3,6 +3,7 @@ import { type RequestHandler, Router } from 'express';
 
 import { Capability } from '../../../generated/prisma/client.js';
 import {
+  allocateCandidatesController,
   approveChangeRequestController,
   bulkUploadCandidatesController,
   bulkUploadVotersController,
@@ -182,6 +183,14 @@ domainRoutes.use('/candidates', candidatesRouter);
 // The signed-in candidate's own candidacies (no capability: it is scoped to
 // the caller's linked account and returns nothing for everyone else).
 domainRoutes.get('/my/candidacies', authenticateJWT, myCandidaciesController);
+
+// Allocate existing candidates to a portfolio in this election.
+domainRoutes.post(
+  '/elections/:electionId/candidates/allocate',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES, (req) => req.params.electionId),
+  ...allocateCandidatesController,
+);
 
 // Vetting criteria + ballot-number auto-assignment (election-scoped)
 domainRoutes.get(
