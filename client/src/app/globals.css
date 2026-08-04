@@ -186,3 +186,54 @@
     radial-gradient(55% 42% at 50% 0%, var(--bg-glow-1), transparent 72%),
     linear-gradient(to bottom, transparent 55%, var(--bg-fade) 100%);
 }
+
+/* --- Hero board animations (landing) ------------------------------------ */
+
+/* A ballot slip falls toward the box, tilts upright, and disappears into
+   the slot (the container clips it at the slot line). */
+@keyframes ballot-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-130%) rotate(-10deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  58% {
+    transform: translateY(-8%) rotate(-3deg);
+  }
+  82% {
+    opacity: 1;
+    transform: translateY(58%) rotate(0deg);
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateY(70%) rotate(0deg);
+  }
+}
+
+/* The box slot flashes softly as a ballot lands. */
+@keyframes slot-glow {
+  0%,
+  70%,
+  100% {
+    background-color: var(--muted);
+  }
+  80%,
+  88% {
+    background-color: var(--brand);
+  }
+}
+
+/* The verified chip breathes once per cycle as a vote is confirmed. */
+@keyframes chip-pop {
+  0%,
+  74%,
+  100% {
+    transform: scale(1);
+  }
+  84% {
+    transform: scale(1.05);
+  }
+}
