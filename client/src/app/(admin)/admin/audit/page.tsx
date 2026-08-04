@@ -15,6 +15,7 @@ import {
 } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
 import { type AuditLogRow, useListAuditLogsQuery, useVerifyAuditQuery } from "@/redux/admin-api";
+import { formatDateTime } from "@/utils/format-date";
 
 const ENTITIES = [
   "User",
@@ -49,7 +50,7 @@ const COLUMNS: ColumnDef<AuditLogRow>[] = [
     accessorKey: "createdAt",
     cell: ({ row }) => (
       <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-        {new Date(row.original.createdAt).toLocaleString()}
+        {formatDateTime(row.original.createdAt)}
       </time>
     ),
     header: "Time",
@@ -151,7 +152,7 @@ export default function AuditPage() {
                 {row.original.action}
               </span>
               <time className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                {new Date(row.original.createdAt).toLocaleString()}
+                {formatDateTime(row.original.createdAt)}
               </time>
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">

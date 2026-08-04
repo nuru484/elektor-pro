@@ -69,7 +69,10 @@ const USER_ADMIN_SELECT = {
 } as const;
 
 export const makeUserAdminService = (
-  d: Pick<AppDeps, 'clock' | 'config' | 'logger' | 'mail' | 'prisma' | 'sms'>,
+  d: Pick<
+    AppDeps,
+    'clock' | 'cloudinary' | 'config' | 'logger' | 'mail' | 'prisma' | 'sms'
+  >,
 ) => {
   const { prisma } = d;
   const sessions = makeSessionService(d);
@@ -399,14 +402,92 @@ export const makeUserAdminService = (
     });
   };
 
+  /** Lock an account (protective action): sign-ins refused, sessions gone. */
+  const lockUser = async (actor: Actor, userId: string, ctx: RequestContext) => {
+    if (actor.id === userId) {
+      throw new BadRequestError('You cannot lock your own account');
+    }
+    const target = await prisma.user.findFirst({
+      select: { id: true, lockedAt: true, role: true },
+      where: { id: userId },
+    });
+    if (!target) throw new NotFoundError('User not found');
+    assertCanAdminister(actor, target.role);
+    if (target.lockedAt) throw new BadRequestError('Account is already locked');
+
+    const updated = await prisma.user.update({
+      data: {
+        lockedAt: d.clock.now(),
+        lockedReason: 'Locked by an administrator',
+        status: Status.LOCKED,
+      },
+      select: USER_ADMIN_SELECT,
+      where: { id: userId },
+    });
+    await sessions.revokeAllSessions(userId);
+    await appendAudit(prisma, {
+      action: 'user.locked',
+      actorId: actor.id,
+      actorRole: actor.role,
+      entity: 'User',
+      entityId: userId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    });
+    return updated;
+  };
+
+  /** Replace another account's profile photo (standalone action). */
+  const updateUserPicture = async (
+    actor: Actor,
+    userId: string,
+    image: { buffer: Buffer; mimetype?: string },
+    ctx: RequestContext,
+  ) => {
+    const target = await prisma.user.findFirst({
+      select: { id: true, profilePicture: true, role: true },
+      where: { id: userId },
+    });
+    if (!target) throw new NotFoundError('User not found');
+    if (actor.id !== userId) assertCanAdminister(actor, target.role);
+
+    const uploaded = await d.cloudinary.uploadImage(image, {
+      folder: 'elektor-pro/profiles',
+    });
+    const updated = await prisma.user.update({
+      data: { profilePicture: uploaded.secure_url },
+      select: USER_ADMIN_SELECT,
+      where: { id: userId },
+    });
+    if (target.profilePicture && target.profilePicture !== uploaded.secure_url) {
+      try {
+        await d.cloudinary.deleteImage(target.profilePicture);
+      } catch (error) {
+        d.logger.warn({ error, userId }, 'Old profile picture cleanup failed');
+      }
+    }
+    await appendAudit(prisma, {
+      action: 'user.picture_updated',
+      actorId: actor.id,
+      actorRole: actor.role,
+      entity: 'User',
+      entityId: userId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    });
+    return updated;
+  };
+
   return {
     confirmUserContactChange,
     deleteUser,
     getUser,
     listUsers,
+    lockUser,
     requestUserContactChange,
     updateUser,
     updateUserContact,
+    updateUserPicture,
     updateUserRole,
   };
 };

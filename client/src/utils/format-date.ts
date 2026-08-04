@@ -1,0 +1,29 @@
+// Shared date/time presentation for data tables and detail pages (DMS
+// convention: every table shows the date AND its time).
+
+/** "Aug 4, 2026 · 10:45 AM" */
+export const formatDateTime = (value: null | string | undefined): string => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${day} · ${time}`;
+};
+
+/** Initials for avatar fallbacks: "Ama Owusu" -> "AO". */
+export const initialsOf = (name: string): string =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();

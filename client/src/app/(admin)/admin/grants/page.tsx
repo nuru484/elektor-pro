@@ -34,6 +34,7 @@ import {
   useRevokeGrantMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 const capabilityLabel = (catalog: PermissionsMatrix["catalog"], capability: string) =>
   catalog
@@ -229,7 +230,7 @@ export default function GrantsPage() {
       cell: ({ row }) =>
         row.original.expiresAt ? (
           <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-            {new Date(row.original.expiresAt).toLocaleDateString()}
+            {formatDateTime(row.original.expiresAt)}
           </time>
         ) : (
           <span className="text-xs text-muted-foreground">Never</span>
@@ -320,7 +321,7 @@ export default function GrantsPage() {
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {row.original.election?.name ?? "Platform-wide"}
               {row.original.expiresAt
-                ? ` · until ${new Date(row.original.expiresAt).toLocaleDateString()}`
+                ? ` · until ${formatDateTime(row.original.expiresAt)}`
                 : ""}
             </p>
           </RowCard>

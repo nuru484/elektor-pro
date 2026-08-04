@@ -1,13 +1,14 @@
 "use client";
 
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Eye, ListChecks, Plus } from "lucide-react";
+import { Eye, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { Candidate } from "@/types/api";
 
+import { EntityAvatar } from "@/components/console/entity-avatar";
 import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
@@ -24,11 +25,15 @@ import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
 import {
   useCreateCandidateMutation,
+  useDeleteCandidateMutation,
   useGetElectionQuery,
   useListCandidatesQuery,
   useListElectionsQuery,
 } from "@/redux/admin-api";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { useAuthRole } from "@/hooks/use-auth-role";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 interface CandidateFilters extends Record<string, string | undefined> {
   electionId?: string;
@@ -40,10 +45,18 @@ const FILTERS_SPEC: TableFiltersSpec<CandidateFilters> = {
   search: { kind: "string" },
 };
 
-const COLUMNS: ColumnDef<Candidate>[] = [
+const buildColumns = (
+  isSuperAdmin: boolean,
+  onDelete: (candidate: Candidate) => void,
+): ColumnDef<Candidate>[] => [
   {
     accessorKey: "name",
-    cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    cell: ({ row }) => (
+      <div className="flex min-w-0 items-center gap-2.5">
+        <EntityAvatar name={row.original.name} url={row.original.profilePicture} />
+        <span className="truncate font-medium">{row.original.name}</span>
+      </div>
+    ),
     header: "Candidate",
   },
   {
@@ -64,12 +77,31 @@ const COLUMNS: ColumnDef<Candidate>[] = [
   },
   {
     cell: ({ row }) => (
+      <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
+        {formatDateTime(row.original.createdAt)}
+      </time>
+    ),
+    header: "Added",
+    id: "added",
+  },
+  {
+    cell: ({ row }) => (
       <RowActionsMenu label="Candidate actions">
         <DropdownMenuItem asChild>
           <Link href={`/admin/candidates/${row.original.id}`}>
             <Eye className="size-4" /> View profile
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/candidates/${row.original.id}?edit=1`}>
+            <Pencil className="size-4" /> Edit
+          </Link>
+        </DropdownMenuItem>
+        {isSuperAdmin && (
+          <DropdownMenuItem onClick={() => onDelete(row.original)} variant="destructive">
+            <Trash2 className="size-4" /> Delete
+          </DropdownMenuItem>
+        )}
       </RowActionsMenu>
     ),
     header: "Actions",
@@ -153,7 +185,10 @@ function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boole
 }
 
 export default function CandidatesPage() {
+  const { isSuperAdmin } = useAuthRole();
   const [addOpen, setAddOpen] = useState(false);
+  const [deleting, setDeleting] = useState<Candidate | null>(null);
+  const [deleteCandidate] = useDeleteCandidateMutation();
   const {
     filters,
     handleFiltersChange,
@@ -171,7 +206,7 @@ export default function CandidatesPage() {
   const totalCount = data?.meta.total ?? 0;
 
   const table = useDataTable({
-    columns: COLUMNS,
+    columns: buildColumns(isSuperAdmin, setDeleting),
     data: rows,
     enableRowSelection: false,
     getRowId: (row) => row.id,
@@ -258,6 +293,25 @@ export default function CandidatesPage() {
       />
 
       <AddCandidateModal onClose={() => setAddOpen(false)} open={addOpen} />
+      <ConfirmationDialog
+        confirmText="Delete candidate"
+        description={`"${deleting?.name ?? ""}" will be withdrawn from the ballot. They can be restored from Deleted records.`}
+        isDestructive
+        onConfirm={async () => {
+          if (!deleting) return;
+          setDeleting(null);
+          try {
+            await deleteCandidate(deleting.id).unwrap();
+            toast.success("Candidate deleted");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error));
+          }
+        }}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        open={deleting !== null}
+        requireExactMatch="delete"
+        title="Delete this candidate?"
+      />
     </div>
   );
 }

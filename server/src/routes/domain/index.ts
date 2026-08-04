@@ -15,10 +15,12 @@ import {
   listChangeRequestsController,
   portfolioControllers,
   rejectChangeRequestController,
+  updateCandidatePictureController,
   updateElectionStatusController,
   updateOrganizationController,
   updateOrganizationFaviconController,
   updateOrganizationLogoController,
+  updateVoterPictureController,
   voterControllers,
 } from '../../controllers/domain.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
@@ -66,13 +68,19 @@ domainRoutes.use(
 );
 domainRoutes.use('/groups', crudRouter(groupControllers, Capability.MANAGE_GROUPS));
 
-// Voters (with bulk upload)
+// Voters (with bulk upload + standalone photo)
 const votersRouter = crudRouter(voterControllers, Capability.MANAGE_VOTERS);
 votersRouter.post(
   '/bulk',
   authenticateJWT,
   requireCapability(Capability.MANAGE_VOTERS),
   ...bulkUploadVotersController,
+);
+votersRouter.patch(
+  '/:id/picture',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  ...updateVoterPictureController,
 );
 domainRoutes.use('/voters', votersRouter);
 
@@ -91,10 +99,14 @@ domainRoutes.use(
   '/portfolios',
   crudRouter(portfolioControllers, Capability.MANAGE_PORTFOLIOS),
 );
-domainRoutes.use(
-  '/candidates',
-  crudRouter(candidateControllers, Capability.MANAGE_CANDIDATES),
+const candidatesRouter = crudRouter(candidateControllers, Capability.MANAGE_CANDIDATES);
+candidatesRouter.patch(
+  '/:id/picture',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_CANDIDATES),
+  ...updateCandidatePictureController,
 );
+domainRoutes.use('/candidates', candidatesRouter);
 
 // Change requests (maker-checker queue)
 domainRoutes.get('/change-requests', authenticateJWT, listChangeRequestsController);

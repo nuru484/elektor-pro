@@ -28,6 +28,10 @@ import {
   listElections,
 } from '../services/domain/election.service.js';
 import {
+  updateCandidatePicture,
+  updateVoterPicture,
+} from '../services/domain/entity-picture.service.js';
+import {
   getGroup,
   getGroupCategory,
   listGroupCategories,
@@ -164,6 +168,43 @@ export const bulkUploadVotersController: RequestHandler[] = [
       ctxOf(req),
     );
     respondToProposal(res, outcome, 'Voters', HTTP_STATUS_CODES.CREATED);
+  }),
+];
+
+/** Standalone photo updates (binary can't ride maker-checker JSON). */
+const requireImage = (req: Request): { buffer: Buffer; mimetype?: string } => {
+  if (!req.file) {
+    throw new ValidationError('An image file is required', {
+      code: 'VALIDATION_ERROR',
+      context: { errors: [{ field: 'image', message: 'An image file is required' }] },
+    });
+  }
+  return { buffer: req.file.buffer, mimetype: req.file.mimetype };
+};
+
+export const updateVoterPictureController: RequestHandler[] = [
+  multerUpload.single('image'),
+  asyncHandler(async (req, res) => {
+    const voter = await updateVoterPicture(
+      req.params.id,
+      requireImage(req),
+      actorOf(req),
+      ctxOf(req),
+    );
+    sendOk(res, 'Profile photo updated', voter);
+  }),
+];
+
+export const updateCandidatePictureController: RequestHandler[] = [
+  multerUpload.single('image'),
+  asyncHandler(async (req, res) => {
+    const candidate = await updateCandidatePicture(
+      req.params.id,
+      requireImage(req),
+      actorOf(req),
+      ctxOf(req),
+    );
+    sendOk(res, 'Profile photo updated', candidate);
   }),
 ];
 

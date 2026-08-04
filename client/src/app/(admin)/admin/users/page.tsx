@@ -8,6 +8,7 @@ import { type ColumnDef, type Row } from "@tanstack/react-table";
 import {
   Eye,
   KeyRound,
+  Lock,
   Pencil,
   Plus,
   ShieldAlert,
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 
 import type { StaffUser } from "@/types/api";
 
+import { EntityAvatar } from "@/components/console/entity-avatar";
 import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
@@ -46,11 +48,12 @@ import {
   useCreateStaffUserMutation,
   useDeleteStaffUserMutation,
   useListStaffUsersQuery,
+  useLockUserMutation,
   useUnlockUserMutation,
-  useUpdateStaffUserMutation,
   useUpdateUserRoleMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 // Staff only: agents, candidates, and voters live in their own modules.
 const CREATABLE_ROLES = ["ADMIN", "ACCREDITOR"] as const;
@@ -185,66 +188,6 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
   );
 }
 
-function EditUserModal({
-  onClose,
-  user,
-}: {
-  onClose: () => void;
-  user: null | StaffUser;
-}) {
-  const [update, { isLoading: saving }] = useUpdateStaffUserMutation();
-
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!user) return;
-    const f = new FormData(e.currentTarget);
-    try {
-      await update({
-        data: {
-          firstName: f.get("firstName"),
-          lastName: f.get("lastName"),
-          status: f.get("status"),
-        },
-        id: user.id,
-      }).unwrap();
-      toast.success("Account updated");
-      onClose();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-
-  return (
-    <Modal onClose={onClose} open={Boolean(user)} title="Edit account">
-      {user && (
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="First name">
-              <Input defaultValue={user.firstName} name="firstName" required />
-            </Field>
-            <Field label="Last name">
-              <Input defaultValue={user.lastName} name="lastName" required />
-            </Field>
-          </div>
-          <Field
-            hint="Suspending signs the user out of every device."
-            label="Status"
-          >
-            <NativeSelect defaultValue={user.status} name="status">
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="SUSPENDED">Suspended</option>
-            </NativeSelect>
-          </Field>
-          <Button className="w-full" loading={saving} type="submit" variant="brand">
-            Save changes
-          </Button>
-        </form>
-      )}
-    </Modal>
-  );
-}
-
 function ChangeRoleModal({
   onClose,
   user,
@@ -316,16 +259,16 @@ function ChangeRoleModal({
 
 function UserActions({
   onDelete,
-  onEdit,
+  onLock,
   onRole,
   user,
 }: {
   onDelete: (user: StaffUser) => void;
-  onEdit: (user: StaffUser) => void;
+  onLock: (user: StaffUser) => void;
   onRole: (user: StaffUser) => void;
   user: StaffUser;
 }) {
-  const { isSuperAdmin, user: me } = useAuthRole();
+  const { isAdmin, isSuperAdmin, user: me } = useAuthRole();
   const [unlock] = useUnlockUserMutation();
   const isSelf = me?.id === user.id;
 
@@ -336,9 +279,16 @@ function UserActions({
             <Eye className="size-4" /> View profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onEdit(user)}>
-          <Pencil className="size-4" /> Edit
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/users/${user.id}?edit=1`}>
+            <Pencil className="size-4" /> Edit
+          </Link>
         </DropdownMenuItem>
+        {isAdmin && !isSelf && !user.lockedAt && (
+          <DropdownMenuItem onClick={() => onLock(user)}>
+            <Lock className="size-4" /> Lock account
+          </DropdownMenuItem>
+        )}
         {isSuperAdmin && !isSelf && user.role !== "SUPER_ADMIN" && (
           <DropdownMenuItem onClick={() => onRole(user)}>
             <UserCog className="size-4" /> Change role
@@ -373,10 +323,11 @@ function UserActions({
 export default function UsersPage() {
   const { isSuperAdmin } = useAuthRole();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editing, setEditing] = useState<null | StaffUser>(null);
+  const [locking, setLocking] = useState<null | StaffUser>(null);
   const [changingRole, setChangingRole] = useState<null | StaffUser>(null);
   const [deleting, setDeleting] = useState<null | StaffUser>(null);
   const [deleteUser] = useDeleteStaffUserMutation();
+  const [lockUser] = useLockUserMutation();
 
   const {
     filters,
@@ -396,13 +347,19 @@ export default function UsersPage() {
     {
       accessorKey: "firstName",
       cell: ({ row }) => (
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {row.original.firstName} {row.original.lastName}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {row.original.email ?? row.original.phone ?? "—"}
-          </p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <EntityAvatar
+            name={`${row.original.firstName} ${row.original.lastName}`}
+            url={row.original.profilePicture}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              {row.original.firstName} {row.original.lastName}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {row.original.email ?? row.original.phone ?? "—"}
+            </p>
+          </div>
         </div>
       ),
       header: "Account",
@@ -418,7 +375,8 @@ export default function UsersPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
           <StatusBadge status={row.original.status} />
-          {row.original.lockedAt && (
+          {/* The extra badge only covers a lock that status doesn't already say. */}
+          {row.original.lockedAt && row.original.status !== "LOCKED" && (
             <Badge variant="destructive">
               <ShieldAlert className="size-3" /> locked
             </Badge>
@@ -432,7 +390,7 @@ export default function UsersPage() {
       accessorKey: "createdAt",
       cell: ({ row }) => (
         <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString()}
+          {formatDateTime(row.original.createdAt)}
         </time>
       ),
       header: "Created",
@@ -441,7 +399,7 @@ export default function UsersPage() {
       cell: ({ row }) => (
         <UserActions
           onDelete={setDeleting}
-          onEdit={setEditing}
+          onLock={setLocking}
           onRole={setChangingRole}
           user={row.original}
         />
@@ -488,7 +446,7 @@ export default function UsersPage() {
             action={
               <UserActions
                 onDelete={setDeleting}
-                onEdit={setEditing}
+                onLock={setLocking}
                 onRole={setChangingRole}
                 user={row.original}
               />
@@ -584,10 +542,23 @@ export default function UsersPage() {
       />
 
       <CreateUserModal onClose={() => setCreateOpen(false)} open={createOpen} />
-      <EditUserModal
-        key={editing?.id ?? "edit"}
-        onClose={() => setEditing(null)}
-        user={editing}
+      <ConfirmationDialog
+        confirmText="Lock account"
+        description={`${locking?.firstName ?? ""} ${locking?.lastName ?? ""} will be signed out everywhere and unable to sign in until a super administrator unlocks the account.`}
+        isDestructive
+        onConfirm={async () => {
+          if (!locking) return;
+          setLocking(null);
+          try {
+            await lockUser(locking.id).unwrap();
+            toast.success("Account locked");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error));
+          }
+        }}
+        onOpenChange={(open) => !open && setLocking(null)}
+        open={locking !== null}
+        title="Lock this account?"
       />
       <ChangeRoleModal
         key={changingRole?.id ?? "role"}

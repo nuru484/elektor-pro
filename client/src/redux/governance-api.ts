@@ -73,6 +73,18 @@ export const governanceApi = apiSlice.injectEndpoints({
         url: `/users/${id}/contact/confirm`,
       }),
     }),
+    lockUser: build.mutation<unknown, string>({
+      invalidatesTags: ["StaffUser", "Agents"],
+      query: (id) => ({ method: "POST", url: `/users/${id}/lock` }),
+    }),
+    updateUserPicture: build.mutation<unknown, { file: File; id: string }>({
+      invalidatesTags: ["StaffUser", "Agents"],
+      query: ({ file, id }) => {
+        const body = new FormData();
+        body.append("image", file);
+        return { body, method: "PATCH", url: `/users/${id}/picture` };
+      },
+    }),
     getStaffUser: build.query<ApiResponse<StaffUser>, string>({
       providesTags: ["StaffUser"],
       query: (id) => `/users/${id}`,
@@ -213,6 +225,7 @@ export const {
   useGetAgentDashboardQuery,
   useGetOrganizationQuery,
   useGetStaffUserQuery,
+  useLockUserMutation,
   useGrantCapabilityMutation,
   useListAgentsQuery,
   useListGrantsQuery,
@@ -229,5 +242,6 @@ export const {
   useUpdateOrganizationMutation,
   useUpdateStaffUserMutation,
   useUpdateUserContactMutation,
+  useUpdateUserPictureMutation,
   useUpdateUserRoleMutation,
 } = governanceApi;

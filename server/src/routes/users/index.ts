@@ -9,9 +9,11 @@ import {
   deleteUserController,
   getUserController,
   listUsersController,
+  lockUserController,
   requestUserContactController,
   updateUserContactController,
   updateUserController,
+  updateUserPictureController,
   updateUserRoleController,
 } from '../../controllers/users/user-admin.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
@@ -35,6 +37,16 @@ usersRoutes.patch(
   '/:userId',
   authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
   ...updateUserController,
+);
+usersRoutes.post(
+  '/:userId/lock',
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
+  ...lockUserController,
+);
+usersRoutes.patch(
+  '/:userId/picture',
+  authorizeRole([Role.SUPER_ADMIN, Role.ADMIN]),
+  ...updateUserPictureController,
 );
 // Contact edits: super-admins apply directly (typed confirmation in the UI);
 // admins must verify via a code sent to the NEW contact so unreachable

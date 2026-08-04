@@ -34,6 +34,7 @@ import {
   useRejectChangeMutation,
 } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 const STATUSES: ChangeStatus[] = [
   "PENDING",
@@ -253,7 +254,7 @@ export default function ApprovalsPage() {
       accessorKey: "createdAt",
       cell: ({ row }) => (
         <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleString()}
+          {formatDateTime(row.original.createdAt)}
         </time>
       ),
       header: "Requested",
@@ -345,7 +346,7 @@ export default function ApprovalsPage() {
               {row.original.requestedBy
                 ? `${row.original.requestedBy.firstName} ${row.original.requestedBy.lastName} · `
                 : ""}
-              {new Date(row.original.createdAt).toLocaleString()}
+              {formatDateTime(row.original.createdAt)}
             </p>
           </RowCard>
         )}

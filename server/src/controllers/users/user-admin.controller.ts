@@ -3,9 +3,11 @@ import type { Request, RequestHandler, Response } from 'express';
 
 import type { Role, Status } from '../../../generated/prisma/client.js';
 
+import multerUpload from '../../config/multer.js';
 import {
   asyncHandler,
   UnauthorizedError,
+  ValidationError,
 } from '../../middlewares/error-handler.js';
 import validationMiddleware from '../../middlewares/validation.js';
 import { userAdminService } from '../../services/users/user-admin.service.js';
@@ -41,6 +43,31 @@ const handleListUsers = asyncHandler(async (req: Request, res: Response) => {
 
 const handleGetUser = asyncHandler(async (req: Request, res: Response) => {
   sendOk(res, 'User retrieved', await userAdminService.getUser(req.params.userId));
+});
+
+const handleLockUser = asyncHandler(async (req: Request, res: Response) => {
+  const data = await userAdminService.lockUser(
+    actorOf(req),
+    req.params.userId,
+    requestContextOf(req),
+  );
+  sendOk(res, 'Account locked', data);
+});
+
+const handleUpdatePicture = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.file) {
+    throw new ValidationError('An image file is required', {
+      code: 'VALIDATION_ERROR',
+      context: { errors: [{ field: 'image', message: 'An image file is required' }] },
+    });
+  }
+  const data = await userAdminService.updateUserPicture(
+    actorOf(req),
+    req.params.userId,
+    { buffer: req.file.buffer, mimetype: req.file.mimetype },
+    requestContextOf(req),
+  );
+  sendOk(res, 'Profile photo updated', data);
 });
 
 const handleUpdateContact = asyncHandler(async (req: Request, res: Response) => {
@@ -107,6 +134,13 @@ export const updateUserController: RequestHandler[] = [
   ...validationMiddleware.update(adminUpdateUserSchema),
   handleUpdateUser,
 ];
+export const lockUserController: RequestHandler[] = [handleLockUser];
+
+export const updateUserPictureController: RequestHandler[] = [
+  multerUpload.single('image'),
+  handleUpdatePicture,
+];
+
 export const updateUserContactController: RequestHandler[] = [
   ...validationMiddleware.update(adminContactChangeSchema),
   handleUpdateContact,

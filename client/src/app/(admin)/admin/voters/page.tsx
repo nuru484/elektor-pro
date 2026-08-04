@@ -1,13 +1,14 @@
 "use client";
 
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Eye, Plus, Users } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { Voter } from "@/types/api";
 
+import { EntityAvatar } from "@/components/console/entity-avatar";
 import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { TableToolbar } from "@/components/console/table-toolbar";
@@ -23,9 +24,16 @@ import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
-import { useCreateVoterMutation, useListVotersQuery } from "@/redux/admin-api";
+import {
+  useCreateVoterMutation,
+  useDeleteVoterMutation,
+  useListVotersQuery,
+} from "@/redux/admin-api";
 import { useListGroupsQuery } from "@/redux/governance-api";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { useAuthRole } from "@/hooks/use-auth-role";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 interface VoterFilters extends Record<string, string | undefined> {
   search?: string;
@@ -35,10 +43,18 @@ const FILTERS_SPEC: TableFiltersSpec<VoterFilters> = {
   search: { kind: "string" },
 };
 
-const COLUMNS: ColumnDef<Voter>[] = [
+const buildColumns = (
+  isSuperAdmin: boolean,
+  onDelete: (voter: Voter) => void,
+): ColumnDef<Voter>[] => [
   {
     accessorKey: "name",
-    cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    cell: ({ row }) => (
+      <div className="flex min-w-0 items-center gap-2.5">
+        <EntityAvatar name={row.original.name} url={row.original.profilePicture} />
+        <span className="truncate font-medium">{row.original.name}</span>
+      </div>
+    ),
     header: "Name",
   },
   {
@@ -72,12 +88,31 @@ const COLUMNS: ColumnDef<Voter>[] = [
   },
   {
     cell: ({ row }) => (
+      <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
+        {formatDateTime(row.original.createdAt)}
+      </time>
+    ),
+    header: "Registered",
+    id: "registered",
+  },
+  {
+    cell: ({ row }) => (
       <RowActionsMenu label="Voter actions">
         <DropdownMenuItem asChild>
           <Link href={`/admin/voters/${row.original.id}`}>
             <Eye className="size-4" /> View profile
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/voters/${row.original.id}?edit=1`}>
+            <Pencil className="size-4" /> Edit
+          </Link>
+        </DropdownMenuItem>
+        {isSuperAdmin && (
+          <DropdownMenuItem onClick={() => onDelete(row.original)} variant="destructive">
+            <Trash2 className="size-4" /> Delete
+          </DropdownMenuItem>
+        )}
       </RowActionsMenu>
     ),
     header: "Actions",
@@ -164,7 +199,10 @@ function AddVoterModal({ onClose, open }: { onClose: () => void; open: boolean }
 }
 
 export default function VotersPage() {
+  const { isSuperAdmin } = useAuthRole();
   const [addOpen, setAddOpen] = useState(false);
+  const [deleting, setDeleting] = useState<null | Voter>(null);
+  const [deleteVoter] = useDeleteVoterMutation();
   const {
     filters,
     handleFiltersChange,
@@ -181,7 +219,7 @@ export default function VotersPage() {
   const totalCount = data?.meta.total ?? 0;
 
   const table = useDataTable({
-    columns: COLUMNS,
+    columns: buildColumns(isSuperAdmin, setDeleting),
     data: rows,
     enableRowSelection: false,
     getRowId: (row) => row.id,
@@ -254,6 +292,25 @@ export default function VotersPage() {
       />
 
       <AddVoterModal onClose={() => setAddOpen(false)} open={addOpen} />
+      <ConfirmationDialog
+        confirmText="Delete voter"
+        description={`"${deleting?.name ?? ""}" (${deleting?.voterId ?? ""}) will be removed from the roll. They can be restored from Deleted records.`}
+        isDestructive
+        onConfirm={async () => {
+          if (!deleting) return;
+          setDeleting(null);
+          try {
+            await deleteVoter(deleting.id).unwrap();
+            toast.success("Voter deleted");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error));
+          }
+        }}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        open={deleting !== null}
+        requireExactMatch="delete"
+        title="Delete this voter?"
+      />
     </div>
   );
 }

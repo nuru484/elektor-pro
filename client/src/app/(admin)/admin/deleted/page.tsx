@@ -29,6 +29,7 @@ import {
   useRestoreDeletedRecordMutation,
 } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 const RESOURCES = [
   "voters",
@@ -116,7 +117,7 @@ export default function DeletedRecordsPage() {
       accessorKey: "deletedAt",
       cell: ({ row }) => (
         <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {new Date(row.original.deletedAt).toLocaleString()}
+          {formatDateTime(row.original.deletedAt)}
         </time>
       ),
       header: "Deleted",
@@ -252,7 +253,7 @@ export default function DeletedRecordsPage() {
                   {row.original.label || "—"}
                 </span>
                 <time className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                  {new Date(row.original.deletedAt).toLocaleDateString()}
+                  {formatDateTime(row.original.deletedAt)}
                 </time>
               </div>
               {row.original.meta && (

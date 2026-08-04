@@ -4,13 +4,14 @@
 // specific candidate (results-room and process agents). Assignments apply
 // directly (audited); removal is super-admin only.
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Eye, Plus, Trash2, UserCheck } from "lucide-react";
+import { Eye, Lock, Pencil, Plus, Trash2, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import type { AgentAssignment } from "@/types/api";
 
+import { EntityAvatar } from "@/components/console/entity-avatar";
 import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
@@ -34,9 +35,11 @@ import {
   useCreateStaffUserMutation,
   useListAgentsQuery,
   useListStaffUsersQuery,
+  useLockUserMutation,
   useRemoveAgentMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 interface AgentFilters extends Record<string, string | undefined> {
   electionId?: string;
@@ -230,11 +233,13 @@ function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolea
 }
 
 export default function AgentsPage() {
-  const { isSuperAdmin } = useAuthRole();
+  const { isAdmin, isSuperAdmin } = useAuthRole();
   const [assignOpen, setAssignOpen] = useState(false);
   const [newAgentOpen, setNewAgentOpen] = useState(false);
   const [removing, setRemoving] = useState<AgentAssignment | null>(null);
+  const [locking, setLocking] = useState<AgentAssignment | null>(null);
   const [removeAgent] = useRemoveAgentMutation();
+  const [lockUser] = useLockUserMutation();
   const { data: elections } = useListElectionsQuery({ limit: 100 });
 
   const {
@@ -254,13 +259,19 @@ export default function AgentsPage() {
   const columns: ColumnDef<AgentAssignment>[] = [
     {
       cell: ({ row }) => (
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {row.original.user.firstName} {row.original.user.lastName}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {row.original.user.email ?? "—"}
-          </p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <EntityAvatar
+            name={`${row.original.user.firstName} ${row.original.user.lastName}`}
+            url={(row.original.user as { profilePicture?: null | string }).profilePicture}
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              {row.original.user.firstName} {row.original.user.lastName}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {row.original.user.email ?? "—"}
+            </p>
+          </div>
         </div>
       ),
       header: "Agent",
@@ -287,7 +298,7 @@ export default function AgentsPage() {
       accessorKey: "createdAt",
       cell: ({ row }) => (
         <time className="text-xs whitespace-nowrap tabular-nums text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString()}
+          {formatDateTime(row.original.createdAt)}
         </time>
       ),
       header: "Assigned",
@@ -300,6 +311,16 @@ export default function AgentsPage() {
               <Eye className="size-4" /> View profile
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/users/${row.original.user.id}?edit=1`}>
+              <Pencil className="size-4" /> Edit
+            </Link>
+          </DropdownMenuItem>
+          {isAdmin && (
+            <DropdownMenuItem onClick={() => setLocking(row.original)}>
+              <Lock className="size-4" /> Lock account
+            </DropdownMenuItem>
+          )}
           {isSuperAdmin && (
             <DropdownMenuItem
               onClick={() => setRemoving(row.original)}
@@ -436,6 +457,24 @@ export default function AgentsPage() {
 
       <AssignAgentModal onClose={() => setAssignOpen(false)} open={assignOpen} />
       <NewAgentModal onClose={() => setNewAgentOpen(false)} open={newAgentOpen} />
+      <ConfirmationDialog
+        confirmText="Lock account"
+        description={`${locking?.user.firstName ?? ""} ${locking?.user.lastName ?? ""} will be signed out everywhere and unable to sign in until a super administrator unlocks the account.`}
+        isDestructive
+        onConfirm={async () => {
+          if (!locking) return;
+          setLocking(null);
+          try {
+            await lockUser(locking.user.id).unwrap();
+            toast.success("Account locked");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error));
+          }
+        }}
+        onOpenChange={(open) => !open && setLocking(null)}
+        open={locking !== null}
+        title="Lock this account?"
+      />
       <ConfirmationDialog
         confirmText="Remove assignment"
         description={`${removing?.user.firstName ?? ""} ${removing?.user.lastName ?? ""} will no longer observe "${removing?.election.name ?? ""}".`}

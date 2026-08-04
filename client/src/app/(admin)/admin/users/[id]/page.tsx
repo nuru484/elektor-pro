@@ -1,9 +1,11 @@
 "use client";
 
-// Account profile (staff and agents): the profile-style detail page admins
-// open from any table's "View profile". Contact editing follows the trust
-// ladder - super admins apply directly behind a typed confirmation; admins
-// verify via a code sent to the NEW contact; self-service stays in /profile.
+// Account profile (staff and agents). Two-column on desktop so the space
+// works: identity rail left, editable details right. Opening with ?edit=1
+// (the tables' Edit action) activates the form straight away. The photo
+// updates on its own; contact edits follow the trust ladder - super admins
+// apply directly behind a typed confirmation, admins verify via a code sent
+// to the NEW contact.
 import { ArrowLeft, Mail, Pencil, Phone, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -12,6 +14,7 @@ import { toast } from "sonner";
 
 import type { StaffUser } from "@/types/api";
 
+import { AvatarUpdater } from "@/components/console/avatar-updater";
 import {
   CARD_MOBILE,
   CARD_PAD_MOBILE,
@@ -27,7 +30,7 @@ import {
 } from "@/components/ui/card";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -36,9 +39,12 @@ import {
   useConfirmUserContactMutation,
   useGetStaffUserQuery,
   useRequestUserContactMutation,
+  useUpdateStaffUserMutation,
   useUpdateUserContactMutation,
+  useUpdateUserPictureMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 const ROLE_LABELS: Record<string, string> = {
   ACCREDITOR: "Accreditor",
@@ -219,10 +225,120 @@ function ContactChannel({
   );
 }
 
+/** Names (+ status for admins) - the form ?edit=1 activates. */
+function DetailsCard({
+  editingInitially,
+  user,
+}: {
+  editingInitially: boolean;
+  user: StaffUser;
+}) {
+  const { isAdmin, user: me } = useAuthRole();
+  const [editing, setEditing] = useState(editingInitially);
+  const [update, { isLoading: saving }] = useUpdateStaffUserMutation();
+  const isSelf = me?.id === user.id;
+
+  const onSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    try {
+      await update({
+        data: {
+          firstName: f.get("firstName"),
+          lastName: f.get("lastName"),
+          ...(isAdmin && !isSelf ? { status: f.get("status") } : {}),
+        },
+        id: user.id,
+      }).unwrap();
+      toast.success("Details updated");
+      setEditing(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  return (
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Details</CardTitle>
+            <CardDescription>Names and account status.</CardDescription>
+          </div>
+          {!editing && !isSelf && (
+            <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className={CARD_PAD_MOBILE}>
+        {editing ? (
+          <form className="max-w-lg space-y-4" onSubmit={onSave}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="First name">
+                <Input defaultValue={user.firstName} name="firstName" required />
+              </Field>
+              <Field label="Last name">
+                <Input defaultValue={user.lastName} name="lastName" required />
+              </Field>
+            </div>
+            {isAdmin && !isSelf && (
+              <Field
+                hint="Suspending signs the user out of every device."
+                label="Status"
+              >
+                <NativeSelect
+                  className="max-w-48"
+                  defaultValue={
+                    user.status === "LOCKED" ? "ACTIVE" : user.status
+                  }
+                  name="status"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="SUSPENDED">Suspended</option>
+                </NativeSelect>
+              </Field>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={() => setEditing(false)} type="button" variant="ghost">
+                Cancel
+              </Button>
+              <Button loading={saving} type="submit" variant="brand">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-muted-foreground">First name</dt>
+              <dd className="mt-0.5 text-sm font-medium">{user.firstName}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Last name</dt>
+              <dd className="mt-0.5 text-sm font-medium">{user.lastName}</dd>
+            </div>
+          </dl>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function UserProfilePage() {
   const params = useParams<{ id: string }>();
   const { data, isError, isLoading } = useGetStaffUserQuery(params.id);
+  const [updatePicture] = useUpdateUserPictureMutation();
+  // Read once at mount: ?edit=1 (the tables' Edit action) opens the form.
+  const [editInitially] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("edit") === "1",
+  );
   const user = data?.data;
+
 
   return (
     <div className="space-y-6">
@@ -238,95 +354,82 @@ export default function UserProfilePage() {
       ) : isError || !user ? (
         <ErrorState />
       ) : (
-        <div className="space-y-6 max-sm:space-y-8">
-          {/* Identity hero */}
-          <Card className={CARD_MOBILE}>
-            <CardContent className={`${CARD_PAD_MOBILE} flex items-center gap-4 py-6`}>
-              <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-brand text-lg font-semibold text-brand-foreground">
-                {user.profilePicture ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- Cloudinary avatar
-                  <img
-                    alt=""
-                    className="size-full object-cover"
-                    src={user.profilePicture}
-                  />
-                ) : (
-                  `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase()
-                )}
-              </div>
+        <div className="gap-6 space-y-6 max-sm:space-y-8 lg:grid lg:grid-cols-[300px_1fr] lg:items-start lg:space-y-0">
+          {/* Identity rail */}
+          <Card className={`${CARD_MOBILE} lg:sticky lg:top-24`}>
+            <CardContent
+              className={`${CARD_PAD_MOBILE} flex flex-col items-center gap-3 py-6 text-center`}
+            >
+              <AvatarUpdater
+                canEdit
+                name={`${user.firstName} ${user.lastName}`}
+                onUpload={(file) => updatePicture({ file, id: user.id }).unwrap()}
+                url={user.profilePicture}
+              />
               <div className="min-w-0">
                 <h1 className="truncate text-xl font-semibold">
                   {user.firstName} {user.lastName}
                 </h1>
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
                   <Badge variant="outline">{ROLE_LABELS[user.role] ?? user.role}</Badge>
                   <StatusBadge status={user.status} />
-                  {user.lockedAt && (
+                  {user.lockedAt && user.status !== "LOCKED" && (
                     <Badge variant="destructive">
                       <ShieldAlert className="size-3" /> locked
                     </Badge>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact - the trust-laddered editors */}
-          <Card className={CARD_MOBILE}>
-            <CardHeader className={CARD_PAD_MOBILE}>
-              <CardTitle className="text-base">Contact</CardTitle>
-              <CardDescription>
-                How this person signs in and receives codes. Verified changes
-                keep unreachable contacts out of the system.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className={`${CARD_PAD_MOBILE} space-y-5`}>
-              <ContactChannel channel="email" current={user.email} user={user} />
-              <ContactChannel channel="phone" current={user.phone} user={user} />
-            </CardContent>
-          </Card>
-
-          {/* Account details */}
-          <Card className={CARD_MOBILE}>
-            <CardHeader className={CARD_PAD_MOBILE}>
-              <CardTitle className="text-base">Account</CardTitle>
-            </CardHeader>
-            <CardContent className={CARD_PAD_MOBILE}>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <div>
+              <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
+                <div className="flex items-baseline justify-between gap-3">
                   <dt className="text-xs text-muted-foreground">Two-factor</dt>
-                  <dd className="mt-0.5 text-sm font-medium">
+                  <dd className="text-xs font-medium">
                     {user.twoFactorEnabled ? "Enabled" : "Off"}
                   </dd>
                 </div>
-                <div>
+                <div className="flex items-baseline justify-between gap-3">
                   <dt className="text-xs text-muted-foreground">Last sign-in</dt>
-                  <dd className="mt-0.5 text-sm font-medium">
-                    {user.lastLoginAt
-                      ? new Date(user.lastLoginAt).toLocaleString()
-                      : "Never"}
-                  </dd>
+                  <dd className="text-xs font-medium">{formatDateTime(user.lastLoginAt)}</dd>
                 </div>
-                <div>
+                <div className="flex items-baseline justify-between gap-3">
                   <dt className="text-xs text-muted-foreground">Created</dt>
-                  <dd className="mt-0.5 text-sm font-medium">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                    {user.creator
-                      ? ` by ${user.creator.firstName} ${user.creator.lastName}`
-                      : ""}
-                  </dd>
+                  <dd className="text-xs font-medium">{formatDateTime(user.createdAt)}</dd>
                 </div>
-                {user.mustChangePassword && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Password</dt>
-                    <dd className="mt-0.5 text-sm font-medium text-warning">
-                      Temporary - not yet replaced
+                {user.creator && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-xs text-muted-foreground">Created by</dt>
+                    <dd className="truncate text-xs font-medium">
+                      {user.creator.firstName} {user.creator.lastName}
                     </dd>
+                  </div>
+                )}
+                {user.mustChangePassword && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-xs text-muted-foreground">Password</dt>
+                    <dd className="text-xs font-medium text-warning">Temporary</dd>
                   </div>
                 )}
               </dl>
             </CardContent>
           </Card>
+
+          {/* Editable content */}
+          <div className="space-y-6 max-sm:space-y-8">
+            <DetailsCard editingInitially={editInitially} user={user} />
+            <Card className={CARD_MOBILE}>
+              <CardHeader className={CARD_PAD_MOBILE}>
+                <CardTitle className="text-base">Contact</CardTitle>
+                <CardDescription>
+                  How this person signs in and receives codes. Verified changes
+                  keep unreachable contacts out of the system.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className={`${CARD_PAD_MOBILE} space-y-5`}>
+                <ContactChannel channel="email" current={user.email} user={user} />
+                <ContactChannel channel="phone" current={user.phone} user={user} />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </div>

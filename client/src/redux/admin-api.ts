@@ -98,6 +98,41 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ["ChangeRequest"],
       query: ({ id }) => ({ method: "POST", url: `/change-requests/${id}/cancel` }),
     }),
+    deleteVoter: build.mutation<unknown, string>({
+      invalidatesTags: ["Voter", "ChangeRequest", "Dashboard"],
+      query: (id) => ({ method: "DELETE", url: `/voters/${id}` }),
+    }),
+    deleteCandidate: build.mutation<unknown, string>({
+      invalidatesTags: ["Candidate", "ChangeRequest", "Dashboard"],
+      query: (id) => ({ method: "DELETE", url: `/candidates/${id}` }),
+    }),
+    updateVoter: build.mutation<unknown, { data: Record<string, unknown>; id: string }>({
+      invalidatesTags: ["Voter", "ChangeRequest"],
+      query: ({ data, id }) => ({ body: data, method: "PATCH", url: `/voters/${id}` }),
+    }),
+    updateCandidate: build.mutation<
+      unknown,
+      { data: Record<string, unknown>; id: string }
+    >({
+      invalidatesTags: ["Candidate", "ChangeRequest"],
+      query: ({ data, id }) => ({ body: data, method: "PATCH", url: `/candidates/${id}` }),
+    }),
+    updateVoterPicture: build.mutation<unknown, { file: File; id: string }>({
+      invalidatesTags: ["Voter"],
+      query: ({ file, id }) => {
+        const body = new FormData();
+        body.append("image", file);
+        return { body, method: "PATCH", url: `/voters/${id}/picture` };
+      },
+    }),
+    updateCandidatePicture: build.mutation<unknown, { file: File; id: string }>({
+      invalidatesTags: ["Candidate"],
+      query: ({ file, id }) => {
+        const body = new FormData();
+        body.append("image", file);
+        return { body, method: "PATCH", url: `/candidates/${id}/picture` };
+      },
+    }),
     getCandidate: build.query<ApiResponse<Candidate>, string>({
       providesTags: ["Candidate"],
       query: (id) => `/candidates/${id}`,
@@ -197,6 +232,8 @@ export const {
   useCreateElectionMutation,
   useCreatePortfolioMutation,
   useCreateVoterMutation,
+  useDeleteCandidateMutation,
+  useDeleteVoterMutation,
   useGetCandidateQuery,
   useGetChangeRequestQuery,
   useGetVoterQuery,
@@ -214,6 +251,10 @@ export const {
   useRejectChangeMutation,
   useRestoreDeletedRecordMutation,
   useSetElectionStatusMutation,
+  useUpdateCandidateMutation,
+  useUpdateCandidatePictureMutation,
   useUpdateRolePermissionsMutation,
+  useUpdateVoterMutation,
+  useUpdateVoterPictureMutation,
   useVerifyAuditQuery,
 } = adminApi;
