@@ -18,7 +18,7 @@ export function Hero() {
 
         <HeroVisual />
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link href="/login">
             <button
               className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-foreground bg-foreground px-6 py-3 text-base font-medium text-background transition-colors duration-500 ease-in-out hover:bg-transparent hover:text-foreground md:px-8 md:py-3.5 md:text-lg"
@@ -38,7 +38,7 @@ export function Hero() {
         </div>
 
         {/* Hairline claims row - plain type, no badges, no icons. */}
-        <dl className="mx-auto mt-16 grid max-w-3xl grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <dl className="mt-16 grid max-w-3xl grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {[
             ["Secret ballots", "never linked to the voter"],
             ["Live results", "as every vote lands"],

@@ -1,10 +1,10 @@
 "use client";
 
-// The hero: a live election board. Every ~2s a ballot drops into the box
-// (the brand motif), the count ticks up, the leading tallies shift, and the
-// turnout ring advances - the product explaining itself without copy.
-// Pure CSS keyframes + a light interval; the global prefers-reduced-motion
-// rule freezes it for users who ask.
+// The hero visual: an open, borderless live-election composition. Every ~2s a
+// ballot drops into the box (the brand motif), the count ticks up, tallies
+// shift, and the turnout ring advances. No enclosing card - the elements sit
+// directly on the page, separated only by space and one hairline. The global
+// prefers-reduced-motion rule freezes all of it.
 import { BadgeCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -49,14 +49,14 @@ function BallotBox() {
         </div>
       </div>
       {/* Box lid with slot */}
-      <div className="relative z-10 -mt-1 w-full rounded-t-lg border border-border bg-card px-4 pt-3 pb-2">
+      <div className="relative z-10 -mt-1 w-full rounded-t-lg bg-secondary px-4 pt-3 pb-2">
         <div
           className="mx-auto h-1.5 w-16 rounded-full"
           style={{ animation: `slot-glow ${CYCLE_MS}ms ease-in-out infinite` }}
         />
       </div>
       {/* Box body */}
-      <div className="z-10 h-16 w-[88%] rounded-b-lg border border-t-0 border-border bg-card" />
+      <div className="z-10 h-16 w-[88%] rounded-b-lg bg-secondary/70" />
     </div>
   );
 }
@@ -122,24 +122,20 @@ export function HeroVisual() {
   return (
     <div
       aria-label="Live election preview: ballots being cast and counted in real time"
-      className="mx-auto w-full max-w-4xl select-none rounded-2xl border border-border bg-card/70 backdrop-blur-sm"
+      className="w-full max-w-3xl select-none"
       role="img"
     >
-      {/* Board header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-7">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">SRC General Election · President</p>
-          <p className="text-xs text-muted-foreground">
-            <span className="tabular-nums">{totalVotes.toLocaleString()}</span> votes counted
-          </p>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-success/40 px-2.5 py-1 text-[11px] font-medium text-success">
-          <span className="size-1.5 animate-pulse rounded-full bg-success" /> Live
+      {/* Header line */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <p className="text-sm font-semibold">General Election · President</p>
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-success">
+          <span className="size-1.5 animate-pulse rounded-full bg-success" /> Live ·{" "}
+          <span className="tabular-nums">{totalVotes.toLocaleString()}</span> votes counted
         </span>
       </div>
 
-      {/* Board body: tallies · ballot box · turnout */}
-      <div className="grid items-center gap-8 px-5 py-6 sm:px-7 md:grid-cols-[1.2fr_auto_auto] md:gap-10">
+      {/* Tallies · ballot box · turnout - open layout, no enclosing card. */}
+      <div className="mt-7 grid items-center gap-10 md:grid-cols-[1.2fr_auto_auto] md:gap-12">
         <div className="space-y-4">
           {rows.map((row, index) => (
             <div key={row.name}>
@@ -165,13 +161,13 @@ export function HeroVisual() {
 
         <BallotBox />
 
-        <div className="justify-self-center">
+        <div className="justify-self-start md:justify-self-center">
           <TurnoutRing turnoutPct={turnoutPct} />
         </div>
       </div>
 
-      {/* Receipt strip */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3.5 sm:px-7">
+      {/* Receipt line - one hairline above, plain type. */}
+      <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-4">
         <div
           className="flex min-w-0 items-center gap-2"
           style={{ animation: `chip-pop ${CYCLE_MS}ms ease-in-out infinite` }}
