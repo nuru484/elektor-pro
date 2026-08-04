@@ -59,8 +59,13 @@ export function ConfirmationDialog({
         </AlertDialogHeader>
 
         {requireExactMatch && (
-          <div className="space-y-2">
-            <Label className="inline leading-relaxed" htmlFor="confirm-input">
+          <div className="min-w-0 space-y-2">
+            {/* The phrase can be a worst-case name: wrap anywhere so the
+                mono token never widens the dialog. */}
+            <Label
+              className="inline min-w-0 leading-relaxed [overflow-wrap:anywhere]"
+              htmlFor="confirm-input"
+            >
               Type <span className="font-mono font-bold">{requireExactMatch}</span> to
               confirm:
             </Label>
