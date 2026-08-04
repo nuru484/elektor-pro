@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CARD_MOBILE, CARD_PAD_MOBILE } from "@/components/profile/details-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
@@ -114,15 +115,15 @@ export function SessionsSection() {
   const hasOthers = sessions.some((s) => !s.current);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
         <CardTitle className="text-base">Signed-in devices</CardTitle>
         <CardDescription>
           Everywhere your account is currently signed in. Sign out anything you
           don&apos;t recognize.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className={CARD_PAD_MOBILE}>
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-14 w-full rounded-lg" />

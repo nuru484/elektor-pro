@@ -1,8 +1,11 @@
 "use client";
 
-// Profile details: photo, names, and two-step verified email/phone changes.
+// Profile details: photo, names, and verified email/phone changes. Everything
+// renders read-only first; active inputs appear only after the matching Edit
+// button is pressed, and contact changes expand INLINE below their row (no
+// dialogs) - value step, then the code sent to the new contact.
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, Mail, Phone } from "lucide-react";
+import { Camera, Mail, Pencil, Phone } from "lucide-react";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -46,29 +49,28 @@ import {
   type UpdateProfileValues,
 } from "@/validations/auth-validation";
 
+/** Cards dissolve on phones: no box-in-box, just the page gutter. */
+export const CARD_MOBILE =
+  "max-sm:border-0 max-sm:bg-transparent max-sm:py-0 max-sm:shadow-none";
+export const CARD_PAD_MOBILE = "max-sm:px-0";
+
 /**
- * Generic two-step "change contact" dialog: enter the new value, then the
- * code sent to it. Shared by the email and phone flows.
+ * Inline two-step contact change, expanded below its row: enter the new
+ * value, then the code sent to it.
  */
-function ContactChangeDialog({
+function ContactChangeInline({
   confirm,
-  description,
   label,
   onClose,
-  open,
   placeholder,
   request,
-  title,
   type,
 }: {
   confirm: (code: string) => Promise<unknown>;
-  description: string;
   label: string;
   onClose: () => void;
-  open: boolean;
   placeholder: string;
   request: (value: string) => Promise<unknown>;
-  title: string;
   type: "email" | "tel";
 }) {
   const [stage, setStage] = useState<"code" | "value">("value");
@@ -84,13 +86,6 @@ function ContactChangeDialog({
     defaultValues: { code: "" },
     resolver: zodResolver(otpCodeSchema),
   });
-
-  const close = () => {
-    setStage("value");
-    valueForm.reset();
-    codeForm.reset();
-    onClose();
-  };
 
   const onRequest = valueForm.handleSubmit(async (values) => {
     setBusy(true);
@@ -110,7 +105,7 @@ function ContactChangeDialog({
     try {
       await confirm(values.code);
       toast.success(`${label} updated`);
-      close();
+      onClose();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     } finally {
@@ -119,61 +114,61 @@ function ContactChangeDialog({
   });
 
   return (
-    <Dialog onOpenChange={(next) => !next && close()} open={open}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {stage === "value"
-              ? description
-              : "Enter the verification code we just sent to confirm the change."}
-          </DialogDescription>
-        </DialogHeader>
-        {stage === "value" ? (
-          <form className="space-y-4" onSubmit={onRequest}>
-            <Field error={valueForm.formState.errors[fieldName]?.message} label={label}>
-              <Input
-                autoFocus
-                placeholder={placeholder}
-                type={type}
-                {...valueForm.register(fieldName)}
-              />
-            </Field>
-            <Button className="w-full" loading={busy} type="submit" variant="brand">
+    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+      {stage === "value" ? (
+        <form className="space-y-4" onSubmit={onRequest}>
+          <Field
+            error={valueForm.formState.errors[fieldName]?.message}
+            hint="We'll send a verification code to confirm it's yours."
+            label={label}
+          >
+            <Input
+              autoFocus
+              placeholder={placeholder}
+              type={type}
+              {...valueForm.register(fieldName)}
+            />
+          </Field>
+          <div className="flex gap-2">
+            <Button onClick={onClose} size="sm" type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button loading={busy} size="sm" type="submit" variant="brand">
               Send verification code
             </Button>
-          </form>
-        ) : (
-          <form className="space-y-4" onSubmit={onConfirm}>
-            <Field error={codeForm.formState.errors.code?.message} label="Verification code">
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="123456"
-                {...codeForm.register("code")}
-              />
-            </Field>
-            <Button className="w-full" loading={busy} type="submit" variant="brand">
+          </div>
+        </form>
+      ) : (
+        <form className="space-y-4" onSubmit={onConfirm}>
+          <Field
+            error={codeForm.formState.errors.code?.message}
+            hint="Enter the code we just sent to confirm the change."
+            label="Verification code"
+          >
+            <Input
+              autoFocus
+              inputMode="numeric"
+              placeholder="123456"
+              {...codeForm.register("code")}
+            />
+          </Field>
+          <div className="flex gap-2">
+            <Button onClick={onClose} size="sm" type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button loading={busy} size="sm" type="submit" variant="brand">
               Confirm change
             </Button>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
-export function DetailsSection({ user }: { user: CurrentUser }) {
+function NameCard({ user }: { user: CurrentUser }) {
   const [updateProfile, { isLoading: saving }] = useUpdateProfileMutation();
-  const [uploadPicture, { isLoading: uploading }] = useUpdateProfilePictureMutation();
-  const [requestEmail] = useRequestEmailChangeMutation();
-  const [confirmEmail] = useConfirmEmailChangeMutation();
-  const [requestPhone] = useRequestPhoneChangeMutation();
-  const [confirmPhone] = useConfirmPhoneChangeMutation();
-  const [dialog, setDialog] = useState<"email" | "phone" | null>(null);
-  const [viewOpen, setViewOpen] = useState(false);
-  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; url: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
 
   const form = useForm<UpdateProfileValues>({
     defaultValues: { firstName: user.firstName, lastName: user.lastName },
@@ -184,10 +179,72 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
     try {
       await updateProfile(values).unwrap();
       toast.success("Profile updated");
+      setEditing(false);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     }
   });
+
+  return (
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <CardTitle className="text-base">Name</CardTitle>
+        <CardDescription>How your name appears across the platform.</CardDescription>
+      </CardHeader>
+      <CardContent className={CARD_PAD_MOBILE}>
+        {editing ? (
+          <form className="space-y-4" onSubmit={onSave}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field error={form.formState.errors.firstName?.message} label="First name">
+                <Input placeholder="e.g. Ama" {...form.register("firstName")} />
+              </Field>
+              <Field error={form.formState.errors.lastName?.message} label="Last name">
+                <Input placeholder="e.g. Owusu" {...form.register("lastName")} />
+              </Field>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  form.reset({ firstName: user.firstName, lastName: user.lastName });
+                  setEditing(false);
+                }}
+                type="button"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button loading={saving} type="submit" variant="brand">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <div className="grid flex-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">First name</p>
+                <p className="mt-0.5 text-sm font-medium">{user.firstName}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Last name</p>
+                <p className="mt-0.5 text-sm font-medium">{user.lastName}</p>
+              </div>
+            </div>
+            <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PhotoCard({ user }: { user: CurrentUser }) {
+  const [uploadPicture, { isLoading: uploading }] = useUpdateProfilePictureMutation();
+  const [viewOpen, setViewOpen] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; url: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   /** Selecting a file only stages a preview - nothing is uploaded yet. */
   const onPickPhoto = (file: File | undefined) => {
@@ -218,122 +275,43 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Photo</CardTitle>
-          <CardDescription>Shown on your account and, for candidates, the ballot.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <button
-            aria-label={user.profilePicture ? "View profile photo" : "No profile photo yet"}
-            className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-lg font-semibold text-brand-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            disabled={!user.profilePicture}
-            onClick={() => setViewOpen(true)}
-            type="button"
-          >
-            {user.profilePicture ? (
-              // eslint-disable-next-line @next/next/no-img-element -- Cloudinary avatar
-              <img alt="Profile photo" className="size-full object-cover" src={user.profilePicture} />
-            ) : (
-              initials
-            )}
-          </button>
-          <div>
-            <input
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(e) => onPickPhoto(e.target.files?.[0])}
-              ref={fileRef}
-              type="file"
-            />
-            <Button
-              onClick={() => fileRef.current?.click()}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <Camera className="size-4" /> Change photo
-            </Button>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              JPEG, PNG or WebP, up to 10 MB. Tap the photo to view it full size.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <CardTitle className="text-base">Photo</CardTitle>
+        <CardDescription>Shown on your account and, for candidates, the ballot.</CardDescription>
+      </CardHeader>
+      <CardContent className={`flex items-center gap-4 ${CARD_PAD_MOBILE}`}>
+        <button
+          aria-label={user.profilePicture ? "View profile photo" : "No profile photo yet"}
+          className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-lg font-semibold text-brand-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled={!user.profilePicture}
+          onClick={() => setViewOpen(true)}
+          type="button"
+        >
+          {user.profilePicture ? (
+            // eslint-disable-next-line @next/next/no-img-element -- Cloudinary avatar
+            <img alt="Profile photo" className="size-full object-cover" src={user.profilePicture} />
+          ) : (
+            initials
+          )}
+        </button>
+        <div>
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => onPickPhoto(e.target.files?.[0])}
+            ref={fileRef}
+            type="file"
+          />
+          <Button onClick={() => fileRef.current?.click()} size="sm" type="button" variant="outline">
+            <Camera className="size-4" /> Change photo
+          </Button>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            JPEG, PNG or WebP, up to 10 MB. Tap the photo to view it full size.
+          </p>
+        </div>
+      </CardContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Name</CardTitle>
-          <CardDescription>How your name appears across the platform.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={onSave}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field error={form.formState.errors.firstName?.message} label="First name">
-                <Input placeholder="e.g. Ama" {...form.register("firstName")} />
-              </Field>
-              <Field error={form.formState.errors.lastName?.message} label="Last name">
-                <Input placeholder="e.g. Owusu" {...form.register("lastName")} />
-              </Field>
-            </div>
-            <Button loading={saving} type="submit" variant="brand">
-              Save changes
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Contact</CardTitle>
-          <CardDescription>
-            Changes are verified with a one-time code sent to the new address or number.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y divide-border">
-          <div className="flex flex-col gap-2 pb-4 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <Mail className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium">Email</p>
-                <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                  {user.email ?? "Not set"}
-                </p>
-              </div>
-            </div>
-            <Button onClick={() => setDialog("email")} size="sm" variant="outline">
-              Change
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2 pt-4 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <Phone className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium">Phone</p>
-                <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                  {user.phone ?? "Not set"}
-                </p>
-              </div>
-            </div>
-            <Button onClick={() => setDialog("phone")} size="sm" variant="outline">
-              Change
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <ContactChangeDialog
-        confirm={(code) => confirmEmail({ code }).unwrap()}
-        description="We'll send a verification code to the new address."
-        label="New email address"
-        onClose={() => setDialog(null)}
-        open={dialog === "email"}
-        placeholder="you@example.com"
-        request={(email) => requestEmail({ email }).unwrap()}
-        title="Change email address"
-        type="email"
-      />
       {/* Preview + confirm before anything is uploaded. */}
       <Dialog onOpenChange={(next) => !next && discardPendingPhoto()} open={pendingPhoto !== null}>
         <DialogContent className="sm:max-w-sm">
@@ -355,7 +333,13 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
             <Button className="flex-1" onClick={discardPendingPhoto} type="button" variant="outline">
               Cancel
             </Button>
-            <Button className="flex-1" loading={uploading} onClick={onConfirmPhoto} type="button" variant="brand">
+            <Button
+              className="flex-1"
+              loading={uploading}
+              onClick={onConfirmPhoto}
+              type="button"
+              variant="brand"
+            >
               Save photo
             </Button>
           </div>
@@ -378,18 +362,97 @@ export function DetailsSection({ user }: { user: CurrentUser }) {
           )}
         </DialogContent>
       </Dialog>
+    </Card>
+  );
+}
 
-      <ContactChangeDialog
-        confirm={(code) => confirmPhone({ code }).unwrap()}
-        description="We'll text a verification code to the new number."
-        label="New phone number"
-        onClose={() => setDialog(null)}
-        open={dialog === "phone"}
-        placeholder="+233..."
-        request={(phone) => requestPhone({ phone }).unwrap()}
-        title="Change phone number"
-        type="tel"
-      />
+function ContactCard({ user }: { user: CurrentUser }) {
+  const [requestEmail] = useRequestEmailChangeMutation();
+  const [confirmEmail] = useConfirmEmailChangeMutation();
+  const [requestPhone] = useRequestPhoneChangeMutation();
+  const [confirmPhone] = useConfirmPhoneChangeMutation();
+  const [editing, setEditing] = useState<"email" | "phone" | null>(null);
+
+  return (
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <CardTitle className="text-base">Contact</CardTitle>
+        <CardDescription>
+          Changes are verified with a one-time code sent to the new address or number.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className={`divide-y divide-border ${CARD_PAD_MOBILE}`}>
+        <div className="pb-4">
+          <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <Mail className="size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Email</p>
+                <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                  {user.email ?? "Not set"}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setEditing(editing === "email" ? null : "email")}
+              size="sm"
+              variant="outline"
+            >
+              <Pencil className="size-3.5" /> Change
+            </Button>
+          </div>
+          {editing === "email" && (
+            <ContactChangeInline
+              confirm={(code) => confirmEmail({ code }).unwrap()}
+              label="New email address"
+              onClose={() => setEditing(null)}
+              placeholder="you@example.com"
+              request={(email) => requestEmail({ email }).unwrap()}
+              type="email"
+            />
+          )}
+        </div>
+        <div className="pt-4">
+          <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <Phone className="size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Phone</p>
+                <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                  {user.phone ?? "Not set"}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setEditing(editing === "phone" ? null : "phone")}
+              size="sm"
+              variant="outline"
+            >
+              <Pencil className="size-3.5" /> Change
+            </Button>
+          </div>
+          {editing === "phone" && (
+            <ContactChangeInline
+              confirm={(code) => confirmPhone({ code }).unwrap()}
+              label="New phone number"
+              onClose={() => setEditing(null)}
+              placeholder="e.g. +233 24 000 0000"
+              request={(phone) => requestPhone({ phone }).unwrap()}
+              type="tel"
+            />
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function DetailsSection({ user }: { user: CurrentUser }) {
+  return (
+    <div className="space-y-6 max-sm:space-y-8">
+      <PhotoCard user={user} />
+      <NameCard user={user} />
+      <ContactCard user={user} />
     </div>
   );
 }

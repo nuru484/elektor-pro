@@ -38,6 +38,7 @@ import {
   useDisableTwoFactorMutation,
   useRequestEmailTwoFactorMutation,
 } from "@/redux/profile-api";
+import { CARD_MOBILE, CARD_PAD_MOBILE } from "@/components/profile/details-section";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import {
   changePasswordSchema,
@@ -257,11 +258,17 @@ function DisableDialog({ onClose, open }: { onClose: () => void; open: boolean }
 export function SecuritySection({ user }: { user: CurrentUser }) {
   const [changePassword, { isLoading: changing }] = useChangePasswordMutation();
   const [dialog, setDialog] = useState<"disable" | "email" | "totp" | null>(null);
+  const [editingPassword, setEditingPassword] = useState(false);
 
   const form = useForm<ChangePasswordValues>({
     defaultValues: { confirmPassword: "", currentPassword: "", newPassword: "" },
     resolver: zodResolver(changePasswordSchema),
   });
+
+  const closePasswordForm = () => {
+    form.reset();
+    setEditingPassword(false);
+  };
 
   const onChangePassword = form.handleSubmit(async (values) => {
     try {
@@ -269,7 +276,7 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       }).unwrap();
-      form.reset();
+      closePasswordForm();
       toast.success("Password changed. Other devices have been signed out.");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -277,9 +284,9 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
   });
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
+    <div className="space-y-6 max-sm:space-y-8">
+      <Card className={CARD_MOBILE}>
+        <CardHeader className={CARD_PAD_MOBILE}>
           <CardTitle className="flex items-center gap-2 text-base">
             <KeyRound className="size-4 text-brand" /> Password
           </CardTitle>
@@ -287,34 +294,51 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
             Changing your password signs out every other device.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={onChangePassword}>
-            <Field
-              error={form.formState.errors.currentPassword?.message}
-              label="Current password"
-            >
-              <Input placeholder="Your current password" type="password" {...form.register("currentPassword")} />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field error={form.formState.errors.newPassword?.message} label="New password">
-                <Input placeholder="At least 8 characters" type="password" {...form.register("newPassword")} />
-              </Field>
+        <CardContent className={CARD_PAD_MOBILE}>
+          {editingPassword ? (
+            <form className="space-y-4" onSubmit={onChangePassword}>
               <Field
-                error={form.formState.errors.confirmPassword?.message}
-                label="Confirm new password"
+                error={form.formState.errors.currentPassword?.message}
+                label="Current password"
               >
-                <Input placeholder="Repeat the new password" type="password" {...form.register("confirmPassword")} />
+                <Input placeholder="Your current password" type="password" {...form.register("currentPassword")} />
               </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field error={form.formState.errors.newPassword?.message} label="New password">
+                  <Input placeholder="At least 8 characters" type="password" {...form.register("newPassword")} />
+                </Field>
+                <Field
+                  error={form.formState.errors.confirmPassword?.message}
+                  label="Confirm new password"
+                >
+                  <Input placeholder="Repeat the new password" type="password" {...form.register("confirmPassword")} />
+                </Field>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={closePasswordForm} type="button" variant="ghost">
+                  Cancel
+                </Button>
+                <Button loading={changing} type="submit" variant="brand">
+                  Change password
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Password</p>
+                <p className="mt-0.5 font-mono text-sm tracking-widest">••••••••••</p>
+              </div>
+              <Button onClick={() => setEditingPassword(true)} size="sm" variant="outline">
+                Change password
+              </Button>
             </div>
-            <Button loading={changing} type="submit" variant="brand">
-              Change password
-            </Button>
-          </form>
+          )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className={CARD_MOBILE}>
+        <CardHeader className={CARD_PAD_MOBILE}>
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="size-4 text-brand" /> Two-factor authentication
           </CardTitle>
@@ -322,7 +346,7 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
             A second step at sign-in keeps your account safe even if your password leaks.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${CARD_PAD_MOBILE}`}>
           <div className="flex items-center gap-2">
             {user.twoFactorEnabled ? (
               <>
