@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-urbanist);
+  --font-sans: var(--font-app);
   --font-mono: var(--font-geist-mono);
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -94,10 +94,10 @@
   --chart-4: oklch(0.7 0.19 22);
   --chart-5: oklch(0.73 0.012 258);
 
-  /* Ambient background (depth) - subtle light dots + soft blue glows. */
-  --bg-dot: oklch(1 0 0 / 0.055);
-  --bg-glow-1: oklch(0.62 0.16 255 / 0.12);
-  --bg-glow-2: oklch(0.62 0.16 255 / 0.07);
+  /* Ambient background (depth) - a fine line grid fading from the top,
+     one soft blue glow behind the hero, and a bottom fade. */
+  --bg-line: oklch(1 0 0 / 0.045);
+  --bg-glow-1: oklch(0.62 0.16 255 / 0.13);
   --bg-fade: oklch(0.16 0.02 258 / 0.5);
 }
 
@@ -161,21 +161,20 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(
-    circle at center,
-    var(--bg-dot) 1.2px,
-    transparent 1.7px
-  );
-  background-size: 22px 22px;
+  /* Fine square grid - ledger/graph-paper precision, not dots. */
+  background-image:
+    linear-gradient(to right, var(--bg-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--bg-line) 1px, transparent 1px);
+  background-size: 44px 44px;
   -webkit-mask-image: radial-gradient(
-    ellipse 100% 70% at 50% 0%,
-    #000 35%,
-    transparent 85%
+    ellipse 110% 65% at 50% 0%,
+    #000 25%,
+    transparent 80%
   );
   mask-image: radial-gradient(
-    ellipse 100% 70% at 50% 0%,
-    #000 35%,
-    transparent 85%
+    ellipse 110% 65% at 50% 0%,
+    #000 25%,
+    transparent 80%
   );
 }
 
@@ -184,7 +183,6 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(60% 50% at 12% 0%, var(--bg-glow-1), transparent 70%),
-    radial-gradient(50% 45% at 88% 12%, var(--bg-glow-2), transparent 70%),
+    radial-gradient(55% 42% at 50% 0%, var(--bg-glow-1), transparent 72%),
     linear-gradient(to bottom, transparent 55%, var(--bg-fade) 100%);
 }

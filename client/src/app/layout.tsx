@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { Geist_Mono, Urbanist } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 import { SiteBackground } from "@/components/site-background";
 import { siteConfig, siteUrl } from "@/lib/site";
@@ -8,7 +8,11 @@ import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
 
-const urbanist = Urbanist({ display: "swap", subsets: ["latin"], variable: "--font-urbanist" });
+const jakarta = Plus_Jakarta_Sans({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-app",
+});
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
@@ -57,7 +61,7 @@ export default function RootLayout({
     // Dark-only product: the `dark` class stays on <html> permanently so
     // component-level dark: variants keep applying.
     <html className="dark" lang="en">
-      <body className={`${urbanist.variable} ${geistMono.variable} font-sans`}>
+      <body className={`${jakarta.variable} ${geistMono.variable} font-sans`}>
         <SiteBackground />
         <ReduxProvider>{children}</ReduxProvider>
       </body>
