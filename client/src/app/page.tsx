@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import { Faq } from "@/components/landing/faq";
 import { Features } from "@/components/landing/features";
 import { Hero } from "@/components/landing/hero";
@@ -8,12 +6,14 @@ import { Security } from "@/components/landing/security";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
 import { UseCases } from "@/components/landing/use-cases";
+import { pageMetadata } from "@/lib/seo";
+import { siteConfig } from "@/lib/site";
 
-export const metadata: Metadata = {
-  description:
-    "Elektor Pro runs secure elections end to end for universities, unions, associations, and companies - secret ballots, live results, and outcomes everyone can verify.",
-  title: "Elektor Pro - Run elections everyone trusts",
-};
+export const metadata = pageMetadata({
+  description: siteConfig.description,
+  path: "/",
+  title: siteConfig.tagline,
+});
 
 export default function Home() {
   return (

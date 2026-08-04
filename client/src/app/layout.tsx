@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { Geist_Mono, Urbanist } from "next/font/google";
 
 import { SiteBackground } from "@/components/site-background";
+import { siteConfig, siteUrl } from "@/lib/site";
 import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
@@ -11,9 +12,42 @@ const urbanist = Urbanist({ display: "swap", subsets: ["latin"], variable: "--fo
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  description:
-    "A secure, customizable e-voting platform for organizations — secret ballots, real-time results, and a verifiable audit trail.",
-  title: "Elektor Pro — Secure elections for any organization",
+  alternates: { canonical: "/" },
+  applicationName: siteConfig.name,
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  description: siteConfig.description,
+  // Favicon/touch icons come from the src/app/icon.png + apple-icon.png file
+  // conventions (generated from public/elektor-pro-logo.png).
+  keywords: [...siteConfig.keywords],
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    description: siteConfig.description,
+    locale: siteConfig.locale,
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    type: "website",
+    url: "/",
+  },
+  publisher: siteConfig.name,
+  robots: {
+    follow: true,
+    googleBot: { follow: true, index: true, "max-image-preview": "large" },
+    index: true,
+  },
+  title: {
+    default: siteConfig.title,
+    template: `%s · ${siteConfig.name}`,
+  },
+  twitter: {
+    card: "summary_large_image",
+    description: siteConfig.description,
+    title: siteConfig.title,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: siteConfig.themeColor,
 };
 
 export default function RootLayout({

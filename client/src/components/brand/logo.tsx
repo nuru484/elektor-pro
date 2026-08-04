@@ -1,31 +1,37 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * The brand lockup: the ballot-box mark from public/ plus the ElektorPro
+ * wordmark. `imgSize`/`textClassName` scale it for its context (nav, footer,
+ * sidebar, auth card).
+ */
 export function Logo({
   className,
   href = "/",
+  imgSize = 28,
   showText = true,
+  textClassName,
 }: {
   className?: string;
   href?: null | string;
+  imgSize?: number;
   showText?: boolean;
+  textClassName?: string;
 }) {
   const inner = (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <span className="flex size-7 items-center justify-center rounded-md bg-brand text-brand-foreground">
-        <svg className="size-4" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M5 13l4 4L19 7"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.5"
-          />
-        </svg>
-      </span>
+      <Image
+        alt="Elektor Pro"
+        className="rounded-md"
+        height={imgSize}
+        src="/logo-mark.png"
+        width={imgSize}
+      />
       {showText && (
-        <span className="text-[0.95rem] font-semibold tracking-tight">
+        <span className={cn("text-[0.95rem] font-semibold tracking-tight", textClassName)}>
           Elektor<span className="text-brand">Pro</span>
         </span>
       )}
