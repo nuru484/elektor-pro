@@ -148,3 +148,31 @@ export function FilteredEmpty({
     </div>
   );
 }
+
+/**
+ * Long-content table cell text: caps the column's width, keeps the text to
+ * one truncated line, and carries the full value in a hover tooltip. Every
+ * user-authored text column (names, titles, labels) should render through
+ * this so no table ever side-scrolls because of one long value - detail
+ * pages show the full text.
+ */
+export function CellText({
+  children,
+  className,
+  text,
+}: {
+  /** Optional custom rendering; defaults to the text itself. */
+  children?: ReactNode;
+  /** Width cap + extras, e.g. "max-w-56". */
+  className?: string;
+  text: string;
+}) {
+  return (
+    <span
+      className={cn("block min-w-0 truncate", className ?? "max-w-56")}
+      title={text}
+    >
+      {children ?? text}
+    </span>
+  );
+}

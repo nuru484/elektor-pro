@@ -125,9 +125,11 @@ function ChangeRequestModal({
             <StatusBadge status={cr.status} />
           </div>
 
-          <div className="space-y-1 text-sm">
-            <p className="font-medium">{titleOf(cr)}</p>
-            <p className="text-xs text-muted-foreground">
+          {/* Summaries/notes carry user-authored text with possibly unbroken
+              tokens - everything wraps, nothing stretches the dialog. */}
+          <div className="min-w-0 space-y-1 text-sm">
+            <p className="min-w-0 font-medium [overflow-wrap:anywhere]">{titleOf(cr)}</p>
+            <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
               Requested{" "}
               {cr.requestedBy
                 ? `by ${cr.requestedBy.firstName} ${cr.requestedBy.lastName}`
@@ -135,21 +137,27 @@ function ChangeRequestModal({
               on {new Date(cr.createdAt).toLocaleString()}
             </p>
             {cr.reviewedBy && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
                 Reviewed by {cr.reviewedBy.firstName} {cr.reviewedBy.lastName}
                 {cr.reviewedAt ? ` on ${new Date(cr.reviewedAt).toLocaleString()}` : ""}
                 {cr.reviewNote ? ` - "${cr.reviewNote}"` : ""}
               </p>
             )}
-            {cr.error && <p className="text-xs text-destructive">Failed: {cr.error}</p>}
+            {cr.error && (
+              <p className="text-xs text-destructive [overflow-wrap:anywhere]">
+                Failed: {cr.error}
+              </p>
+            )}
           </div>
 
           {cr.payload && (
-            <div>
+            <div className="min-w-0">
               <p className="mb-1 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
                 Requested changes
               </p>
-              <pre className="max-h-56 overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs">
+              {/* pre-wrap + anywhere: long JSON strings wrap into view instead
+                  of forcing a horizontal scroll inside the dialog. */}
+              <pre className="max-h-56 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
                 {JSON.stringify(cr.payload, null, 2)}
               </pre>
             </div>
@@ -261,13 +269,19 @@ export default function ApprovalsPage() {
     {
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{titleOf(row.original)}</p>
+          <p
+            className="max-w-[90%] truncate text-sm font-medium"
+            title={titleOf(row.original)}
+          >
+            {titleOf(row.original)}
+          </p>
           <p className="text-xs text-muted-foreground">
             {row.original.action.toLowerCase()} ·{" "}
             {row.original.entity.replace("_", " ").toLowerCase()}
           </p>
         </div>
       ),
+      meta: { stretch: true },
       header: "Change",
       id: "change",
     },

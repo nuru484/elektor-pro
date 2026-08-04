@@ -222,18 +222,30 @@ function NameCard({ user }: { user: CurrentUser }) {
             </div>
           </form>
         ) : (
-          <div className="flex items-center justify-between gap-3">
-            <div className="grid flex-1 gap-4 sm:grid-cols-2">
-              <div>
+          // Names are user text at up to 80 chars: the values own the full
+          // width and wrap; the Edit button never competes on the same row
+          // below sm (it stacks beneath the text).
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">First name</p>
-                <p className="mt-0.5 text-sm font-medium">{user.firstName}</p>
+                <p className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                  {user.firstName}
+                </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Last name</p>
-                <p className="mt-0.5 text-sm font-medium">{user.lastName}</p>
+                <p className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                  {user.lastName}
+                </p>
               </div>
             </div>
-            <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+            <Button
+              className="self-start"
+              onClick={() => setEditing(true)}
+              size="sm"
+              variant="outline"
+            >
               <Pencil className="size-3.5" /> Edit
             </Button>
           </div>

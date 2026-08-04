@@ -4,11 +4,14 @@
 // the form straight from the table. The photo updates on its own; field
 // edits ride maker-checker (202 = staged for approval).
 import { Pencil } from "lucide-react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import type { Voter } from "@/types/api";
+
+import { StatusBadge } from "@/components/ui/status-badge";
 
 import { AvatarUpdater } from "@/components/console/avatar-updater";
 import { ProfileSkeleton } from "@/components/console/profile-skeleton";
@@ -16,7 +19,6 @@ import {
   CARD_MOBILE,
   CARD_PAD_MOBILE,
 } from "@/components/profile/details-section";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -160,31 +162,88 @@ function VoterDetailsCard({
           </form>
         ) : (
           <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <dt className="text-xs text-muted-foreground">Phone</dt>
               <dd className="mt-0.5 text-sm font-medium">{voter.phoneNumber ?? "—"}</dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-xs text-muted-foreground">Email</dt>
-              <dd className="mt-0.5 break-words text-sm font-medium">
+              {/* overflow-wrap:anywhere, never break-words: break-words wraps
+                  visually but keeps the full min-content width and stretches
+                  grid ancestors past the viewport. */}
+              <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
                 {voter.email ?? "—"}
               </dd>
             </div>
-            <div className="sm:col-span-2">
+            <div className="min-w-0 sm:col-span-2">
               <dt className="text-xs text-muted-foreground">Groups</dt>
-              <dd className="mt-1 flex flex-wrap gap-1.5">
+              {/* Group names are admin-authored text: a plain wrapped list,
+                  never badges. Category in brackets shows WHERE they belong. */}
+              <dd className="mt-1 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
                 {voter.groupMemberships?.length ? (
-                  voter.groupMemberships.map((membership) => (
-                    <Badge key={membership.group.id} variant="outline">
-                      {membership.group.name}
-                    </Badge>
-                  ))
+                  voter.groupMemberships
+                    .map((membership) =>
+                      membership.group.category
+                        ? `${membership.group.name} (${membership.group.category.name})`
+                        : membership.group.name,
+                    )
+                    .join(", ")
                 ) : (
                   <span className="text-sm text-muted-foreground">None</span>
                 )}
               </dd>
             </div>
           </dl>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The elections this voter is registered in, with their standing in each. */
+function VoterElectionsCard({ voter }: { voter: Voter }) {
+  const entries = voter.voterElections ?? [];
+  return (
+    <Card className={CARD_MOBILE}>
+      <CardHeader className={CARD_PAD_MOBILE}>
+        <CardTitle className="text-base">Elections</CardTitle>
+        <CardDescription>
+          Every election this voter belongs to, and how far they have gone in it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className={CARD_PAD_MOBILE}>
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Not registered in any election yet. Add them from an election&apos;s
+            Voters tab.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {entries.map((entry) => (
+              <li
+                className="flex flex-col gap-1.5 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                key={entry.election.id}
+              >
+                <div className="min-w-0">
+                  <Link
+                    className="block min-w-0 text-sm font-medium [overflow-wrap:anywhere] hover:text-brand"
+                    href={`/admin/elections/${entry.election.id}`}
+                    title="Open the election workspace"
+                  >
+                    {entry.election.name}
+                  </Link>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {entry.isEligible ? "Eligible" : "Excluded"}
+                    {entry.accreditedAt ? " · accredited" : ""}
+                    {entry.hasVoted ? " · voted" : ""}
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  <StatusBadge status={entry.election.status} />
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </CardContent>
     </Card>
@@ -221,7 +280,7 @@ function VoterProfileContent() {
                 url={voter.profilePicture}
               />
               <div className="min-w-0">
-                <h1 className="truncate text-xl font-semibold">{voter.name}</h1>
+                <h1 className="min-w-0 max-w-full text-xl font-semibold [overflow-wrap:anywhere]">{voter.name}</h1>
                 <p className="mt-0.5 font-mono text-sm text-muted-foreground">
                   {voter.voterId}
                 </p>
@@ -237,11 +296,21 @@ function VoterProfileContent() {
                     {voter.groupMemberships?.length ?? 0}
                   </dd>
                 </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-xs text-muted-foreground">Elections</dt>
+                  <dd className="text-xs font-medium">
+                    {voter.voterElections?.length ?? 0}
+                  </dd>
+                </div>
               </dl>
             </CardContent>
           </Card>
 
-          <VoterDetailsCard editingInitially={editInitially} voter={voter} />
+          {/* min-w-0: the 1fr grid column must be allowed to shrink. */}
+          <div className="min-w-0 space-y-6">
+            <VoterDetailsCard editingInitially={editInitially} voter={voter} />
+            <VoterElectionsCard voter={voter} />
+          </div>
         </div>
       )}
     </div>

@@ -21,11 +21,27 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   Row,
+  RowData,
   SortingState,
   Table as TanstackTable,
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- required by the library's generic signature
+  interface ColumnMeta<TData extends RowData, TValue> {
+    /**
+     * The table's primary column: it claims 40% of the table's width (the
+     * cap no column may exceed) instead of sizing to its content, and its
+     * text truncates at ~90% of that share - so long values use the room
+     * available without ever forcing a horizontal scroll. Mark exactly one
+     * column per table.
+     */
+    stretch?: boolean;
+  }
+}
 import {
   Table,
   TableBody,
@@ -118,7 +134,20 @@ interface IDataTableProps<TData> {
   renderRowCard: (row: Row<TData>) => React.ReactNode;
   /** Forwarded to the md+ table skeleton (image/avatar second column). */
   skeletonShowAvatar?: boolean;
+  /**
+   * Makes the whole md+ table row clickable (pointer cursor + hover). Clicks
+   * on interactive elements inside a row (links, buttons, selects, menu
+   * items) never trigger it, so per-cell controls keep working.
+   */
+  onRowOpen?: (row: Row<TData>) => void;
+  /** Tooltip shown while hovering a clickable row, e.g. "Open election". */
+  rowOpenHint?: string;
 }
+
+/** True when the click landed on (or inside) an interactive element. */
+const isInteractiveTarget = (target: EventTarget | null): boolean =>
+  target instanceof Element &&
+  target.closest("a,button,select,input,textarea,label,[role='menuitem'],[role='dialog']") !== null;
 
 /**
  * Dual-render list body: row cards below md, the real table from md up, with
@@ -140,6 +169,8 @@ export function DataTable<TData>({
   toolbar,
   renderRowCard,
   skeletonShowAvatar = false,
+  onRowOpen,
+  rowOpenHint,
 }: IDataTableProps<TData>) {
   const rows = table.getRowModel().rows;
   const hasData = !loading && rows.length > 0;
@@ -183,7 +214,13 @@ export function DataTable<TData>({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="whitespace-nowrap">
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        "whitespace-nowrap",
+                        header.column.columnDef.meta?.stretch && "w-2/5",
+                      )}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -208,10 +245,26 @@ export function DataTable<TData>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="hover:bg-muted/50"
+                    className={
+                      onRowOpen ? "cursor-pointer hover:bg-muted/50" : "hover:bg-muted/50"
+                    }
+                    onClick={
+                      onRowOpen
+                        ? (e) => {
+                            if (isInteractiveTarget(e.target)) return;
+                            onRowOpen(row);
+                          }
+                        : undefined
+                    }
+                    title={onRowOpen ? rowOpenHint : undefined}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          cell.column.columnDef.meta?.stretch && "w-2/5 max-w-0",
+                        )}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),

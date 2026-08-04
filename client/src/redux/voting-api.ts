@@ -66,6 +66,12 @@ export const votingApi = apiSlice.injectEndpoints({
     >({
       query: (body) => ({ body, method: "POST", url: "/voter/otp/verify" }),
     }),
+    codeLogin: build.mutation<
+      ApiResponse<{ voterId: string }>,
+      { code: string; voterId: string }
+    >({
+      query: (body) => ({ body, method: "POST", url: "/voter/code-login" }),
+    }),
     verifyReceipt: build.query<ApiResponse<unknown>, { code: string; electionId: string }>({
       query: ({ code, electionId }) => `/elections/${electionId}/receipts/${code}`,
     }),
@@ -74,6 +80,7 @@ export const votingApi = apiSlice.injectEndpoints({
 
 export const {
   useCastBallotMutation,
+  useCodeLoginMutation,
   useGetResultsQuery,
   useGetVoterBallotQuery,
   useLazyVerifyReceiptQuery,

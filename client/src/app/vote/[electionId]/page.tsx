@@ -202,7 +202,14 @@ function BallotBody({ electionId }: { electionId: string }) {
                           {chosen && <CheckCircle2 className="size-3.5" />}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate font-medium">{c.name}</span>
+                          <span className="block truncate font-medium">
+                            {c.ballotNumber != null && (
+                              <span className="mr-1.5 font-mono text-xs text-muted-foreground">
+                                {c.ballotNumber}.
+                              </span>
+                            )}
+                            {c.name}
+                          </span>
                           {c.nickname && <span className="block truncate text-xs text-muted-foreground">{c.nickname}</span>}
                         </span>
                       </button>

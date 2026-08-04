@@ -5,7 +5,9 @@
 // scope eligibility by them. Two tabs, each on the DataTable system; all
 // mutations ride maker-checker (202 = staged for approval).
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -22,7 +24,7 @@ import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState, PageHeader } from "@/components/ui/states";
-import { RowCard } from "@/components/ui/table-bits";
+import { CellText, RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthRole } from "@/hooks/use-auth-role";
@@ -239,6 +241,7 @@ const GROUP_FILTERS_SPEC: TableFiltersSpec<GroupFilters> = {
 };
 
 function GroupsTab({ categories }: { categories: GroupCategory[] }) {
+  const router = useRouter();
   const { isSuperAdmin } = useAuthRole();
   const [modal, setModal] = useState<{ group: Group | null; open: boolean }>({
     group: null,
@@ -266,15 +269,26 @@ function GroupsTab({ categories }: { categories: GroupCategory[] }) {
       accessorKey: "name",
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{row.original.name}</p>
+          <Link
+            className="block max-w-[90%] truncate text-sm font-medium hover:text-brand"
+            href={`/admin/groups/${row.original.categoryId}/${row.original.id}`}
+            title={row.original.name}
+          >
+            {row.original.name}
+          </Link>
           <p className="font-mono text-xs text-muted-foreground">{row.original.code}</p>
         </div>
       ),
       header: "Group",
+      meta: { stretch: true },
     },
     {
+      // Category names are admin-authored text - plain, never a badge.
       cell: ({ row }) => (
-        <Badge variant="outline">{row.original.category?.name ?? "—"}</Badge>
+        <CellText
+          className="max-w-44 text-sm text-muted-foreground"
+          text={row.original.category?.name ?? "—"}
+        />
       ),
       header: "Category",
       id: "category",
@@ -291,6 +305,11 @@ function GroupsTab({ categories }: { categories: GroupCategory[] }) {
     {
       cell: ({ row }) => (
         <RowActionsMenu label="Group actions">
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/groups/${row.original.categoryId}/${row.original.id}`}>
+              <Eye className="size-4" /> View details
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setModal({ group: row.original, open: true })}>
             <Pencil className="size-4" /> Edit
           </DropdownMenuItem>
@@ -344,16 +363,18 @@ function GroupsTab({ categories }: { categories: GroupCategory[] }) {
         renderRowCard={(row: Row<Group>) => (
           <RowCard
             key={row.id}
-            onOpen={() => setModal({ group: row.original, open: true })}
+            onOpen={() => {
+              router.push(`/admin/groups/${row.original.categoryId}/${row.original.id}`);
+            }}
           >
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-sm font-medium">
                 {row.original.name}
               </span>
-              <Badge variant="outline">{row.original.category?.name ?? "—"}</Badge>
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {row.original.code} · {row.original._count?.voterMemberships ?? 0} voters
+              {row.original.code} · {row.original.category?.name ?? "—"} ·{" "}
+              {row.original._count?.voterMemberships ?? 0} voters
             </p>
           </RowCard>
         )}
@@ -437,6 +458,7 @@ const CATEGORY_FILTERS_SPEC: TableFiltersSpec<CategoryFilters> = {
 };
 
 function CategoriesTab() {
+  const router = useRouter();
   const { isSuperAdmin } = useAuthRole();
   const [modal, setModal] = useState<{ category: GroupCategory | null; open: boolean }>(
     { category: null, open: false },
@@ -466,11 +488,18 @@ function CategoriesTab() {
       accessorKey: "name",
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{row.original.name}</p>
+          <Link
+            className="block max-w-[90%] truncate text-sm font-medium hover:text-brand"
+            href={`/admin/groups/${row.original.id}`}
+            title={row.original.name}
+          >
+            {row.original.name}
+          </Link>
           <p className="font-mono text-xs text-muted-foreground">{row.original.code}</p>
         </div>
       ),
       header: "Category",
+      meta: { stretch: true },
     },
     {
       cell: ({ row }) => (
@@ -494,6 +523,11 @@ function CategoriesTab() {
     {
       cell: ({ row }) => (
         <RowActionsMenu label="Category actions">
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/groups/${row.original.id}`}>
+              <Eye className="size-4" /> View groups
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setModal({ category: row.original, open: true })}
           >
@@ -549,7 +583,9 @@ function CategoriesTab() {
         renderRowCard={(row: Row<GroupCategory>) => (
           <RowCard
             key={row.id}
-            onOpen={() => setModal({ category: row.original, open: true })}
+            onOpen={() => {
+              router.push(`/admin/groups/${row.original.id}`);
+            }}
           >
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-sm font-medium">

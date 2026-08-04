@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckSquare, ListChecks, Users, Vote } from "lucide-react";
+import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { CardGridSkeleton } from "@/components/ui/skeleton";
@@ -58,10 +59,19 @@ export default function AdminDashboard() {
                     <p className="py-4 text-sm text-muted-foreground">No elections yet.</p>
                   )}
                   {data.data.recentElections.map((e) => (
-                    <div className="flex items-center justify-between gap-3 py-3" key={e.id}>
-                      <span className="truncate text-sm font-medium">{e.name}</span>
+                    <Link
+                      className="flex items-center justify-between gap-3 py-3 transition-colors hover:text-brand"
+                      href={`/admin/elections/${e.id}`}
+                      key={e.id}
+                      title={`Open ${e.name}`}
+                    >
+                      {/* Clamped to one line but linked - the workspace shows
+                          the full name; the tooltip carries it on hover. */}
+                      <span className="min-w-0 [overflow-wrap:anywhere] line-clamp-1 whitespace-normal text-sm font-medium">
+                        {e.name}
+                      </span>
                       <StatusBadge status={e.status} />
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </CardContent>

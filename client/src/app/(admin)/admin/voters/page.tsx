@@ -1,7 +1,7 @@
 "use client";
 
 import { type ColumnDef, type Row } from "@tanstack/react-table";
-import { Eye, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Eye, FileUp, Pencil, Plus, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,15 +9,15 @@ import { toast } from "sonner";
 import type { Voter } from "@/types/api";
 
 import { EntityAvatar } from "@/components/console/entity-avatar";
+import { VoterImportDialog } from "@/components/console/import-dialog";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { TableDate } from "@/components/console/table-date";
 import { TableToolbar } from "@/components/console/table-toolbar";
-import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { EmptyState, PageHeader } from "@/components/ui/states";
-import { RowCard } from "@/components/ui/table-bits";
+import { CellText, RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
@@ -46,15 +46,16 @@ const buildColumns = (
     cell: ({ row }) => (
       <div className="flex min-w-0 items-center gap-2.5">
         <EntityAvatar name={row.original.name} url={row.original.profilePicture} />
-        <span className="truncate font-medium">{row.original.name}</span>
+        <CellText className="max-w-[85%] flex-1 font-medium" text={row.original.name} />
       </div>
     ),
     header: "Name",
+    meta: { stretch: true },
   },
   {
     accessorKey: "voterId",
     cell: ({ row }) => (
-      <span className="font-mono text-xs">{row.original.voterId}</span>
+      <CellText className="max-w-40 font-mono text-xs" text={row.original.voterId} />
     ),
     header: "Voter ID",
   },
@@ -68,14 +69,14 @@ const buildColumns = (
     id: "phone",
   },
   {
+    // Group names are admin-authored free text - plain truncated text, not badges.
     cell: ({ row }) => (
-      <div className="flex flex-wrap gap-1">
-        {row.original.groupMemberships?.slice(0, 3).map((membership) => (
-          <Badge key={membership.group.id} variant="outline">
-            {membership.group.name}
-          </Badge>
-        ))}
-      </div>
+      <CellText
+        className="max-w-44 text-xs text-muted-foreground"
+        text={
+          row.original.groupMemberships?.map(({ group }) => group.name).join(", ") || "—"
+        }
+      />
     ),
     header: "Groups",
     id: "groups",
@@ -114,6 +115,7 @@ const buildColumns = (
 
 export default function VotersPage() {
   const { isSuperAdmin } = useAuthRole();
+  const [importOpen, setImportOpen] = useState(false);
   const [deleting, setDeleting] = useState<null | Voter>(null);
   const [deleteVoter] = useDeleteVoterMutation();
   const {
@@ -192,11 +194,21 @@ export default function VotersPage() {
         toolbar={
           <TableToolbar
             actions={
-              <Button asChild variant="brand">
-                <Link href="/admin/voters/new">
-                  <Plus className="size-4" /> Add voter
-                </Link>
-              </Button>
+              <>
+                <Button
+                  onClick={() => {
+                    setImportOpen(true);
+                  }}
+                  variant="outline"
+                >
+                  <FileUp className="size-4" /> Import
+                </Button>
+                <Button asChild variant="brand">
+                  <Link href="/admin/voters/new">
+                    <Plus className="size-4" /> Add voter
+                  </Link>
+                </Button>
+              </>
             }
             filters={filters}
             onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
@@ -206,6 +218,14 @@ export default function VotersPage() {
           />
         }
         totalCount={totalCount}
+      />
+
+      <VoterImportDialog
+        key={importOpen ? "open" : "closed"}
+        onClose={() => {
+          setImportOpen(false);
+        }}
+        open={importOpen}
       />
 
       <ConfirmationDialog

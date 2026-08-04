@@ -1,6 +1,7 @@
 "use client";
 
-import { Crown, Lock, Radio } from "lucide-react";
+import { ArrowLeft, Crown, Lock, Radio } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { use } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,16 +14,22 @@ import { useElectionSocket } from "@/hooks/use-election-socket";
 import { useGetResultsQuery } from "@/redux/voting-api";
 import type { PortfolioResult } from "@/types/api";
 
+const fmt = (n: number) => n.toLocaleString();
+
 function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
   const max = Math.max(1, ...portfolio.candidates.map((c) => c.votes));
+  const isYesNo = portfolio.votingMethod === "YES_NO";
   return (
     <Card>
       <CardContent className="space-y-4 p-5">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">{portfolio.name}</h3>
-          <span className="text-xs text-muted-foreground">
-            {portfolio.totalVotes} votes
-            {portfolio.skip ? ` · ${portfolio.skip} skipped` : ""}
+        {/* Long portfolio names own the full width and wrap; the vote count
+            moves under them on phones instead of squeezing the title. */}
+        <div className="flex flex-col gap-0.5 min-[480px]:flex-row min-[480px]:items-baseline min-[480px]:justify-between min-[480px]:gap-3">
+          <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
+            {portfolio.name}
+          </h3>
+          <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+            {fmt(portfolio.totalVotes)} votes
           </span>
         </div>
         <div className="space-y-3">
@@ -30,14 +37,36 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
             const leading = portfolio.winner?.id === c.id && c.votes > 0;
             return (
               <div key={c.id}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    {leading && <Crown className="size-3.5 text-warning" />}
-                    {c.name}
-                    {c.nickname && <span className="text-xs font-normal text-muted-foreground">{c.nickname}</span>}
+                {/* The name wraps freely; the figures are the primary number
+                    and never truncate (flex-none). */}
+                <div className="mb-1 flex items-start justify-between gap-3 text-sm">
+                  <span className="flex min-w-0 flex-1 items-start gap-1.5 font-medium">
+                    {leading && (
+                      <Crown className="mt-0.5 size-3.5 shrink-0 text-warning" />
+                    )}
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                      {c.ballotNumber != null && (
+                        <span className="mr-1 font-mono text-xs text-muted-foreground">
+                          {c.ballotNumber}.
+                        </span>
+                      )}
+                      {c.name}
+                      {c.nickname && (
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground [overflow-wrap:anywhere]">
+                          {c.nickname}
+                        </span>
+                      )}
+                    </span>
                   </span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {c.votes} · {c.percentage}%
+                  {/* The figures are the point of this page: a prominent
+                      two-line number block that never truncates. */}
+                  <span className="flex-none text-right">
+                    <span className="block font-mono text-sm font-semibold tabular-nums">
+                      {c.percentage}%
+                    </span>
+                    <span className="block font-mono text-xs tabular-nums text-muted-foreground">
+                      {fmt(c.votes)} {c.votes === 1 ? "vote" : "votes"}
+                    </span>
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -46,12 +75,46 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
                     style={{ width: `${(c.votes / max) * 100}%` }}
                   />
                 </div>
+                {isYesNo && (
+                  <p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">
+                    <span className="text-success">Yes {fmt(c.approveVotes ?? 0)}</span>
+                    {" · "}
+                    <span className="text-destructive">No {fmt(c.rejectVotes ?? 0)}</span>
+                  </p>
+                )}
               </div>
             );
           })}
         </div>
+        {(portfolio.abstain > 0 || portfolio.skip > 0) && (
+          <p className="border-t border-border pt-3 font-mono text-xs tabular-nums text-muted-foreground">
+            {portfolio.abstain > 0 ? `Abstained ${fmt(portfolio.abstain)}` : ""}
+            {portfolio.abstain > 0 && portfolio.skip > 0 ? " · " : ""}
+            {portfolio.skip > 0 ? `Skipped ${fmt(portfolio.skip)}` : ""}
+          </p>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Back to wherever the viewer came from (console, voter portal, a share);
+ * with no in-tab history (a direct link) it falls back to the home page.
+ */
+function BackControl() {
+  const router = useRouter();
+  return (
+    <button
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      onClick={() => {
+        if (window.history.length > 1) router.back();
+        else router.push("/");
+      }}
+      type="button"
+    >
+      <ArrowLeft className="size-4" /> Back
+    </button>
   );
 }
 
@@ -91,16 +154,47 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold sm:text-3xl">{election.name}</h1>
+        <div className="min-w-0">
+          <BackControl />
+          <p className="mt-3 font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+            Election results
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <h1 className="min-w-0 text-2xl font-semibold [overflow-wrap:anywhere] sm:text-3xl">
+              {election.name}
+            </h1>
             {election.status === "IN_PROGRESS" && connected && (
               <Badge variant="success"><Radio className="size-3 animate-pulse" /> Live</Badge>
             )}
             {election.certifiedAt && <Badge variant="brand">Certified</Badge>}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {turnout.totalVoted} of {turnout.totalEligible} voted · {turnout.percentage}% turnout
+        </div>
+      </div>
+
+      {/* The headline numbers: large, mono, thousands-separated. */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-border bg-card px-3 py-3 sm:px-4">
+          <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+            Votes cast
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums sm:text-2xl">
+            {fmt(turnout.totalVoted)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card px-3 py-3 sm:px-4">
+          <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+            Eligible voters
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums sm:text-2xl">
+            {fmt(turnout.totalEligible)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card px-3 py-3 sm:px-4">
+          <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+            Turnout
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums sm:text-2xl">
+            {turnout.percentage}%
           </p>
         </div>
       </div>
@@ -109,7 +203,9 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         <CardContent className="p-5">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Turnout</span>
-            <span className="tabular-nums text-muted-foreground">{turnout.percentage}%</span>
+            <span className="tabular-nums text-muted-foreground">
+              {fmt(turnout.totalVoted)} of {fmt(turnout.totalEligible)} · {turnout.percentage}%
+            </span>
           </div>
           <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${turnout.percentage}%` }} />

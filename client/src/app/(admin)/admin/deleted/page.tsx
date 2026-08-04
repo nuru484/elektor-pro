@@ -104,14 +104,23 @@ export default function DeletedRecordsPage() {
       accessorKey: "label",
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{row.original.label || "—"}</p>
+          <p
+            className="max-w-[90%] truncate text-sm font-medium"
+            title={row.original.label || undefined}
+          >
+            {row.original.label || "—"}
+          </p>
           {row.original.meta && (
-            <p className="truncate font-mono text-xs text-muted-foreground">
+            <p
+              className="max-w-[90%] truncate font-mono text-xs text-muted-foreground"
+              title={row.original.meta}
+            >
               {row.original.meta}
             </p>
           )}
         </div>
       ),
+      meta: { stretch: true },
       header: RESOURCE_LABELS[resource] ?? "Record",
     },
     {

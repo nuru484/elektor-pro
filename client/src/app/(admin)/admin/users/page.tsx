@@ -363,18 +363,27 @@ export default function UsersPage() {
             name={`${row.original.firstName} ${row.original.lastName}`}
             url={row.original.profilePicture}
           />
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-              {row.original.firstName} {row.original.lastName}
+          <div className="min-w-0 flex-1">
+            <p className="flex max-w-[90%] items-center gap-1.5 text-sm font-medium">
+              <span
+                className="min-w-0 truncate"
+                title={`${row.original.firstName} ${row.original.lastName}`}
+              >
+                {row.original.firstName} {row.original.lastName}
+              </span>
               {me?.id === row.original.id && <Badge variant="brand">You</Badge>}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p
+              className="max-w-[90%] truncate text-xs text-muted-foreground"
+              title={row.original.email ?? row.original.phone ?? undefined}
+            >
               {row.original.email ?? row.original.phone ?? "—"}
             </p>
           </div>
         </div>
       ),
       header: "Account",
+      meta: { stretch: true },
     },
     {
       cell: ({ row }) => (

@@ -18,6 +18,7 @@ import { setSessionMarker } from "@/lib/session-marker";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { type FormErrors } from "@/utils/form-validate";
 import {
+  useCodeLoginMutation,
   useListVoterElectionsQuery,
   useRequestOtpMutation,
   useVerifyOtpMutation,
@@ -66,10 +67,31 @@ function ElectionPicker() {
 export default function VotePage() {
   const [requestOtp, { isLoading: requesting }] = useRequestOtpMutation();
   const [verifyOtp, { isLoading: verifying }] = useVerifyOtpMutation();
+  const [codeLogin, { isLoading: codeSigning }] = useCodeLoginMutation();
   const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
-  const [stage, setStage] = useState<"done" | "identify" | "verify">("identify");
+  const [stage, setStage] = useState<"code" | "done" | "identify" | "verify">(
+    "identify",
+  );
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Polling-station path: the one-time code handed over at accreditation.
+  const onCodeLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: FormErrors = {};
+    if (!identifier.trim()) errs.identifier = "Voter ID is required";
+    if (!code.trim()) errs.code = "Enter the code from the accreditation desk";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    try {
+      await codeLogin({ code: code.trim(), voterId: identifier.trim() }).unwrap();
+      setSessionMarker();
+      setStage("done");
+      toast.success("You're verified");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Invalid voter ID or code"));
+    }
+  };
 
   const onRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,9 +150,17 @@ export default function VotePage() {
       subtitle={
         stage === "identify"
           ? "Enter your voter ID. We'll send a one-time code to the phone or email on record."
-          : "We sent a one-time code. Enter it below."
+          : stage === "code"
+            ? "Enter your voter ID and the one-time code you received at the accreditation desk."
+            : "We sent a one-time code. Enter it below."
       }
-      title={stage === "identify" ? "Verify your identity" : "Enter your code"}
+      title={
+        stage === "identify"
+          ? "Verify your identity"
+          : stage === "code"
+            ? "Sign in with a voting code"
+            : "Enter your code"
+      }
     >
       <>
         {stage === "identify" ? (
@@ -146,6 +176,42 @@ export default function VotePage() {
             <Button className="w-full" loading={requesting} type="submit">
               Send code
             </Button>
+            <button
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setStage("code")}
+              type="button"
+            >
+              Got a voting code from the accreditation desk? Sign in with it
+            </button>
+          </form>
+        ) : stage === "code" ? (
+          <form className="space-y-5" noValidate onSubmit={onCodeLogin}>
+            <Field error={errors.identifier} label="Voter ID">
+              <Input
+                autoFocus
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="e.g. STU1001"
+                value={identifier}
+              />
+            </Field>
+            <Field error={errors.code} label="Voting code">
+              <Input
+                className="font-mono tracking-widest uppercase"
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="XXXX-XXXX"
+                value={code}
+              />
+            </Field>
+            <Button className="w-full" loading={codeSigning} type="submit">
+              Sign in
+            </Button>
+            <button
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setStage("identify")}
+              type="button"
+            >
+              Use an SMS or email code instead
+            </button>
           </form>
         ) : (
           <form className="space-y-5" noValidate onSubmit={onVerify}>

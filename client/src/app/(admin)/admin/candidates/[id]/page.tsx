@@ -10,10 +10,14 @@ import { Suspense, useState } from "react";
 import { toast as sonnerToast } from "sonner";
 import { toast } from "sonner";
 
+import Link from "next/link";
+
 import type { Candidate } from "@/types/api";
 
+import { VettingPanel } from "@/components/candidates/vetting-panel";
 import { AvatarUpdater } from "@/components/console/avatar-updater";
 import { ProfileSkeleton } from "@/components/console/profile-skeleton";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   CARD_MOBILE,
   CARD_PAD_MOBILE,
@@ -57,12 +61,18 @@ function CandidacyCard({
     const errs = validateRequired(f, { name: "Full name" });
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
+    const email = String(f.get("email") ?? "").trim();
+    const phone = String(f.get("phone") ?? "").trim();
     try {
       const res = await update({
         data: {
           manifesto: f.get("manifesto") || null,
           name: f.get("name"),
           nickname: f.get("nickname") || null,
+          // Contact on an account-less candidate creates their sign-in
+          // account server-side.
+          ...(email ? { email } : {}),
+          ...(phone ? { phone } : {}),
         },
         id: candidate.id,
       }).unwrap();
@@ -114,6 +124,19 @@ function CandidacyCard({
                 placeholder="What the candidate stands for (optional)"
               />
             </Field>
+            {!candidate.account && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  hint="Adding a contact creates their sign-in account with a temporary password."
+                  label="Email"
+                >
+                  <Input name="email" placeholder="e.g. kwame@example.com" type="email" />
+                </Field>
+                <Field label="Phone">
+                  <Input name="phone" placeholder="e.g. +233 24 000 0000" type="tel" />
+                </Field>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button onClick={() => setEditing(false)} type="button" variant="outline">
                 Cancel
@@ -126,22 +149,57 @@ function CandidacyCard({
         ) : (
           <>
             <dl className="grid gap-4 sm:grid-cols-2">
-              <div>
+              <div className="min-w-0">
                 <dt className="text-xs text-muted-foreground">Election</dt>
-                <dd className="mt-0.5 text-sm font-medium">
-                  {candidate.election?.name ?? "—"}
+                <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                  {candidate.election ? (
+                    <Link
+                      className="hover:text-brand"
+                      href={`/admin/elections/${candidate.election.id}`}
+                      title="Open this election's workspace"
+                    >
+                      {candidate.election.name}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
                 </dd>
               </div>
-              <div>
+              <div className="min-w-0">
                 <dt className="text-xs text-muted-foreground">Portfolio</dt>
-                <dd className="mt-0.5 text-sm font-medium">
+                <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
                   {candidate.portfolio?.name ?? "—"}
                 </dd>
               </div>
-              <div>
+              <div className="min-w-0">
                 <dt className="text-xs text-muted-foreground">Nickname / campaign name</dt>
-                <dd className="mt-0.5 text-sm font-medium">{candidate.nickname ?? "—"}</dd>
+                <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                  {candidate.nickname ?? "—"}
+                </dd>
               </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Ballot number</dt>
+                <dd className="mt-0.5 font-mono text-sm font-medium tabular-nums">
+                  {candidate.ballotNumber ?? "Not assigned"}
+                </dd>
+              </div>
+              {candidate.account ? (
+                <div title="The candidate signs in with this email or phone">
+                  <dt className="text-xs text-muted-foreground">Login account</dt>
+                  <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                    {candidate.account.firstName} {candidate.account.lastName}
+                    {candidate.account.email ? ` · ${candidate.account.email}` : ""}
+                    {candidate.account.phone ? ` · ${candidate.account.phone}` : ""}
+                  </dd>
+                </div>
+              ) : (
+                <div title="Edit the candidate and add an email or phone to create their account">
+                  <dt className="text-xs text-muted-foreground">Login account</dt>
+                  <dd className="mt-0.5 text-sm text-muted-foreground">
+                    None - add a contact to create one
+                  </dd>
+                </div>
+              )}
             </dl>
             {candidate.manifesto && (
               <div className="mt-4">
@@ -245,14 +303,28 @@ function CandidateProfileContent() {
                 onUpload={(file) => updatePicture({ file, id: candidate.id }).unwrap()}
                 url={candidate.profilePicture}
               />
-              <div className="min-w-0">
-                <h1 className="truncate text-xl font-semibold">{candidate.name}</h1>
+              <div className="min-w-0 w-full">
+                <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere]">
+                  {candidate.name}
+                </h1>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-                  {candidate.portfolio && (
-                    <Badge variant="brand">{candidate.portfolio.name}</Badge>
+                  {candidate.status && <StatusBadge status={candidate.status} />}
+                  {candidate.ballotNumber != null && (
+                    <Badge variant="outline">No. {candidate.ballotNumber}</Badge>
                   )}
-                  {candidate.nickname && <Badge variant="outline">{candidate.nickname}</Badge>}
                 </div>
+                {/* Portfolio + nickname are admin-authored free text: plain
+                    wrapping lines, never badges. */}
+                {candidate.portfolio && (
+                  <p className="mt-2 min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    {candidate.portfolio.name}
+                  </p>
+                )}
+                {candidate.nickname && (
+                  <p className="mt-0.5 min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                    “{candidate.nickname}”
+                  </p>
+                )}
               </div>
               <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
                 <div className="flex items-baseline justify-between gap-3">
@@ -265,7 +337,40 @@ function CandidateProfileContent() {
             </CardContent>
           </Card>
 
-          <CandidacyCard candidate={candidate} editingInitially={editInitially} />
+          <div className="min-w-0 space-y-6 max-sm:space-y-8">
+            <CandidacyCard candidate={candidate} editingInitially={editInitially} />
+            <VettingPanel candidate={candidate} />
+            {candidate.otherCandidacies && candidate.otherCandidacies.length > 0 && (
+              <Card className={CARD_MOBILE}>
+                <CardHeader className={CARD_PAD_MOBILE}>
+                  <CardTitle className="text-base">Other candidacies</CardTitle>
+                  <CardDescription>
+                    Elections this person has contested through the same account.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className={CARD_PAD_MOBILE}>
+                  <ul className="divide-y divide-border">
+                    {candidate.otherCandidacies.map((candidacy) => (
+                      <li className="py-2.5 first:pt-0 last:pb-0" key={candidacy.id}>
+                        <div className="flex items-center justify-between gap-2">
+                          <Link
+                            className="min-w-0 truncate text-sm font-medium hover:text-brand"
+                            href={`/admin/candidates/${candidacy.id}`}
+                          >
+                            {candidacy.election.name}
+                          </Link>
+                          <StatusBadge status={candidacy.status} />
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {candidacy.portfolio.name}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       )}
     </div>

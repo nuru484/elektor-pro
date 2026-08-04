@@ -15,7 +15,7 @@ import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/states";
 import { useCreateCandidateMutation, useGetElectionQuery, useListElectionsQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
-import { type FormErrors, validateRequired } from "@/utils/form-validate";
+import { type FormErrors, isValidEmail, validateRequired } from "@/utils/form-validate";
 
 export default function NewCandidatePage() {
   const router = useRouter();
@@ -36,12 +36,21 @@ export default function NewCandidatePage() {
       name: "Full name",
       portfolioId: "Portfolio",
     });
+    const email = String(f.get("email") ?? "").trim();
+    const phone = String(f.get("phone") ?? "").trim();
+    if (!email && !phone) {
+      errs.email = "Provide an email or phone number so the candidate can sign in";
+    } else if (email && !isValidEmail(email)) {
+      errs.email = "Enter a valid email address";
+    }
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     const body = new FormData();
     body.append("electionId", String(f.get("electionId")));
     body.append("portfolioId", String(f.get("portfolioId")));
     body.append("name", String(f.get("name")));
+    if (email) body.append("email", email);
+    if (phone) body.append("phone", phone);
     if (f.get("nickname")) body.append("nickname", String(f.get("nickname")));
     if (f.get("manifesto")) body.append("manifesto", String(f.get("manifesto")));
     if (photo) body.append("image", photo);
@@ -105,6 +114,30 @@ export default function NewCandidatePage() {
             label="Nickname / campaign name"
           >
             <Input name="nickname" placeholder='e.g. "Team Nuru" (optional)' />
+          </Field>
+        </div>
+        {/* Contact is the candidate's sign-in identity: a candidate account
+            with a temporary password is created (or linked) from it. */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            error={errors.email}
+            hint="At least one of email or phone is required - it becomes their sign-in and receives their temporary password."
+            label="Email"
+          >
+            <Input
+              name="email"
+              placeholder="e.g. kwame@example.com"
+              title="The candidate signs in with this email"
+              type="email"
+            />
+          </Field>
+          <Field hint="Used for sign-in and the SMS credentials message." label="Phone">
+            <Input
+              name="phone"
+              placeholder="e.g. +233 24 000 0000"
+              title="The candidate can sign in with this phone number"
+              type="tel"
+            />
           </Field>
         </div>
         <Field label="Manifesto (text)">

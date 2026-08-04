@@ -3,14 +3,17 @@
 import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { Plus, Vote } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { Election, ElectionStatus } from "@/types/api";
+import type { Election, ElectionStatus, EligibilityMode } from "@/types/api";
 
+import { ELIGIBILITY_MODE_HINTS } from "@/components/elections/election-lifecycle";
+import { GroupPicker } from "@/components/elections/group-picker";
+import { ElectionStatusControl } from "@/components/elections/status-control";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Button } from "@/components/ui/button";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
@@ -21,11 +24,7 @@ import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
-import {
-  useCreateElectionMutation,
-  useListElectionsQuery,
-  useSetElectionStatusMutation,
-} from "@/redux/admin-api";
+import { useCreateElectionMutation, useListElectionsQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 
 const STATUSES: ElectionStatus[] = [
@@ -39,67 +38,29 @@ const STATUSES: ElectionStatus[] = [
 ];
 
 interface ElectionFilters extends Record<string, string | undefined> {
+  from?: string;
   search?: string;
   status?: string;
+  to?: string;
 }
 
 const FILTERS_SPEC: TableFiltersSpec<ElectionFilters> = {
+  from: { kind: "string" },
   search: { kind: "string" },
   status: { kind: "enum", values: STATUSES },
+  to: { kind: "string" },
 };
-
-/** Status select that confirms before applying the change. */
-function StatusCell({ election }: { election: Election }) {
-  const [setElectionStatus] = useSetElectionStatusMutation();
-  const [pendingStatus, setPendingStatus] = useState<ElectionStatus | null>(null);
-
-  const apply = async () => {
-    if (!pendingStatus) return;
-    setPendingStatus(null);
-    try {
-      const res = await setElectionStatus({ id: election.id, status: pendingStatus }).unwrap();
-      toast.success(
-        (res as { pending?: boolean }).pending
-          ? "Change submitted for approval"
-          : "Status updated",
-      );
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Could not update status"));
-    }
-  };
-
-  return (
-    <>
-      <NativeSelect
-        aria-label={`Change status of ${election.name}`}
-        className="h-8 w-auto text-xs"
-        onChange={(e) => setPendingStatus(e.target.value as ElectionStatus)}
-        value={election.status}
-      >
-        {STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {status.replace("_", " ")}
-          </option>
-        ))}
-      </NativeSelect>
-      <ConfirmationDialog
-        confirmText="Change status"
-        description={`"${election.name}" will move from ${election.status.replace("_", " ")} to ${pendingStatus?.replace("_", " ") ?? ""}. This affects what voters and agents can do right now.`}
-        onConfirm={apply}
-        onOpenChange={(open) => !open && setPendingStatus(null)}
-        open={pendingStatus !== null}
-        title="Change election status?"
-      />
-    </>
-  );
-}
 
 const COLUMNS: ColumnDef<Election>[] = [
   {
     accessorKey: "name",
     cell: ({ row }) => (
       <div className="min-w-0">
-        <Link className="font-medium hover:text-brand" href={`/results/${row.original.slug}`}>
+        <Link
+          className="block max-w-[90%] truncate font-medium hover:text-brand"
+          href={`/admin/elections/${row.original.id}`}
+          title={row.original.name}
+        >
           {row.original.name}
         </Link>
         <p className="text-xs text-muted-foreground">
@@ -109,6 +70,7 @@ const COLUMNS: ColumnDef<Election>[] = [
       </div>
     ),
     header: "Election",
+    meta: { stretch: true },
   },
   {
     cell: ({ row }) => (
@@ -126,7 +88,7 @@ const COLUMNS: ColumnDef<Election>[] = [
     header: "Status",
   },
   {
-    cell: ({ row }) => <StatusCell election={row.original} />,
+    cell: ({ row }) => <ElectionStatusControl election={row.original} />,
     header: "Change status",
     id: "actions",
   },
@@ -134,15 +96,24 @@ const COLUMNS: ColumnDef<Election>[] = [
 
 function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [createElection, { isLoading: creating }] = useCreateElectionMutation();
+  const [mode, setMode] = useState<EligibilityMode>("ALL_VOTERS");
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [groupError, setGroupError] = useState<string | undefined>();
 
   const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    if (mode === "GROUPS" && groupIds.length === 0) {
+      setGroupError("Select at least one group");
+      return;
+    }
+    setGroupError(undefined);
     try {
       const res = await createElection({
         description: f.get("description") || undefined,
         endDate: f.get("endDate"),
-        eligibilityMode: f.get("eligibilityMode"),
+        eligibilityMode: mode,
+        ...(mode === "GROUPS" ? { groupIds } : {}),
         name: f.get("name"),
         resultsPolicy: f.get("resultsPolicy"),
         startDate: f.get("startDate"),
@@ -160,19 +131,19 @@ function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boo
 
   return (
     <Modal
-      description="Define the basics. You can add portfolios and candidates next."
+      description="Define the basics; portfolios, candidates, and the roll are managed inside the election."
       onClose={onClose}
       open={open}
       title="New election"
     >
-      <form className="space-y-4" onSubmit={onCreate}>
+      <form className="space-y-4" noValidate onSubmit={onCreate}>
         <Field label="Election name">
           <Input name="name" placeholder="e.g. General Election 2026" required />
         </Field>
         <Field label="Description">
           <Input name="description" placeholder="Optional summary shown to voters" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
           <Field label="Start date">
             <Input name="startDate" required type="datetime-local" />
           </Field>
@@ -180,11 +151,17 @@ function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boo
             <Input name="endDate" required type="datetime-local" />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Who can vote">
-            <NativeSelect defaultValue="ALL_VOTERS" name="eligibilityMode">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+          <Field hint={ELIGIBILITY_MODE_HINTS[mode]} label="Who can vote">
+            <NativeSelect
+              onChange={(e) => {
+                setMode(e.target.value as EligibilityMode);
+              }}
+              value={mode}
+            >
               <option value="ALL_VOTERS">All registered voters</option>
-              <option value="ROLL">Assigned roll only</option>
+              <option value="GROUPS">Specific groups</option>
+              <option value="ROLL">Managed roll</option>
             </NativeSelect>
           </Field>
           <Field label="Results visibility">
@@ -195,6 +172,9 @@ function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boo
             </NativeSelect>
           </Field>
         </div>
+        {mode === "GROUPS" && (
+          <GroupPicker error={groupError} onChange={setGroupIds} value={groupIds} />
+        )}
         <Button className="w-full" loading={creating} type="submit" variant="brand">
           Create election
         </Button>
@@ -204,6 +184,7 @@ function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boo
 }
 
 export default function ElectionsPage() {
+  const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
   const {
     filters,
@@ -255,17 +236,22 @@ export default function ElectionsPage() {
         onClearFilters={() => handleFiltersChange(clearAllFiltersPatch(filters))}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
+        onRowOpen={(row: Row<Election>) => {
+          router.push(`/admin/elections/${row.original.id}`);
+        }}
         page={page}
         pageSize={pageSize}
         renderRowCard={(row: Row<Election>) => (
-          <RowCard key={row.id}>
+          <RowCard
+            key={row.id}
+            onOpen={() => {
+              router.push(`/admin/elections/${row.original.id}`);
+            }}
+          >
             <div className="flex items-center justify-between gap-2">
-              <Link
-                className="min-w-0 truncate text-sm font-medium"
-                href={`/results/${row.original.slug}`}
-              >
+              <span className="min-w-0 truncate text-sm font-medium">
                 {row.original.name}
-              </Link>
+              </span>
               <StatusBadge status={row.original.status} />
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -297,6 +283,7 @@ export default function ElectionsPage() {
                     status: e.target.value === "all" ? undefined : e.target.value,
                   })
                 }
+                title="Filter by election status"
                 value={filters.status ?? "all"}
               >
                 <option value="all">All statuses</option>
@@ -307,12 +294,39 @@ export default function ElectionsPage() {
                 ))}
               </NativeSelect>
             </FilterField>
+            <FilterField caption="Starts from">
+              <Input
+                className="w-full lg:w-40"
+                onChange={(e) =>
+                  handleFiltersChange({ from: e.target.value || undefined })
+                }
+                title="Elections starting on or after this date"
+                type="date"
+                value={filters.from ?? ""}
+              />
+            </FilterField>
+            <FilterField caption="Starts to">
+              <Input
+                className="w-full lg:w-40"
+                onChange={(e) =>
+                  handleFiltersChange({ to: e.target.value || undefined })
+                }
+                title="Elections starting on or before this date"
+                type="date"
+                value={filters.to ?? ""}
+              />
+            </FilterField>
           </TableToolbar>
         }
+        rowOpenHint="Open this election's workspace"
         totalCount={totalCount}
       />
 
-      <CreateElectionModal onClose={() => setCreateOpen(false)} open={createOpen} />
+      <CreateElectionModal
+        key={createOpen ? "open" : "closed"}
+        onClose={() => setCreateOpen(false)}
+        open={createOpen}
+      />
     </div>
   );
 }

@@ -62,7 +62,12 @@ const COLUMNS: ColumnDef<AuditLogRow>[] = [
   {
     cell: ({ row }) => (
       <div className="min-w-0">
-        <p className="text-sm">{actorName(row.original)}</p>
+        <p
+          className="max-w-44 truncate text-sm xl:max-w-56"
+          title={actorName(row.original)}
+        >
+          {actorName(row.original)}
+        </p>
         {row.original.actor && (
           <p className="text-xs text-muted-foreground">
             {row.original.actor.role.replace("_", " ").toLowerCase()}

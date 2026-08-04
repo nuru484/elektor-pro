@@ -12,11 +12,12 @@
 //   ALL filters render inline on one row of their own, compact widths, with
 //   Clear at the end.
 import { ChevronDown, ListFilter, Search, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { hasActiveTableFilters } from "@/components/ui/table-empty-logic";
+import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 
 /** Active non-search filters - drives the badge on the Filters toggle. */
@@ -25,6 +26,72 @@ const countActiveFilters = (filters: Record<string, unknown>): number =>
     ([key, value]) =>
       key !== "search" && value !== undefined && value !== null && value !== "",
   ).length;
+
+/**
+ * The search box owns its own input state and commits it debounced (500ms),
+ * so typing never fires a request per keystroke. `lastEmitted` tells our own
+ * commits apart from external changes (URL navigation, session restore,
+ * clear-all) - the input resyncs on the latter, never mid-typing. DMS pattern.
+ */
+function DebouncedSearch({
+  committed,
+  onCommit,
+  placeholder,
+}: {
+  committed: string;
+  onCommit: (value: string) => void;
+  placeholder: string;
+}) {
+  const [searchInput, setSearchInput] = useState(committed);
+  const debouncedSearch = useDebounce(searchInput, 500);
+  const lastEmitted = useRef(committed);
+
+  useEffect(() => {
+    const next = debouncedSearch.trim();
+    if (next !== lastEmitted.current) {
+      lastEmitted.current = next;
+      onCommit(next);
+    }
+    // onCommit wraps useTableQueryState's stable handler; an inline arrow at
+    // the call site must not re-fire the debounce effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    if (committed !== lastEmitted.current) {
+      lastEmitted.current = committed;
+      setSearchInput(committed);
+    }
+  }, [committed]);
+
+  return (
+    <div className="relative w-full sm:max-w-xs">
+      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        className="pr-8 pl-9"
+        onChange={(e) => {
+          setSearchInput(e.target.value);
+        }}
+        placeholder={placeholder}
+        value={searchInput}
+      />
+      {searchInput && (
+        <button
+          aria-label="Clear search"
+          className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          onClick={() => {
+            lastEmitted.current = "";
+            setSearchInput("");
+            onCommit("");
+          }}
+          type="button"
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function TableToolbar({
   actions,
@@ -59,25 +126,11 @@ export function TableToolbar({
       {(onSearchChange || actions) && (
         <div className="flex items-center gap-3">
           {onSearchChange && (
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pr-8 pl-9"
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={searchPlaceholder}
-                value={search}
-              />
-              {search && (
-                <button
-                  aria-label="Clear search"
-                  className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  onClick={() => onSearchChange("")}
-                  type="button"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
+            <DebouncedSearch
+              committed={search}
+              onCommit={onSearchChange}
+              placeholder={searchPlaceholder}
+            />
           )}
           {actions && (
             <div className="ml-auto hidden items-center gap-2 lg:flex">{actions}</div>

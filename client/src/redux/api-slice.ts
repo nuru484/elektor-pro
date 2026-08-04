@@ -120,8 +120,10 @@ export const apiSlice = createApi({
     "Permissions",
     "Portfolio",
     "Results",
+    "Roll",
     "Sessions",
     "StaffUser",
+    "Vetting",
     "Voter",
   ],
 });

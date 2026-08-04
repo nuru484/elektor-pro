@@ -17,7 +17,7 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Select as NativeSelect } from "@/components/ui/input";
 import { EmptyState, PageHeader } from "@/components/ui/states";
-import { RowCard } from "@/components/ui/table-bits";
+import { CellText, RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
@@ -49,23 +49,28 @@ const buildColumns = (
     cell: ({ row }) => (
       <div className="flex min-w-0 items-center gap-2.5">
         <EntityAvatar name={row.original.name} url={row.original.profilePicture} />
-        <span className="truncate font-medium">{row.original.name}</span>
+        <CellText className="max-w-[85%] flex-1 font-medium" text={row.original.name} />
       </div>
     ),
     header: "Candidate",
+    meta: { stretch: true },
   },
   {
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">
-        {row.original.portfolio?.name ?? "—"}
-      </span>
+      <CellText
+        className="max-w-44 text-sm text-muted-foreground"
+        text={row.original.portfolio?.name ?? "—"}
+      />
     ),
     header: "Portfolio",
     id: "portfolio",
   },
   {
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">{row.original.nickname ?? "—"}</span>
+      <CellText
+        className="max-w-40 text-sm text-muted-foreground"
+        text={row.original.nickname ?? "—"}
+      />
     ),
     header: "Nickname",
     id: "nickname",

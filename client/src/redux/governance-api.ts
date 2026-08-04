@@ -114,6 +114,14 @@ export const governanceApi = apiSlice.injectEndpoints({
       providesTags: ["Grants"],
       query: (params) => `/grants${qs(params)}`,
     }),
+    getGroup: build.query<ApiResponse<Group>, string>({
+      providesTags: ["Group"],
+      query: (id) => `/groups/${id}`,
+    }),
+    getGroupCategory: build.query<ApiResponse<GroupCategory>, string>({
+      providesTags: ["GroupCategory"],
+      query: (id) => `/group-categories/${id}`,
+    }),
     listGroupCategories: build.query<PaginatedResponse<GroupCategory>, ListQuery>({
       providesTags: ["GroupCategory"],
       query: (params) => `/group-categories${qs(params)}`,
@@ -222,6 +230,8 @@ export const {
   useDeleteGroupCategoryMutation,
   useDeleteGroupMutation,
   useDeleteStaffUserMutation,
+  useGetGroupCategoryQuery,
+  useGetGroupQuery,
   useGetAgentDashboardQuery,
   useGetOrganizationQuery,
   useGetStaffUserQuery,

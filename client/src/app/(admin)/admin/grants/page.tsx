@@ -21,7 +21,7 @@ import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState, PageHeader } from "@/components/ui/states";
-import { RowCard } from "@/components/ui/table-bits";
+import { CellText, RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
@@ -203,16 +203,19 @@ export default function GrantsPage() {
     {
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {row.original.user.firstName} {row.original.user.lastName}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {row.original.user.email ?? "—"}
-          </p>
+          <CellText
+            className="max-w-[90%] text-sm font-medium"
+            text={`${row.original.user.firstName} ${row.original.user.lastName}`}
+          />
+          <CellText
+            className="max-w-[90%] text-xs text-muted-foreground"
+            text={row.original.user.email ?? "—"}
+          />
         </div>
       ),
       header: "User",
       id: "user",
+      meta: { stretch: true },
     },
     {
       cell: ({ row }) => (
@@ -224,7 +227,7 @@ export default function GrantsPage() {
     {
       cell: ({ row }) =>
         row.original.election ? (
-          <span className="text-sm">{row.original.election.name}</span>
+          <CellText className="max-w-48 text-sm" text={row.original.election.name} />
         ) : (
           <span className="text-xs text-muted-foreground">Platform-wide</span>
         ),

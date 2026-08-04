@@ -37,6 +37,14 @@ export type ElectionStatus =
   | "PAUSED"
   | "SCHEDULED";
 export type VotingMethod = "MULTI_SELECT" | "SINGLE_CHOICE" | "YES_NO";
+export type EligibilityMode = "ALL_VOTERS" | "GROUPS" | "ROLL";
+export type CandidateStatus =
+  | "DISQUALIFIED"
+  | "DRAFT"
+  | "QUALIFIED"
+  | "UNDER_REVIEW"
+  | "WITHDRAWN";
+export type PortfolioEligibilityMode = "ALL_OF_GROUPS" | "ALL_VOTERS" | "ANY_OF_GROUPS";
 export type ChangeStatus =
   | "APPLIED"
   | "APPROVED"
@@ -58,6 +66,7 @@ export type Capability =
   | "MANAGE_ORGANIZATION"
   | "MANAGE_PORTFOLIOS"
   | "MANAGE_VOTERS"
+  | "VET_CANDIDATES"
   | "VIEW_RESULTS";
 
 export interface CurrentUser {
@@ -193,51 +202,215 @@ export interface SessionView {
 
 export interface Election {
   _count?: { candidates: number; portfolios: number; voterElections: number };
+  accreditationRequired?: boolean;
   certifiedAt: null | string;
   description: null | string;
+  /** Groups that may see and vote in this election (GROUPS mode). */
+  eligibilityGroups?: { group: { category?: { name: string }; id: string; name: string } }[];
+  eligibilityMode?: EligibilityMode;
   endDate: string;
   id: string;
+  /** Set on certification; a locked election refuses content changes. */
+  isLocked?: boolean;
   name: string;
   resultsPolicy: string;
   resultsPublishedAt: null | string;
+  /** Per-election customization JSON (e.g. resultsVisibleToRoles). */
+  settings?: null | Record<string, unknown>;
   slug: string;
   startDate: string;
   status: ElectionStatus;
+  /** When on, candidates pass vetting before reaching the ballot. */
+  vettingEnabled?: boolean;
+  /** Auto-decision threshold percent; null = manual decisions. */
+  vettingPassPercent?: null | number;
+  /** Accreditation hands each voter a one-time sign-in code. */
+  voteCodeEnabled?: boolean;
+}
+
+/** One row from the accreditation desk's voter search. */
+export interface AccreditationSearchRow {
+  accreditedAt: null | string;
+  codeIssued: boolean;
+  eligible: boolean;
+  hasVoted: boolean;
+  id: string;
+  name: string;
+  phoneNumber: null | string;
+  profilePicture: null | string;
+  voterId: string;
+}
+
+/** GET /elections/:id/turnout. */
+export interface ElectionTurnout {
+  accredited: number;
+  election: { id: string; name: string };
+  eligible: number;
+  percentage: number;
+  voted: number;
 }
 
 export interface Candidate {
+  account?: null | {
+    email: null | string;
+    firstName: string;
+    id: string;
+    lastName: string;
+    phone?: null | string;
+  };
+  ballotNumber?: null | number;
   createdAt?: string;
-  election?: { id: string; name: string; slug?: string };
+  election?: {
+    id: string;
+    name: string;
+    slug?: string;
+    vettingEnabled?: boolean;
+    vettingPassPercent?: null | number;
+  };
   id: string;
   manifesto?: null | string;
   manifestoUrl?: null | string;
   name: string;
   nickname: null | string;
+  /** The same person's candidacies in other elections (via linked account). */
+  otherCandidacies?: {
+    election: { id: string; name: string; status: ElectionStatus };
+    id: string;
+    portfolio: { name: string };
+    status: CandidateStatus;
+  }[];
   portfolio?: { id: string; name: string };
   portfolioId?: string;
   profilePicture: null | string;
+  reviewedAt?: null | string;
+  reviewedBy?: null | { firstName: string; id: string; lastName: string };
+  status?: CandidateStatus;
+  vettingNote?: null | string;
+}
+
+export interface VettingCriterion {
+  _count?: { scores: number };
+  description: null | string;
+  id: string;
+  maxScore: number;
+  name: string;
+  order: number;
+}
+
+export interface VettingScoreRow {
+  criterionId: string;
+  id: string;
+  note: null | string;
+  score: number;
+  scoredBy: null | { firstName: string; id: string; lastName: string };
+  updatedAt: string;
+}
+
+/** GET /candidates/:id/vetting - criteria with averages + the grand total. */
+export interface CandidateVetting {
+  byCriterion: {
+    average: null | number;
+    criterion: VettingCriterion;
+    scores: VettingScoreRow[];
+  }[];
+  candidateId: string;
+  maxTotal: number;
+  total: number;
 }
 
 export interface Portfolio {
   _count?: { candidates: number };
+  allowAbstain?: boolean;
   candidates?: Candidate[];
   description: null | string;
-  eligibility: string;
+  eligibility: PortfolioEligibilityMode | string;
+  eligibilityGroups?: { group: { id: string; name: string } }[];
   id: string;
   maxSelections: number;
   name: string;
+  order?: number;
   votingMethod: VotingMethod;
+}
+
+/** One VoterElection row from an election's roll. */
+export interface RollEntry {
+  accreditedAt: null | string;
+  createdAt: string;
+  hasVoted: boolean;
+  id: string;
+  isEligible: boolean;
+  votedAt: null | string;
+  voter: {
+    email: null | string;
+    groupMemberships?: { group: { id: string; name: string } }[];
+    id: string;
+    name: string;
+    phoneNumber: null | string;
+    profilePicture: null | string;
+    voterId: string;
+  };
+}
+
+/** Per-row problem reported by the voter import preview. */
+export interface ImportRowError {
+  field: string;
+  message: string;
+  /** 1-based data row number (header excluded). */
+  row: number;
+}
+
+/** A clean, importable voter row (matches POST /voters/bulk). */
+export interface ImportVoterRow {
+  email?: string;
+  name: string;
+  phoneNumber?: string;
+  voterId: string;
+}
+
+export interface ImportPreview {
+  errors: ImportRowError[];
+  ignoredColumns: string[];
+  rows: ImportVoterRow[];
+  summary: { invalid: number; total: number; valid: number };
+}
+
+/** A clean, importable nomination (matches POST /candidates/bulk rows). */
+export interface ImportCandidateRow {
+  electionId: string;
+  manifesto?: string;
+  name: string;
+  nickname?: string;
+  partySymbol?: string;
+  portfolioId: string;
+  /** Resolved portfolio name, for the preview display. */
+  portfolioName: string;
+}
+
+export interface CandidateImportPreview {
+  errors: ImportRowError[];
+  ignoredColumns: string[];
+  rows: ImportCandidateRow[];
+  summary: { invalid: number; total: number; valid: number };
 }
 
 export interface Voter {
   createdAt?: string;
   email?: null | string;
-  groupMemberships?: { group: { id: string; name: string } }[];
+  groupMemberships?: {
+    group: { category?: { name: string }; id: string; name: string };
+  }[];
   id: string;
   name: string;
   phoneNumber: null | string;
   profilePicture?: null | string;
   voterId: string;
+  /** The elections this voter is registered in, newest first. */
+  voterElections?: {
+    accreditedAt: null | string;
+    election: { id: string; name: string; slug: string; status: ElectionStatus };
+    hasVoted: boolean;
+    isEligible: boolean;
+  }[];
 }
 
 export interface ChangeRequest {
@@ -259,10 +432,15 @@ export interface ChangeRequest {
 }
 
 export interface CandidateResult {
+  /** YES_NO portfolios only. */
+  approveVotes?: number;
+  ballotNumber?: null | number;
   id: string;
   name: string;
   nickname: null | string;
   percentage: number;
+  /** YES_NO portfolios only. */
+  rejectVotes?: number;
   votes: number;
 }
 

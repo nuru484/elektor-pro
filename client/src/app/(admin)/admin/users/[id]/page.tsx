@@ -123,7 +123,12 @@ function ContactChannel({
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Icon className="size-3.5" /> {label}
           </p>
-          <p className="mt-0.5 truncate text-sm font-medium">{current ?? "—"}</p>
+          {/* Never bare `truncate` here: nowrap makes the full value the
+              min-content width and stretches the page. Wrap instead - the
+              whole contact must stay readable on the profile. */}
+          <p className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+            {current ?? "—"}
+          </p>
         </div>
         {!isSelf && stage === "idle" && (
           <Button onClick={() => setStage("editing")} size="sm" variant="outline">
@@ -317,13 +322,17 @@ function DetailsCard({
           </form>
         ) : (
           <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <dt className="text-xs text-muted-foreground">First name</dt>
-              <dd className="mt-0.5 text-sm font-medium">{user.firstName}</dd>
+              <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                {user.firstName}
+              </dd>
             </div>
-            <div>
+            <div className="min-w-0">
               <dt className="text-xs text-muted-foreground">Last name</dt>
-              <dd className="mt-0.5 text-sm font-medium">{user.lastName}</dd>
+              <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                {user.lastName}
+              </dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Role</dt>
@@ -382,7 +391,7 @@ function UserProfileContent() {
                 onUpload={(file) => updatePicture({ file, id: user.id }).unwrap()}
                 url={user.profilePicture}
               />
-              <h1 className="min-w-0 truncate text-xl font-semibold">
+              <h1 className="min-w-0 max-w-full text-xl font-semibold [overflow-wrap:anywhere]">
                 {user.firstName} {user.lastName}
               </h1>
               <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
@@ -418,8 +427,9 @@ function UserProfileContent() {
             </CardContent>
           </Card>
 
-          {/* Editable content */}
-          <div className="space-y-6 max-sm:space-y-8">
+          {/* Editable content. min-w-0: the 1fr grid column must be allowed
+              to shrink, or one long unbroken value stretches the page. */}
+          <div className="min-w-0 space-y-6 max-sm:space-y-8">
             <DetailsCard editingInitially={editInitially} user={user} />
             <Card className={CARD_MOBILE}>
               <CardHeader className={CARD_PAD_MOBILE}>

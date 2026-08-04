@@ -72,7 +72,7 @@ describe("LoginPage", () => {
     });
   });
 
-  it("routes an accreditor to their profile home", async () => {
+  it("routes an accreditor to the accreditation desk", async () => {
     server.use(
       http.post(`${API}/auth/login`, () =>
         HttpResponse.json({
@@ -85,7 +85,7 @@ describe("LoginPage", () => {
     renderLogin();
     fillAndSubmit();
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith("/profile");
+      expect(push).toHaveBeenCalledWith("/accredit");
     });
   });
 

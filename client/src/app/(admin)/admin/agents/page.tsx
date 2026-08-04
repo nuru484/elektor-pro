@@ -16,7 +16,6 @@ import { PhotoInput } from "@/components/console/photo-input";
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { TableDate } from "@/components/console/table-date";
 import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
-import { Badge } from "@/components/ui/badge";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -25,7 +24,7 @@ import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState, PageHeader } from "@/components/ui/states";
-import { RowCard } from "@/components/ui/table-bits";
+import { CellText, RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
@@ -279,30 +278,34 @@ export default function AgentsPage() {
             name={`${row.original.user.firstName} ${row.original.user.lastName}`}
             url={(row.original.user as { profilePicture?: null | string }).profilePicture}
           />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {row.original.user.firstName} {row.original.user.lastName}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {row.original.user.email ?? "—"}
-            </p>
+          <div className="min-w-0 flex-1">
+            <CellText
+              className="max-w-[90%] text-sm font-medium"
+              text={`${row.original.user.firstName} ${row.original.user.lastName}`}
+            />
+            <CellText
+              className="max-w-[90%] text-xs text-muted-foreground"
+              text={row.original.user.email ?? "—"}
+            />
           </div>
         </div>
       ),
       header: "Agent",
       id: "agent",
+      meta: { stretch: true },
     },
     {
       cell: ({ row }) => (
-        <span className="text-sm">{row.original.election.name}</span>
+        <CellText className="max-w-52 text-sm" text={row.original.election.name} />
       ),
       header: "Election",
       id: "election",
     },
     {
+      // Candidate names are user-authored text - plain, never a badge.
       cell: ({ row }) =>
         row.original.candidate ? (
-          <Badge variant="outline">{row.original.candidate.name}</Badge>
+          <CellText className="max-w-44 text-sm" text={row.original.candidate.name} />
         ) : (
           <span className="text-xs text-muted-foreground">General observer</span>
         ),
