@@ -86,7 +86,11 @@ describe("SessionsSection", () => {
     );
     renderSection();
 
+    // Revoking asks for confirmation first (shared ConfirmationDialog).
     fireEvent.click(await screen.findByRole("button", { name: /sign this device out/i }));
+    expect(await screen.findByText(/sign this device out\?/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^sign device out$/i }));
+
     await waitFor(() => {
       expect(screen.queryByText("Safari on iOS")).not.toBeInTheDocument();
     });

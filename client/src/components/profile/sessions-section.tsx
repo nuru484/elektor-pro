@@ -3,6 +3,7 @@
 // Signed-in devices: list with the current one flagged, revoke a single
 // device, or sign out everywhere else.
 import { Laptop, LogOut, Smartphone } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import type { SessionView } from "@/types/api";
@@ -16,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import {
@@ -49,6 +51,7 @@ const describeDevice = (userAgent: null | string): string => {
 
 function SessionRow({ session }: { session: SessionView }) {
   const [revoke, { isLoading }] = useRevokeSessionMutation();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const Icon = looksMobile(session.userAgent) ? Smartphone : Laptop;
 
   return (
@@ -69,22 +72,34 @@ function SessionRow({ session }: { session: SessionView }) {
         </p>
       </div>
       {!session.current && (
-        <Button
-          aria-label="Sign this device out"
-          loading={isLoading}
-          onClick={async () => {
-            try {
-              await revoke(session.id).unwrap();
-              toast.success("Device signed out");
-            } catch (error) {
-              toast.error(getApiErrorMessage(error));
-            }
-          }}
-          size="sm"
-          variant="outline"
-        >
-          Sign out
-        </Button>
+        <>
+          <Button
+            aria-label="Sign this device out"
+            loading={isLoading}
+            onClick={() => setConfirmOpen(true)}
+            size="sm"
+            variant="outline"
+          >
+            Sign out
+          </Button>
+          <ConfirmationDialog
+            confirmText="Sign device out"
+            description={`${describeDevice(session.userAgent)} will be signed out and will need to log in again.`}
+            isDestructive
+            onConfirm={async () => {
+              setConfirmOpen(false);
+              try {
+                await revoke(session.id).unwrap();
+                toast.success("Device signed out");
+              } catch (error) {
+                toast.error(getApiErrorMessage(error));
+              }
+            }}
+            onOpenChange={setConfirmOpen}
+            open={confirmOpen}
+            title="Sign this device out?"
+          />
+        </>
       )}
     </li>
   );
@@ -93,6 +108,7 @@ function SessionRow({ session }: { session: SessionView }) {
 export function SessionsSection() {
   const { data, isError, isLoading } = useListSessionsQuery();
   const [revokeOthers, { isLoading: revokingOthers }] = useRevokeOtherSessionsMutation();
+  const [confirmOthersOpen, setConfirmOthersOpen] = useState(false);
 
   const sessions = data?.data ?? [];
   const hasOthers = sessions.some((s) => !s.current);
@@ -122,22 +138,34 @@ export function SessionsSection() {
               ))}
             </ul>
             {hasOthers && (
-              <Button
-                className="mt-4"
-                loading={revokingOthers}
-                onClick={async () => {
-                  try {
-                    const result = await revokeOthers().unwrap();
-                    toast.success(`Signed out ${result.data.revoked} other device(s)`);
-                  } catch (error) {
-                    toast.error(getApiErrorMessage(error));
-                  }
-                }}
-                size="sm"
-                variant="outline"
-              >
-                <LogOut className="size-4" /> Sign out everywhere else
-              </Button>
+              <>
+                <Button
+                  className="mt-4"
+                  loading={revokingOthers}
+                  onClick={() => setConfirmOthersOpen(true)}
+                  size="sm"
+                  variant="outline"
+                >
+                  <LogOut className="size-4" /> Sign out everywhere else
+                </Button>
+                <ConfirmationDialog
+                  confirmText="Sign out other devices"
+                  description="Every device except this one will be signed out and will need to log in again."
+                  isDestructive
+                  onConfirm={async () => {
+                    setConfirmOthersOpen(false);
+                    try {
+                      const result = await revokeOthers().unwrap();
+                      toast.success(`Signed out ${result.data.revoked} other device(s)`);
+                    } catch (error) {
+                      toast.error(getApiErrorMessage(error));
+                    }
+                  }}
+                  onOpenChange={setConfirmOthersOpen}
+                  open={confirmOthersOpen}
+                  title="Sign out everywhere else?"
+                />
+              </>
             )}
           </>
         )}

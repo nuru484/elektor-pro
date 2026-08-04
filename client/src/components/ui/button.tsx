@@ -57,6 +57,22 @@ function Button({
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
+  // With asChild, Radix Slot requires exactly ONE child element - pass the
+  // children through untouched (no spinner injection).
+  if (asChild) {
+    return (
+      <Comp
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      >
+        {children}
+      </Comp>
+    )
+  }
+
   return (
     <Comp
       data-slot="button"
