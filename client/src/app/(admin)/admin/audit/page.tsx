@@ -6,7 +6,13 @@ import { ScrollText, ShieldCheck, ShieldX } from "lucide-react";
 import { TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
-import { Select } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
 import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
@@ -166,16 +172,22 @@ export default function AuditPage() {
             searchPlaceholder="Search action, entity, actor, or IP…"
           >
             <Select
-              className="sm:w-44"
-              onChange={(e) => handleFiltersChange({ entity: e.target.value || undefined })}
-              value={filters.entity ?? ""}
+              onValueChange={(value) =>
+                handleFiltersChange({ entity: value === "all" ? undefined : value })
+              }
+              value={filters.entity ?? "all"}
             >
-              <option value="">All entities</option>
-              {ENTITIES.map((entity) => (
-                <option key={entity} value={entity}>
-                  {entity}
-                </option>
-              ))}
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="All entities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All entities</SelectItem>
+                {ENTITIES.map((entity) => (
+                  <SelectItem key={entity} value={entity}>
+                    {entity}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </TableToolbar>
         }

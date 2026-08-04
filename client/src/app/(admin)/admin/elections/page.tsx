@@ -13,7 +13,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
-import { Input, Select } from "@/components/ui/input";
+import { Input, Select as NativeSelect } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState, PageHeader } from "@/components/ui/states";
@@ -71,16 +78,23 @@ function StatusCell({ election }: { election: Election }) {
   return (
     <>
       <Select
-        aria-label={`Change status of ${election.name}`}
-        className="h-8 w-auto text-xs"
-        onChange={(e) => setPendingStatus(e.target.value as ElectionStatus)}
+        onValueChange={(value) => setPendingStatus(value as ElectionStatus)}
         value={election.status}
       >
-        {STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {status.replace("_", " ")}
-          </option>
-        ))}
+        <SelectTrigger
+          aria-label={`Change status of ${election.name}`}
+          className="h-8 w-auto text-xs"
+          size="sm"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUSES.map((status) => (
+            <SelectItem key={status} value={status}>
+              {status.replace("_", " ")}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
       <ConfirmationDialog
         confirmText="Change status"
@@ -167,7 +181,7 @@ function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boo
     >
       <form className="space-y-4" onSubmit={onCreate}>
         <Field label="Election name">
-          <Input name="name" placeholder="e.g. SRC General Election 2026" required />
+          <Input name="name" placeholder="e.g. General Election 2026" required />
         </Field>
         <Field label="Description">
           <Input name="description" placeholder="Optional summary shown to voters" />
@@ -182,17 +196,17 @@ function CreateElectionModal({ onClose, open }: { onClose: () => void; open: boo
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Who can vote">
-            <Select defaultValue="ALL_VOTERS" name="eligibilityMode">
+            <NativeSelect defaultValue="ALL_VOTERS" name="eligibilityMode">
               <option value="ALL_VOTERS">All registered voters</option>
               <option value="ROLL">Assigned roll only</option>
-            </Select>
+            </NativeSelect>
           </Field>
           <Field label="Results visibility">
-            <Select defaultValue="ON_CLOSE" name="resultsPolicy">
+            <NativeSelect defaultValue="ON_CLOSE" name="resultsPolicy">
               <option value="ON_CLOSE">When election ends</option>
               <option value="LIVE">Live</option>
               <option value="MANUAL">Manual publish</option>
-            </Select>
+            </NativeSelect>
           </Field>
         </div>
         <Button className="w-full" loading={creating} type="submit" variant="brand">
@@ -290,16 +304,22 @@ export default function ElectionsPage() {
             searchPlaceholder="Search elections…"
           >
             <Select
-              className="sm:w-44"
-              onChange={(e) => handleFiltersChange({ status: e.target.value || undefined })}
-              value={filters.status ?? ""}
+              onValueChange={(value) =>
+                handleFiltersChange({ status: value === "all" ? undefined : value })
+              }
+              value={filters.status ?? "all"}
             >
-              <option value="">All statuses</option>
-              {STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status.replace("_", " ")}
-                </option>
-              ))}
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status.replace("_", " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </TableToolbar>
         }

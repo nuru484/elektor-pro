@@ -11,7 +11,14 @@ import { TableToolbar } from "@/components/console/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
-import { Input, Select, Textarea } from "@/components/ui/input";
+import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { RowCard } from "@/components/ui/table-bits";
@@ -90,7 +97,7 @@ function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boole
     <Modal onClose={onClose} open={open} title="Add candidate">
       <form className="space-y-4" onSubmit={onCreate}>
         <Field label="Election">
-          <Select
+          <NativeSelect
             name="electionId"
             onChange={(e) => setElectionId(e.target.value)}
             required
@@ -102,17 +109,17 @@ function AddCandidateModal({ onClose, open }: { onClose: () => void; open: boole
                 {e.name}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </Field>
         <Field label="Portfolio">
-          <Select name="portfolioId" required>
+          <NativeSelect name="portfolioId" required>
             <option value="">Select portfolio…</option>
             {election?.data.portfolios?.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
-          </Select>
+          </NativeSelect>
         </Field>
         <Field label="Full name">
           <Input name="name" placeholder="e.g. Kwame Mensah" required />
@@ -214,16 +221,22 @@ export default function CandidatesPage() {
             searchPlaceholder="Search candidates…"
           >
             <Select
-              className="sm:w-52"
-              onChange={(e) => handleFiltersChange({ electionId: e.target.value || undefined })}
-              value={filters.electionId ?? ""}
+              onValueChange={(value) =>
+                handleFiltersChange({ electionId: value === "all" ? undefined : value })
+              }
+              value={filters.electionId ?? "all"}
             >
-              <option value="">All elections</option>
-              {elections?.data.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
+              <SelectTrigger className="w-full sm:w-52">
+                <SelectValue placeholder="All elections" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All elections</SelectItem>
+                {elections?.data.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </TableToolbar>
         }
