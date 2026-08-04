@@ -15,6 +15,7 @@ import { homeForRole } from "@/components/console/nav-config";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { setSessionMarker } from "@/lib/session-marker";
 import { useLoginMutation, useVerifyTwoFactorMutation } from "@/redux/auth-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import {
@@ -56,6 +57,9 @@ export default function LoginPage() {
         return;
       }
       if (!("challengeToken" in res.data)) {
+        // Marker must exist before navigation: the proxy gate checks it on
+        // the very next request to a protected route.
+        setSessionMarker();
         toast.success("Signed in successfully");
         router.push(homeForRole(res.data.role));
       }
@@ -68,6 +72,7 @@ export default function LoginPage() {
     if (!challenge) return;
     try {
       const res = await verify({ challengeToken: challenge.token, code: values.code }).unwrap();
+      setSessionMarker();
       toast.success("Signed in successfully");
       router.push(homeForRole(res.data.role));
     } catch (error) {
@@ -114,7 +119,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell subtitle="Sign in to manage elections" title="Welcome back">
+    <AuthShell title="Sign in to manage elections">
       <form className="space-y-5" noValidate onSubmit={onSubmit}>
         <Field error={form.formState.errors.emailOrPhone?.message} label="Email or phone">
           <Input

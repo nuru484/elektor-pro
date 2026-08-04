@@ -23,7 +23,7 @@ import {
 } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { appendAudit } from '../audit/audit.service.js';
-import { canApproveChanges, canDelete } from '../authorization/capability.service.js';
+import { canActorApproveChanges, canDelete } from '../authorization/capability.service.js';
 import { appliers } from './registry.js';
 
 const runApplier = (
@@ -69,7 +69,7 @@ export const proposeOrExecute = async (
   const applier = appliers[input.entity];
   if (!applier) throw new BadRequestError(`Unsupported entity: ${input.entity}`);
 
-  if (canApproveChanges(actor.role)) {
+  if (await canActorApproveChanges(actor)) {
     const result = await prisma.$transaction(async (tx) => {
       const r = await runApplier(
         applier,
@@ -122,8 +122,8 @@ export const approveChangeRequest = async (
   note: string | undefined,
   ctx: ChangeContext = {},
 ): Promise<{ id: string }> => {
-  if (!canApproveChanges(actor.role)) {
-    throw new ForbiddenError('Only a super administrator can approve changes');
+  if (!(await canActorApproveChanges(actor))) {
+    throw new ForbiddenError('You are not allowed to approve changes');
   }
   const cr = await prisma.changeRequest.findUnique({ where: { id } });
   if (!cr) throw new NotFoundError('Change request not found');
@@ -184,8 +184,8 @@ export const rejectChangeRequest = async (
   note: string | undefined,
   ctx: ChangeContext = {},
 ): Promise<void> => {
-  if (!canApproveChanges(actor.role)) {
-    throw new ForbiddenError('Only a super administrator can reject changes');
+  if (!(await canActorApproveChanges(actor))) {
+    throw new ForbiddenError('You are not allowed to reject changes');
   }
   const cr = await prisma.changeRequest.findUnique({
     select: { entity: true, status: true },
@@ -225,7 +225,7 @@ export const cancelChangeRequest = async (
     where: { id },
   });
   if (!cr) throw new NotFoundError('Change request not found');
-  if (cr.requestedById !== actor.id && !canApproveChanges(actor.role)) {
+  if (cr.requestedById !== actor.id && !(await canActorApproveChanges(actor))) {
     throw new ForbiddenError('You can only cancel your own change requests');
   }
   if (cr.status !== ChangeStatus.PENDING) {
@@ -243,13 +243,34 @@ const CHANGE_INCLUDE = {
 } as const;
 
 export const listChangeRequests = async (
-  filters: { entity?: ChangeEntity; requestedById?: string; status?: ChangeStatus },
+  filters: {
+    entity?: ChangeEntity;
+    /** Inclusive lower bound on createdAt. */
+    from?: Date;
+    requestedById?: string;
+    /** Free-text match on the request summary. */
+    search?: string;
+    status?: ChangeStatus;
+    /** EXCLUSIVE upper bound on createdAt (callers pass day-after). */
+    to?: Date;
+  },
   pagination: PaginationParams,
 ) => {
   const where: Prisma.ChangeRequestWhereInput = {
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.entity ? { entity: filters.entity } : {}),
     ...(filters.requestedById ? { requestedById: filters.requestedById } : {}),
+    ...(filters.search
+      ? { summary: { contains: filters.search, mode: 'insensitive' as const } }
+      : {}),
+    ...(filters.from || filters.to
+      ? {
+          createdAt: {
+            ...(filters.from ? { gte: filters.from } : {}),
+            ...(filters.to ? { lt: filters.to } : {}),
+          },
+        }
+      : {}),
   };
   const [data, total] = await Promise.all([
     prisma.changeRequest.findMany({

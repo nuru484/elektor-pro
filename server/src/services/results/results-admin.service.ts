@@ -3,6 +3,7 @@ import {
   type Prisma,
   type Role,
 } from '../../../generated/prisma/client.js';
+import { Capability } from '../../../generated/prisma/client.js';
 // src/services/results/results-admin.service.ts
 import prisma from '../../lib/prisma.js';
 import {
@@ -13,15 +14,15 @@ import {
 import { emitElectionUpdate } from '../../realtime/io.js';
 import { sha256, stableStringify } from '../../utils/crypto.js';
 import { appendAudit } from '../audit/audit.service.js';
-import { canApproveChanges } from '../authorization/capability.service.js';
+import { hasCapability } from '../authorization/capability.service.js';
 import { computeResults } from './results.service.js';
 
 interface Actor { id: string; role: Role }
 interface Ctx { ipAddress?: string; userAgent?: string }
 
-const requireCertifier = (actor: Actor): void => {
-  if (!canApproveChanges(actor.role)) {
-    throw new ForbiddenError('Only a super administrator can do this');
+const requireCertifier = async (actor: Actor): Promise<void> => {
+  if (!(await hasCapability(actor, Capability.CERTIFY_RESULTS))) {
+    throw new ForbiddenError('You are not allowed to certify or publish results');
   }
 };
 
@@ -31,7 +32,7 @@ export const publishResults = async (
   electionId: string,
   ctx: Ctx = {},
 ): Promise<{ resultsPublishedAt: Date }> => {
-  requireCertifier(actor);
+  await requireCertifier(actor);
   const election = await prisma.election.findFirst({
     select: { id: true },
     where: { id: electionId },
@@ -62,7 +63,7 @@ export const certifyResults = async (
   electionId: string,
   ctx: Ctx = {},
 ): Promise<{ hash: string; snapshotId: string }> => {
-  requireCertifier(actor);
+  await requireCertifier(actor);
   const election = await prisma.election.findFirst({ where: { id: electionId } });
   if (!election) throw new NotFoundError('Election not found');
   if (election.status !== ElectionStatus.ENDED) {

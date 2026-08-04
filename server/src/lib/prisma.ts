@@ -35,6 +35,16 @@ const READ_OPERATIONS = new Set<string>([
   'groupBy',
 ]);
 
+export type SoftDeleteModelAccessor =
+  | 'agentAssignment'
+  | 'candidate'
+  | 'election'
+  | 'group'
+  | 'groupCategory'
+  | 'portfolio'
+  | 'user'
+  | 'voter';
+
 interface SoftDeletableDelegate {
   update: (args: unknown) => Promise<unknown>;
   updateMany: (args: unknown) => Promise<unknown>;
@@ -91,17 +101,39 @@ function withSoftDelete(base: PrismaClient) {
   });
 }
 
-const createPrismaClient = () => withSoftDelete(new PrismaClient({ adapter }));
-
-type ExtendedPrismaClient = ReturnType<typeof createPrismaClient>;
-
-const globalForPrisma = globalThis as unknown as {
-  prisma?: ExtendedPrismaClient;
+const createClients = () => {
+  const base = new PrismaClient({ adapter });
+  return { base, extended: withSoftDelete(base) };
 };
 
-const prisma = globalForPrisma.prisma ?? createPrismaClient();
+type Clients = ReturnType<typeof createClients>;
 
-if (ENV.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+const globalForPrisma = globalThis as unknown as {
+  prismaClients?: Clients;
+};
+
+const clients = globalForPrisma.prismaClients ?? createClients();
+
+if (ENV.NODE_ENV !== 'production') globalForPrisma.prismaClients = clients;
+
+const prisma = clients.extended;
+
+/**
+ * The ONLY sanctioned hard-delete path. The soft-delete extension rewrites
+ * `delete` to an update, so the deleted-records purge goes through the base
+ * (unextended) client - same instance, same pool. Callers must verify the
+ * row is already soft-deleted before purging.
+ */
+export const purgeRecord = (
+  accessor: SoftDeleteModelAccessor,
+  id: string,
+): Promise<unknown> => {
+  const delegates = clients.base as unknown as Record<
+    SoftDeleteModelAccessor,
+    { delete: (args: { where: { id: string } }) => Promise<unknown> }
+  >;
+  return delegates[accessor].delete({ where: { id } });
+};
 
 export default prisma;
 export * from '../../generated/prisma/client.js';

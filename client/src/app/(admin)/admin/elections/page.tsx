@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 import type { Election, ElectionStatus } from "@/types/api";
 
-import { TableToolbar } from "@/components/console/table-toolbar";
+import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
@@ -246,11 +246,6 @@ export default function ElectionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        action={
-          <Button onClick={() => setCreateOpen(true)} variant="brand">
-            <Plus className="size-4" /> New election
-          </Button>
-        }
         description="Create and manage elections, then open them for voting."
         title="Elections"
       />
@@ -297,30 +292,37 @@ export default function ElectionsPage() {
         table={table}
         toolbar={
           <TableToolbar
+            actions={
+              <Button onClick={() => setCreateOpen(true)} variant="brand">
+                <Plus className="size-4" /> New election
+              </Button>
+            }
             filters={filters}
             onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
             onSearchChange={(value) => handleFiltersChange({ search: value || undefined })}
             search={filters.search ?? ""}
             searchPlaceholder="Search elections…"
           >
-            <Select
-              onValueChange={(value) =>
-                handleFiltersChange({ status: value === "all" ? undefined : value })
-              }
-              value={filters.status ?? "all"}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status.replace("_", " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterField caption="Status">
+              <Select
+                onValueChange={(value) =>
+                  handleFiltersChange({ status: value === "all" ? undefined : value })
+                }
+                value={filters.status ?? "all"}
+              >
+                <SelectTrigger className="w-full lg:w-44">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status.replace("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
           </TableToolbar>
         }
         totalCount={totalCount}

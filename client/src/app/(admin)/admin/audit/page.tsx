@@ -3,9 +3,10 @@
 import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { ScrollText, ShieldCheck, ShieldX } from "lucide-react";
 
-import { TableToolbar } from "@/components/console/table-toolbar";
+import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -35,12 +36,16 @@ const ENTITIES = [
 
 interface AuditFilters extends Record<string, string | undefined> {
   entity?: string;
+  from?: string;
   search?: string;
+  to?: string;
 }
 
 const FILTERS_SPEC: TableFiltersSpec<AuditFilters> = {
   entity: { kind: "enum", values: ENTITIES },
+  from: { kind: "string" },
   search: { kind: "string" },
+  to: { kind: "string" },
 };
 
 const actorName = (log: AuditLogRow): string =>
@@ -171,24 +176,46 @@ export default function AuditPage() {
             search={filters.search ?? ""}
             searchPlaceholder="Search action, entity, actor, or IP…"
           >
-            <Select
-              onValueChange={(value) =>
-                handleFiltersChange({ entity: value === "all" ? undefined : value })
-              }
-              value={filters.entity ?? "all"}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="All entities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All entities</SelectItem>
-                {ENTITIES.map((entity) => (
-                  <SelectItem key={entity} value={entity}>
-                    {entity}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterField caption="Entity">
+              <Select
+                onValueChange={(value) =>
+                  handleFiltersChange({ entity: value === "all" ? undefined : value })
+                }
+                value={filters.entity ?? "all"}
+              >
+                <SelectTrigger className="w-full lg:w-44">
+                  <SelectValue placeholder="All entities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All entities</SelectItem>
+                  {ENTITIES.map((entity) => (
+                    <SelectItem key={entity} value={entity}>
+                      {entity}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            {/* Date range: whole-day inclusive on both ends (server handles
+                the exclusive next-day upper bound). */}
+            <FilterField caption="From date">
+              <Input
+                aria-label="From date"
+                className="w-full lg:w-38"
+                onChange={(e) => handleFiltersChange({ from: e.target.value || undefined })}
+                type="date"
+                value={filters.from ?? ""}
+              />
+            </FilterField>
+            <FilterField caption="To date">
+              <Input
+                aria-label="To date"
+                className="w-full lg:w-38"
+                onChange={(e) => handleFiltersChange({ to: e.target.value || undefined })}
+                type="date"
+                value={filters.to ?? ""}
+              />
+            </FilterField>
           </TableToolbar>
         }
         totalCount={totalCount}

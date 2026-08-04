@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Bodoni_Moda, Courier_Prime, Instrument_Sans } from "next/font/google";
 
 import { SiteBackground } from "@/components/site-background";
 import { siteConfig, siteUrl } from "@/lib/site";
@@ -8,12 +8,26 @@ import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
+// Editorial type system: Bodoni Moda for display headings (the "declaration"
+// voice), Instrument Sans for body/UI, Courier Prime for serials, counts and
+// micro-labels.
+const instrument = Instrument_Sans({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-app",
 });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const bodoni = Bodoni_Moda({
+  display: "swap",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-display-app",
+});
+const courier = Courier_Prime({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-mono-app",
+  weight: ["400", "700"],
+});
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -61,7 +75,9 @@ export default function RootLayout({
     // Dark-only product: the `dark` class stays on <html> permanently so
     // component-level dark: variants keep applying.
     <html className="dark" lang="en">
-      <body className={`${jakarta.variable} ${geistMono.variable} font-sans`}>
+      <body
+        className={`${instrument.variable} ${bodoni.variable} ${courier.variable} font-sans`}
+      >
         <SiteBackground />
         <ReduxProvider>{children}</ReduxProvider>
       </body>

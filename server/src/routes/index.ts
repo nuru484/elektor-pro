@@ -1,10 +1,12 @@
 // src/routes/index.ts
 import express from 'express';
 
+import adminRoutes from './admin.js';
 import authenticationRoutes from './authentication/index.js';
 import dashboardRoutes from './dashboard/index.js';
 import domainRoutes from './domain/index.js';
 import governanceRoutes from './governance/index.js';
+import permissionsRoutes from './permissions.js';
 import resultsRoutes from './results/index.js';
 import usersRoutes from './users/index.js';
 import votingRoutes from './voting/index.js';
@@ -17,6 +19,8 @@ routes.use('/', votingRoutes);
 routes.use('/', resultsRoutes);
 routes.use('/', dashboardRoutes);
 routes.use('/', governanceRoutes);
+routes.use('/admin', adminRoutes);
+routes.use('/permissions', permissionsRoutes);
 routes.use('/users', usersRoutes);
 
 export default routes;

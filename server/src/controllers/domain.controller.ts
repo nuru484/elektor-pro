@@ -8,7 +8,8 @@ import {
   type ElectionStatus,
 } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
-import { asyncHandler } from '../middlewares/error-handler.js';
+import multerUpload from '../config/multer.js';
+import { asyncHandler, ValidationError } from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
 import {
   approveChangeRequest,
@@ -33,6 +34,10 @@ import {
   listGroups,
 } from '../services/domain/group.service.js';
 import {
+  type BrandingField,
+  updateBrandingImage,
+} from '../services/domain/organization-branding.service.js';
+import {
   getOrganization,
 } from '../services/domain/organization.service.js';
 import {
@@ -40,6 +45,7 @@ import {
   listPortfolios,
 } from '../services/domain/portfolio.service.js';
 import { getVoter, listVoters } from '../services/domain/voter.service.js';
+import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendList, sendOk } from '../utils/http.js';
 import {
   bulkVoterSchema,
@@ -190,6 +196,34 @@ export const getOrganizationController = asyncHandler(async (_req, res) => {
   sendOk(res, 'Organization retrieved', await getOrganization());
 });
 
+/** Branding images apply directly (binary can't ride maker-checker JSON). */
+const brandingHandler = (field: BrandingField, message: string) =>
+  asyncHandler(async (req, res) => {
+    if (!req.file) {
+      throw new ValidationError('An image file is required', {
+        code: 'VALIDATION_ERROR',
+        context: { errors: [{ field: 'image', message: 'An image file is required' }] },
+      });
+    }
+    const org = await updateBrandingImage(
+      field,
+      { buffer: req.file.buffer, mimetype: req.file.mimetype },
+      actorOf(req),
+      ctxOf(req),
+    );
+    sendOk(res, message, org);
+  });
+
+export const updateOrganizationLogoController: RequestHandler[] = [
+  multerUpload.single('image'),
+  brandingHandler('logoUrl', 'Logo updated'),
+];
+
+export const updateOrganizationFaviconController: RequestHandler[] = [
+  multerUpload.single('image'),
+  brandingHandler('faviconUrl', 'Favicon updated'),
+];
+
 export const updateOrganizationController: RequestHandler[] = [
   ...validationMiddleware.update(updateOrganizationSchema),
   asyncHandler(async (req, res) => {
@@ -214,9 +248,12 @@ export const listChangeRequestsController = asyncHandler(async (req, res) => {
   const result = await listChangeRequests(
     {
       entity: str(req.query.entity) as ChangeEntity | undefined,
+      from: dayBoundary(req.query.from),
       requestedById:
         req.query.mine === 'true' ? req.user?.id : str(req.query.requestedById),
+      search: str(req.query.search),
       status: str(req.query.status) as ChangeStatus | undefined,
+      to: dayBoundary(req.query.to, true),
     },
     parsePagination(req.query),
   );

@@ -8,6 +8,7 @@ import {
   getAgentDashboard,
   getCandidateDashboard,
 } from '../services/dashboard/dashboard.service.js';
+import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendList, sendOk } from '../utils/http.js';
 
 const userIdOf = (req: Request): string => {
@@ -43,7 +44,9 @@ export const listAuditLogsController = asyncHandler(
         action: str(req.query.action),
         actorId: str(req.query.actorId),
         entity: str(req.query.entity),
+        from: dayBoundary(req.query.from),
         search: str(req.query.search),
+        to: dayBoundary(req.query.to, true),
       },
       parsePagination(req.query),
     );

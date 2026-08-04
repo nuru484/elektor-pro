@@ -33,6 +33,13 @@ const COLUMNS = [
       { href: "/forgot-password", label: "Reset password" },
     ],
   },
+  {
+    heading: "Legal",
+    links: [
+      { href: "/privacy-policy", label: "Privacy Policy" },
+      { href: "/terms-of-service", label: "Terms of Service" },
+    ],
+  },
 ];
 
 export function SiteFooter() {
@@ -56,7 +63,7 @@ export function SiteFooter() {
 
       {/* Link columns */}
       <div className="border-t border-border">
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 md:grid-cols-[1.3fr_repeat(3,minmax(0,1fr))] md:px-10">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 md:grid-cols-[1.3fr_repeat(4,minmax(0,1fr))] md:px-10">
           <div className="max-w-xs">
             <Logo imgSize={30} textClassName="text-xl" />
             <p className="mt-3 leading-relaxed text-muted-foreground">
@@ -103,10 +110,26 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6 md:px-10">
+        {/* Phones: everything centered, scroll-to-top on its own row. From
+            sm up: one row, copyright left and scroll-to-top right, as usual. */}
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 py-6 text-center sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left md:px-10">
           <p className="text-muted-foreground">
-            © {new Date().getFullYear()} Elektor Pro. Every ballot secret,
-            every result provable.
+            {/* Each half is an unbreakable chunk: they share a line wherever
+                both fit, and the credit drops down whole when they don't. */}
+            <span className="inline-block whitespace-nowrap">
+              © {new Date().getFullYear()} Elektor Pro.
+            </span>{" "}
+            <span className="inline-block whitespace-nowrap">
+              Developed by{" "}
+              <a
+                className="font-semibold text-foreground transition-colors hover:text-brand"
+                href="https://manuru.dev"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                manuru
+              </a>
+            </span>
           </p>
           <button
             className="flex items-center gap-2 transition-colors hover:text-muted-foreground"

@@ -1,6 +1,7 @@
 import {
   type Capability,
   Role,
+  type Status as UserStatus,
 } from '../../../generated/prisma/client.js';
 // src/services/governance/governance.service.ts
 // Staff/agent/candidate account creation, agent assignments, and capability
@@ -20,7 +21,12 @@ import { canApproveChanges } from '../authorization/capability.service.js';
 interface Actor { id: string; role: Role }
 interface Ctx { ipAddress?: string; userAgent?: string }
 
-const STAFF_ROLES = new Set<Role>([Role.ADMIN, Role.AGENT, Role.CANDIDATE]);
+const STAFF_ROLES = new Set<Role>([
+  Role.ACCREDITOR,
+  Role.ADMIN,
+  Role.AGENT,
+  Role.CANDIDATE,
+]);
 
 export interface StaffUserInput {
   email: string;
@@ -41,7 +47,7 @@ export const createStaffUser = async (
     throw new ForbiddenError('Only a super administrator can create accounts');
   }
   if (!STAFF_ROLES.has(input.role)) {
-    throw new BadRequestError('Role must be ADMIN, AGENT or CANDIDATE');
+    throw new BadRequestError('Role must be ADMIN, AGENT, CANDIDATE or ACCREDITOR');
   }
   const user = await prisma.user.create({
     data: {
@@ -69,11 +75,28 @@ export const createStaffUser = async (
 };
 
 export const listStaffUsers = async (
-  filters: { role?: Role; search?: string },
+  filters: {
+    from?: Date;
+    role?: Role;
+    search?: string;
+    status?: UserStatus;
+    to?: Date;
+  },
   pagination: PaginationParams,
 ) => {
   const where = {
-    role: filters.role ?? { in: [Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.CANDIDATE] },
+    role: filters.role ?? {
+      in: [Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.CANDIDATE, Role.ACCREDITOR],
+    },
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.from || filters.to
+      ? {
+          createdAt: {
+            ...(filters.from ? { gte: filters.from } : {}),
+            ...(filters.to ? { lt: filters.to } : {}),
+          },
+        }
+      : {}),
     ...(filters.search
       ? {
           OR: [
@@ -143,16 +166,47 @@ export const assignAgent = async (
   return assignment;
 };
 
-export const listAgentAssignments = (electionId?: string) =>
-  prisma.agentAssignment.findMany({
-    include: {
-      candidate: { select: { id: true, name: true } },
-      election: { select: { id: true, name: true } },
-      user: { select: { email: true, firstName: true, id: true, lastName: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    where: electionId ? { electionId } : {},
-  });
+export const listAgentAssignments = async (
+  filters: { electionId?: string; from?: Date; search?: string; to?: Date },
+  pagination: PaginationParams,
+) => {
+  const where = {
+    ...(filters.electionId ? { electionId: filters.electionId } : {}),
+    ...(filters.search
+      ? {
+          OR: [
+            { user: { firstName: { contains: filters.search, mode: 'insensitive' as const } } },
+            { user: { lastName: { contains: filters.search, mode: 'insensitive' as const } } },
+            { candidate: { name: { contains: filters.search, mode: 'insensitive' as const } } },
+            { election: { name: { contains: filters.search, mode: 'insensitive' as const } } },
+          ],
+        }
+      : {}),
+    ...(filters.from || filters.to
+      ? {
+          createdAt: {
+            ...(filters.from ? { gte: filters.from } : {}),
+            ...(filters.to ? { lt: filters.to } : {}),
+          },
+        }
+      : {}),
+  };
+  const [data, total] = await Promise.all([
+    prisma.agentAssignment.findMany({
+      include: {
+        candidate: { select: { id: true, name: true } },
+        election: { select: { id: true, name: true } },
+        user: { select: { email: true, firstName: true, id: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: pagination.skip,
+      take: pagination.limit,
+      where,
+    }),
+    prisma.agentAssignment.count({ where }),
+  ]);
+  return { data, meta: buildMeta(total, pagination.page, pagination.limit) };
+};
 
 export const removeAgentAssignment = async (
   actor: Actor,
@@ -210,18 +264,45 @@ export const grantCapability = async (
   return grant;
 };
 
-export const listGrants = (filters: { electionId?: string; userId?: string }) =>
-  prisma.accessGrant.findMany({
-    include: {
-      user: { select: { email: true, firstName: true, id: true, lastName: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    where: {
-      revokedAt: null,
-      ...(filters.userId ? { userId: filters.userId } : {}),
-      ...(filters.electionId ? { electionId: filters.electionId } : {}),
-    },
-  });
+export const listGrants = async (
+  filters: {
+    capability?: Capability;
+    electionId?: string;
+    from?: Date;
+    to?: Date;
+    userId?: string;
+  },
+  pagination: PaginationParams,
+) => {
+  const where = {
+    revokedAt: null,
+    ...(filters.userId ? { userId: filters.userId } : {}),
+    ...(filters.electionId ? { electionId: filters.electionId } : {}),
+    ...(filters.capability ? { capability: filters.capability } : {}),
+    ...(filters.from || filters.to
+      ? {
+          createdAt: {
+            ...(filters.from ? { gte: filters.from } : {}),
+            ...(filters.to ? { lt: filters.to } : {}),
+          },
+        }
+      : {}),
+  };
+  const [data, total] = await Promise.all([
+    prisma.accessGrant.findMany({
+      include: {
+        election: { select: { id: true, name: true } },
+        user: { select: { email: true, firstName: true, id: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: pagination.skip,
+      take: pagination.limit,
+      where,
+    }),
+    prisma.accessGrant.count({ where }),
+  ]);
+  return { data, meta: buildMeta(total, pagination.page, pagination.limit) };
+};
 
 export const revokeGrant = async (actor: Actor, id: string): Promise<void> => {
   if (actor.role !== Role.SUPER_ADMIN) {

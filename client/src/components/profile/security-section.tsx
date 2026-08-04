@@ -124,7 +124,7 @@ function TotpDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
               <img alt="TOTP enrollment QR code" className="size-44" src={data.data.qrCode} />
             </div>
             <Field error={codeForm.formState.errors.code?.message} label="6-digit code">
-              <Input autoFocus inputMode="numeric" placeholder="123456" {...codeForm.register("code")} />
+              <Input autoFocus className="max-w-40" inputMode="numeric" placeholder="123456" {...codeForm.register("code")} />
             </Field>
             <Button className="w-full" loading={activating} type="submit" variant="brand">
               Turn on two-factor
@@ -189,7 +189,7 @@ function EmailTwoFactorDialog({ onClose, open }: { onClose: () => void; open: bo
         ) : data ? (
           <form className="space-y-4" onSubmit={onActivate}>
             <Field error={codeForm.formState.errors.code?.message} label="Verification code">
-              <Input autoFocus inputMode="numeric" placeholder="123456" {...codeForm.register("code")} />
+              <Input autoFocus className="max-w-40" inputMode="numeric" placeholder="123456" {...codeForm.register("code")} />
             </Field>
             <Button className="w-full" loading={activating} type="submit" variant="brand">
               Turn on two-factor
@@ -296,7 +296,7 @@ export function SecuritySection({ user }: { user: CurrentUser }) {
         </CardHeader>
         <CardContent className={CARD_PAD_MOBILE}>
           {editingPassword ? (
-            <form className="space-y-4" onSubmit={onChangePassword}>
+            <form className="max-w-lg space-y-4" onSubmit={onChangePassword}>
               <Field
                 error={form.formState.errors.currentPassword?.message}
                 label="Current password"

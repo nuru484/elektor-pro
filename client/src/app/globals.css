@@ -7,7 +7,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-app);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-mono-app);
+  --font-display: var(--font-display-app);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -98,10 +99,10 @@
   --chart-4: oklch(0.7 0.19 22);
   --chart-5: oklch(0.73 0.012 258);
 
-  /* Ambient background (depth) - a fine line grid fading from the top,
-     one soft blue glow behind the hero, and a bottom fade. */
-  --bg-line: oklch(1 0 0 / 0.045);
-  --bg-glow-1: oklch(0.62 0.16 255 / 0.13);
+  /* Ambient background (depth) - soft brand aurora glows plus a fine film
+     grain, no geometric pattern. */
+  --bg-glow-1: oklch(0.62 0.16 255 / 0.14);
+  --bg-glow-2: oklch(0.62 0.16 255 / 0.07);
   --bg-fade: oklch(0.16 0.02 258 / 0.5);
 }
 
@@ -149,10 +150,11 @@
   }
 }
 
-/* Ambient page background - a faint dotted grid that fades downward, two
-   soft radial glows, and a vertical fade. Monochrome and theme-aware (see
-   --bg-* tokens). Fixed behind all content; opaque dashboard surfaces cover
-   it, so it shows on public pages only. */
+/* Ambient page background - a soft brand aurora (one glow cresting behind
+   the hero, one faint counter-glow lower right), a vertical fade, and a
+   barely-there film grain for texture. No geometric pattern. Fixed behind
+   all content; opaque dashboard surfaces cover it, so it shows on public
+   pages only. */
 .site-background {
   position: fixed;
   inset: 0;
@@ -165,21 +167,12 @@
   content: "";
   position: absolute;
   inset: 0;
-  /* Fine square grid - ledger/graph-paper precision, not dots. */
-  background-image:
-    linear-gradient(to right, var(--bg-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--bg-line) 1px, transparent 1px);
-  background-size: 44px 44px;
-  -webkit-mask-image: radial-gradient(
-    ellipse 110% 65% at 50% 0%,
-    #000 25%,
-    transparent 80%
-  );
-  mask-image: radial-gradient(
-    ellipse 110% 65% at 50% 0%,
-    #000 25%,
-    transparent 80%
-  );
+  /* SVG fractal-noise grain, tiled small so it reads as texture, not
+     pattern. Kept extremely faint - it removes the flat "digital" feel
+     without being visible as an element. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.05;
 }
 
 .site-background::after {
@@ -187,57 +180,56 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(55% 42% at 50% 0%, var(--bg-glow-1), transparent 72%),
+    radial-gradient(52% 40% at 50% 0%, var(--bg-glow-1), transparent 70%),
+    radial-gradient(44% 32% at 88% 62%, var(--bg-glow-2), transparent 70%),
     linear-gradient(to bottom, transparent 55%, var(--bg-fade) 100%);
 }
 
-/* --- Hero board animations (landing) ------------------------------------ */
+/* --- Hero load sequence (landing) ---------------------------------------- */
 
-/* A ballot slip falls toward the box, tilts upright, and disappears into
-   the slot (the container clips it at the slot line). */
-@keyframes ballot-drop {
-  0% {
-    opacity: 0;
-    transform: translateY(-130%) rotate(-10deg);
-  }
-  12% {
-    opacity: 1;
-  }
-  58% {
-    transform: translateY(-8%) rotate(-3deg);
-  }
-  82% {
-    opacity: 1;
-    transform: translateY(58%) rotate(0deg);
-  }
-  92%,
-  100% {
-    opacity: 0;
-    transform: translateY(70%) rotate(0deg);
-  }
+/* Elements enter in numbered steps once the hero mounts: fade up, then the
+   gauge bars paint, the counts tick, and the certification seal stamps in.
+   The global reduced-motion rule collapses all of it to an instant render. */
+.rise {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.hero-ready .rise {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.hero-ready .rise[data-step="1"] {
+  transition-delay: 0.05s;
+}
+.hero-ready .rise[data-step="2"] {
+  transition-delay: 0.14s;
+}
+.hero-ready .rise[data-step="3"] {
+  transition-delay: 0.23s;
+}
+.hero-ready .rise[data-step="4"] {
+  transition-delay: 0.32s;
 }
 
-/* The box slot flashes softly as a ballot lands. */
-@keyframes slot-glow {
-  0%,
-  70%,
-  100% {
-    background-color: var(--muted);
-  }
-  80%,
-  88% {
-    background-color: var(--brand);
-  }
+.hero-seal {
+  opacity: 0;
+  transform: scale(1.14);
+}
+.hero-sealed .hero-seal {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.3s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.45s cubic-bezier(0.16, 1.15, 0.3, 1);
 }
 
-/* The verified chip breathes once per cycle as a vote is confirmed. */
-@keyframes chip-pop {
-  0%,
-  74%,
-  100% {
-    transform: scale(1);
-  }
-  84% {
-    transform: scale(1.05);
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .hero-seal {
+    opacity: 1;
+    transform: none;
   }
 }

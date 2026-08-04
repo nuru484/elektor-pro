@@ -116,7 +116,8 @@ function ContactChangeInline({
   return (
     <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
       {stage === "value" ? (
-        <form className="space-y-4" onSubmit={onRequest}>
+        // Width-capped: an email/phone never needs a full-card input.
+        <form className="max-w-md space-y-4" onSubmit={onRequest}>
           <Field
             error={valueForm.formState.errors[fieldName]?.message}
             hint="We'll send a verification code to confirm it's yours."
@@ -139,7 +140,7 @@ function ContactChangeInline({
           </div>
         </form>
       ) : (
-        <form className="space-y-4" onSubmit={onConfirm}>
+        <form className="max-w-md space-y-4" onSubmit={onConfirm}>
           <Field
             error={codeForm.formState.errors.code?.message}
             hint="Enter the code we just sent to confirm the change."
@@ -147,6 +148,7 @@ function ContactChangeInline({
           >
             <Input
               autoFocus
+              className="max-w-40"
               inputMode="numeric"
               placeholder="123456"
               {...codeForm.register("code")}
@@ -194,7 +196,8 @@ function NameCard({ user }: { user: CurrentUser }) {
       <CardContent className={CARD_PAD_MOBILE}>
         {editing ? (
           <form className="space-y-4" onSubmit={onSave}>
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Width-capped: names never need full-card inputs. */}
+            <div className="grid max-w-lg gap-4 sm:grid-cols-2">
               <Field error={form.formState.errors.firstName?.message} label="First name">
                 <Input placeholder="e.g. Ama" {...form.register("firstName")} />
               </Field>

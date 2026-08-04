@@ -14,6 +14,8 @@ import type { ApiResponse, CurrentUser } from "@/types/api";
 
 import { env } from "@/lib/env";
 
+import { clearSessionMarker } from "@/lib/session-marker";
+
 import { userLoggedIn, userLoggedOut } from "./auth/auth-slice";
 
 const mutex = new Mutex();
@@ -80,7 +82,10 @@ const baseQueryWithReauth: BaseQueryFn<
         } else {
           // Refresh failed: the session is gone. Clear the user AND the RTK
           // Query cache - otherwise the 401 errors cached here survive the
-          // forced logout and flash on every card after the next login.
+          // forced logout and flash on every card after the next login. The
+          // frontend-domain marker goes too, so the proxy gate stops letting
+          // dead sessions load the console shell.
+          clearSessionMarker();
           api.dispatch(userLoggedOut());
           api.dispatch(apiSlice.util.resetApiState());
         }
@@ -100,15 +105,19 @@ export const apiSlice = createApi({
   endpoints: () => ({}),
   reducerPath: "api",
   tagTypes: [
+    "Agents",
     "AuditLog",
     "Candidate",
     "ChangeRequest",
     "CurrentUser",
     "Dashboard",
+    "DeletedRecords",
     "Election",
+    "Grants",
     "Group",
     "GroupCategory",
     "Organization",
+    "Permissions",
     "Portfolio",
     "Results",
     "Sessions",

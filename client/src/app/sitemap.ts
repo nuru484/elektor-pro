@@ -10,5 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // stable and meant to be discoverable.
   return [
     { changeFrequency: "weekly", lastModified: now, priority: 1, url: `${siteUrl}/` },
+    { changeFrequency: "yearly", lastModified: now, priority: 0.3, url: `${siteUrl}/privacy-policy` },
+    { changeFrequency: "yearly", lastModified: now, priority: 0.3, url: `${siteUrl}/terms-of-service` },
   ];
 }

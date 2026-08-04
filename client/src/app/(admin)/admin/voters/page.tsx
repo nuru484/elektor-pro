@@ -20,6 +20,7 @@ import { clearAllFiltersPatch } from "@/components/ui/table-empty-logic";
 import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
 import { useCreateVoterMutation, useListVotersQuery } from "@/redux/admin-api";
+import { useListGroupsQuery } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 
 interface VoterFilters extends Record<string, string | undefined> {
@@ -69,12 +70,17 @@ const COLUMNS: ColumnDef<Voter>[] = [
 
 function AddVoterModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [createVoter, { isLoading: creating }] = useCreateVoterMutation();
+  const { data: groupsData } = useListGroupsQuery({ limit: 100 }, { skip: !open });
+  const groups = groupsData?.data ?? [];
 
   const onCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const groupIds = f.getAll("groupIds").map(String);
     try {
       const res = await createVoter({
+        email: f.get("email") || undefined,
+        groupIds: groupIds.length > 0 ? groupIds : undefined,
         name: f.get("name"),
         phoneNumber: f.get("phoneNumber") || undefined,
         voterId: f.get("voterId"),
@@ -100,6 +106,34 @@ function AddVoterModal({ onClose, open }: { onClose: () => void; open: boolean }
         <Field hint="Used to send their one-time login code" label="Phone number">
           <Input name="phoneNumber" placeholder="e.g. +233 24 000 0000" />
         </Field>
+        <Field hint="Fallback for their one-time login code" label="Email">
+          <Input name="email" placeholder="e.g. ama@example.com (optional)" type="email" />
+        </Field>
+        {groups.length > 0 && (
+          <Field
+            hint="Group membership decides which scoped elections they can vote in."
+            label="Groups"
+          >
+            <div className="grid max-h-40 grid-cols-1 gap-1.5 overflow-y-auto rounded-lg border border-border p-3 sm:grid-cols-2">
+              {groups.map((group) => (
+                <label className="flex items-center gap-2 text-sm" key={group.id}>
+                  <input
+                    className="size-4 accent-brand"
+                    name="groupIds"
+                    type="checkbox"
+                    value={group.id}
+                  />
+                  <span className="min-w-0 truncate">
+                    {group.name}
+                    {group.category ? (
+                      <span className="text-muted-foreground"> · {group.category.name}</span>
+                    ) : null}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </Field>
+        )}
         <Button className="w-full" loading={creating} type="submit" variant="brand">
           Add voter
         </Button>
@@ -137,11 +171,6 @@ export default function VotersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        action={
-          <Button onClick={() => setAddOpen(true)} variant="brand">
-            <Plus className="size-4" /> Add voter
-          </Button>
-        }
         description="The people eligible to vote in your elections."
         title="Voters"
       />
@@ -188,6 +217,11 @@ export default function VotersPage() {
         table={table}
         toolbar={
           <TableToolbar
+            actions={
+              <Button onClick={() => setAddOpen(true)} variant="brand">
+                <Plus className="size-4" /> Add voter
+              </Button>
+            }
             filters={filters}
             onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
             onSearchChange={(value) => handleFiltersChange({ search: value || undefined })}

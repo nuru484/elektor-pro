@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 
-import { Logo } from "@/components/brand/logo";
-
 /** Route-segment error boundary - the failed-page state with a retry. */
 export default function ErrorBoundary({
   reset,
@@ -13,8 +11,7 @@ export default function ErrorBoundary({
 }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-20 text-center">
-      <Logo href="/" imgSize={40} showText={false} />
-      <h1 className="mt-8 text-3xl font-medium md:text-4xl">
+      <h1 className="text-3xl font-medium md:text-4xl">
         Something didn&apos;t go through.
       </h1>
       <p className="mt-4 max-w-md text-lg leading-relaxed text-muted-foreground">

@@ -5,7 +5,9 @@ import type { AppDeps } from '../src/services/deps.js';
 
 import app from '../app.js';
 import { Role } from '../generated/prisma/client.js';
+import { DEFAULT_ROLE_CAPABILITIES, EDITABLE_ROLES } from '../src/config/capabilities.js';
 import prisma from '../src/lib/prisma.js';
+import { invalidateRoleCapabilityCache } from '../src/services/authorization/role-capability.service.js';
 import { hashPassword } from '../src/utils/password.js';
 
 export { app, prisma };
@@ -15,14 +17,23 @@ export const api = () => request(app);
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- deliberate cast helper; the single-use generic IS the ergonomic point
 export const bodyOf = <T>(res: { body: unknown }): T => res.body as T;
 
-/** Truncate every table between tests. */
+/** Truncate every table between tests, then restore baseline seed data. */
 export const resetDb = async (): Promise<void> => {
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables
     WHERE schemaname = 'public' AND tablename NOT LIKE '_prisma%'`;
-  if (tables.length === 0) return;
-  const list = tables.map((t) => `"${t.tablename}"`).join(', ');
-  await prisma.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
+  if (tables.length > 0) {
+    const list = tables.map((t) => `"${t.tablename}"`).join(', ');
+    await prisma.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
+  }
+  // Re-seed the role capability defaults (the runtime matrix) and drop its
+  // cache so tests never see grants from a previous test's edits.
+  await prisma.roleCapability.createMany({
+    data: EDITABLE_ROLES.flatMap((role) =>
+      DEFAULT_ROLE_CAPABILITIES[role].map((capability) => ({ capability, role })),
+    ),
+  });
+  invalidateRoleCapabilityCache();
 };
 
 export const createUser = async (

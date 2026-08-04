@@ -14,8 +14,12 @@ export const listAuditLogs = async (
     action?: string;
     actorId?: string;
     entity?: string;
+    /** Inclusive lower bound on createdAt. */
+    from?: Date;
     /** Free-text search across action, entity, IP, and actor name. */
     search?: string;
+    /** EXCLUSIVE upper bound on createdAt (callers pass day-after for date filters). */
+    to?: Date;
   },
   pagination: PaginationParams,
 ) => {
@@ -23,6 +27,14 @@ export const listAuditLogs = async (
     ...(filters.entity ? { entity: filters.entity } : {}),
     ...(filters.actorId ? { actorId: filters.actorId } : {}),
     ...(filters.action ? { action: { contains: filters.action } } : {}),
+    ...(filters.from || filters.to
+      ? {
+          createdAt: {
+            ...(filters.from ? { gte: filters.from } : {}),
+            ...(filters.to ? { lt: filters.to } : {}),
+          },
+        }
+      : {}),
     ...(filters.search
       ? {
           OR: [

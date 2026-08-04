@@ -4,9 +4,11 @@ import type {
   ApiResponse,
   Candidate,
   ChangeRequest,
+  DeletedRow,
   Election,
   ListQuery,
   PaginatedResponse,
+  PermissionsMatrix,
   Portfolio,
   Voter,
 } from "@/types/api";
@@ -72,7 +74,7 @@ export const adminApi = apiSlice.injectEndpoints({
     }),
     listAuditLogs: build.query<
       PaginatedResponse<AuditLogRow>,
-      ListQuery & { entity?: string }
+      ListQuery & { entity?: string; from?: string; to?: string }
     >({
       providesTags: ["AuditLog"],
       query: (params) => `/audit-logs${qs(params)}`,
@@ -92,9 +94,74 @@ export const adminApi = apiSlice.injectEndpoints({
       providesTags: ["Candidate"],
       query: (params) => `/candidates${qs(params)}`,
     }),
-    listChangeRequests: build.query<PaginatedResponse<ChangeRequest>, ListQuery & { status?: string }>({
+    cancelChange: build.mutation<unknown, { id: string }>({
+      invalidatesTags: ["ChangeRequest"],
+      query: ({ id }) => ({ method: "POST", url: `/change-requests/${id}/cancel` }),
+    }),
+    getChangeRequest: build.query<ApiResponse<ChangeRequest>, string>({
+      providesTags: ["ChangeRequest"],
+      query: (id) => `/change-requests/${id}`,
+    }),
+    getDeletedSummary: build.query<
+      ApiResponse<{ count: number; resource: string }[]>,
+      void
+    >({
+      providesTags: ["DeletedRecords"],
+      query: () => "/admin/deleted",
+    }),
+    getPermissions: build.query<ApiResponse<PermissionsMatrix>, void>({
+      providesTags: ["Permissions"],
+      query: () => "/permissions",
+    }),
+    listChangeRequests: build.query<
+      PaginatedResponse<ChangeRequest>,
+      ListQuery & { entity?: string; from?: string; status?: string; to?: string }
+    >({
       providesTags: ["ChangeRequest"],
       query: (params) => `/change-requests${qs(params)}`,
+    }),
+    listDeletedRecords: build.query<
+      PaginatedResponse<DeletedRow>,
+      ListQuery & { from?: string; resource: string; to?: string }
+    >({
+      providesTags: ["DeletedRecords"],
+      query: ({ resource, ...params }) => `/admin/deleted/${resource}${qs(params)}`,
+    }),
+    purgeDeletedRecord: build.mutation<unknown, { id: string; resource: string }>({
+      invalidatesTags: ["DeletedRecords"],
+      query: ({ id, resource }) => ({
+        method: "DELETE",
+        url: `/admin/deleted/${resource}/${id}`,
+      }),
+    }),
+    restoreDeletedRecord: build.mutation<unknown, { id: string; resource: string }>({
+      // Restored rows reappear in their live lists - refresh them all.
+      invalidatesTags: [
+        "DeletedRecords",
+        "Voter",
+        "Election",
+        "Candidate",
+        "Portfolio",
+        "Group",
+        "GroupCategory",
+        "StaffUser",
+        "Dashboard",
+      ],
+      query: ({ id, resource }) => ({
+        method: "POST",
+        url: `/admin/deleted/${resource}/${id}/restore`,
+      }),
+    }),
+    updateRolePermissions: build.mutation<
+      unknown,
+      { capabilities: string[]; role: string }
+    >({
+      invalidatesTags: ["Permissions", "CurrentUser"],
+      query: ({ capabilities, role }) => ({
+        body: { capabilities },
+        method: "PUT",
+        url: `/permissions/${role}`,
+      }),
     }),
     listElections: build.query<PaginatedResponse<Election>, ListQuery & { status?: string }>({
       providesTags: ["Election"],
@@ -117,18 +184,26 @@ export const adminApi = apiSlice.injectEndpoints({
 
 export const {
   useApproveChangeMutation,
+  useCancelChangeMutation,
   useCreateCandidateMutation,
   useCreateElectionMutation,
   useCreatePortfolioMutation,
   useCreateVoterMutation,
+  useGetChangeRequestQuery,
   useGetDashboardQuery,
+  useGetDeletedSummaryQuery,
   useGetElectionQuery,
+  useGetPermissionsQuery,
   useListAuditLogsQuery,
   useListCandidatesQuery,
   useListChangeRequestsQuery,
+  useListDeletedRecordsQuery,
   useListElectionsQuery,
   useListVotersQuery,
+  usePurgeDeletedRecordMutation,
   useRejectChangeMutation,
+  useRestoreDeletedRecordMutation,
   useSetElectionStatusMutation,
+  useUpdateRolePermissionsMutation,
   useVerifyAuditQuery,
 } = adminApi;

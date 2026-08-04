@@ -13,9 +13,9 @@ import { jsonRecord } from './common.js';
 // --- Organization ---
 export const updateOrganizationSchema = z.object({
   accentColor: z.string().max(20).optional(),
-  faviconUrl: z.url().optional().nullable(),
+  // logoUrl/faviconUrl deliberately absent: branding media URLs may only
+  // originate from the upload endpoints, never from a request body.
   locale: z.string().max(10).optional(),
-  logoUrl: z.url().optional().nullable(),
   name: z.string().min(2).max(150).optional(),
   primaryColor: z.string().max(20).optional(),
   settings: jsonRecord.optional().nullable(),

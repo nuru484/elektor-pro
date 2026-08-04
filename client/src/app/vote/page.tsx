@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
+import { setSessionMarker } from "@/lib/session-marker";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import {
   useListVoterElectionsQuery,
@@ -86,6 +87,9 @@ export default function VotePage() {
     e.preventDefault();
     try {
       await verifyOtp({ code, identifier }).unwrap();
+      // Voters can visit proxy-gated pages like /profile, so mark the
+      // frontend domain as holding a session here too.
+      setSessionMarker();
       setStage("done");
       toast.success("You're verified");
     } catch (error) {

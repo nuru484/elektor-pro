@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import type { Candidate } from "@/types/api";
 
-import { TableToolbar } from "@/components/console/table-toolbar";
+import { FilterField, TableToolbar } from "@/components/console/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { DataTable, useDataTable } from "@/components/ui/data-table";
 import { Field } from "@/components/ui/field";
@@ -168,11 +168,6 @@ export default function CandidatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        action={
-          <Button onClick={() => setAddOpen(true)} variant="brand">
-            <Plus className="size-4" /> Add candidate
-          </Button>
-        }
         description="Candidates contesting across your elections."
         title="Candidates"
       />
@@ -214,30 +209,37 @@ export default function CandidatesPage() {
         table={table}
         toolbar={
           <TableToolbar
+            actions={
+              <Button onClick={() => setAddOpen(true)} variant="brand">
+                <Plus className="size-4" /> Add candidate
+              </Button>
+            }
             filters={filters}
             onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
             onSearchChange={(value) => handleFiltersChange({ search: value || undefined })}
             search={filters.search ?? ""}
             searchPlaceholder="Search candidates…"
           >
-            <Select
-              onValueChange={(value) =>
-                handleFiltersChange({ electionId: value === "all" ? undefined : value })
-              }
-              value={filters.electionId ?? "all"}
-            >
-              <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="All elections" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All elections</SelectItem>
-                {elections?.data.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterField caption="Election">
+              <Select
+                onValueChange={(value) =>
+                  handleFiltersChange({ electionId: value === "all" ? undefined : value })
+                }
+                value={filters.electionId ?? "all"}
+              >
+                <SelectTrigger className="w-full lg:w-52">
+                  <SelectValue placeholder="All elections" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All elections</SelectItem>
+                  {elections?.data.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
           </TableToolbar>
         }
         totalCount={totalCount}

@@ -2,10 +2,11 @@
 
 // Text-first navigation derived from the portfolio's language, but with its
 // own behavior: transparent at the top of the page, sticky with a blurred
-// hairline once scrolled. Page links sit apart from the actions - "Voter
-// portal" as a quiet text link and "Sign in" as the single pill - so the bar
-// stays airy. Mobile keeps the "Menu"/"Close" text toggle with a full-screen
-// overlay.
+// hairline once scrolled. Three tiers: phones get the "Menu"/"Close" toggle
+// with a full-screen overlay; tablets (md-lg) drop the section tabs and show
+// only the auth links, which is all that fits well there; from lg the full
+// bar renders - section links apart from the actions ("Voter portal" as a
+// quiet text link, "Sign in" as the single pill) so it stays airy.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -46,7 +47,7 @@ export function SiteHeader() {
           <Logo imgSize={34} textClassName="text-2xl" />
 
           {/* Page links, visually separate from the actions */}
-          <div className="hidden items-center gap-6 md:flex">
+          <div className="hidden items-center gap-6 lg:flex">
             {PAGE_LINKS.map((item) => (
               <Link
                 className="text-base font-medium text-muted-foreground transition-colors hover:text-foreground"

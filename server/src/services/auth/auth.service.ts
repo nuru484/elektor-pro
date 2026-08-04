@@ -28,6 +28,7 @@ import {
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 import { appendAudit } from '../audit/audit.service.js';
+import { getEffectiveCapabilities } from '../authorization/capability.service.js';
 import { type AppDeps, defaultDeps } from '../deps.js';
 import { makeSecurityNoticeService } from '../notifications/security-notice.service.js';
 import { makeOtpService } from './otp.service.js';
@@ -599,8 +600,19 @@ export const makeAuthService = (
     await notices.twoFactorDisabled(user);
   };
 
-  const getProfile = (userId: string) =>
-    prisma.user.findUnique({ select: STAFF_SELECT, where: { id: userId } });
+  // Profile + the capabilities the user effectively holds (runtime role
+  // matrix + global grants) so the client can gate navigation and actions.
+  const getProfile = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+      select: STAFF_SELECT,
+      where: { id: userId },
+    });
+    if (!user) return null;
+    return {
+      ...user,
+      capabilities: await getEffectiveCapabilities({ id: user.id, role: user.role }),
+    };
+  };
 
   return {
     activateEmailTwoFactor,

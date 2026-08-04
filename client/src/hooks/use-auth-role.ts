@@ -4,9 +4,11 @@
 import { useSelector } from "react-redux";
 
 import type { RootState } from "@/redux/store";
-import type { CurrentUser, Role } from "@/types/api";
+import type { Capability, CurrentUser, Role } from "@/types/api";
 
 export interface AuthRole {
+  /** True when the user holds the capability (runtime matrix + grants). */
+  can: (capability: Capability) => boolean;
   /** True once an auth check (login, refresh, or getMe) has settled. */
   initialized: boolean;
   /** Admin or super-admin (electoral-commission staff). */
@@ -17,10 +19,9 @@ export interface AuthRole {
 }
 
 /**
- * Current user's role read from the auth store. This mirrors the backend's
- * authorization (which is the real enforcement); the UI uses it only to
- * show/hide actions. Grows a `can(permission)` check when the runtime
- * permission matrix lands (Build 2).
+ * Current user's role and effective capabilities read from the auth store.
+ * This mirrors the backend's authorization (which is the real enforcement);
+ * the UI uses it only to show/hide actions.
  */
 export const useAuthRole = (): AuthRole => {
   const { initialized, user } = useSelector((state: RootState) => state.auth);
@@ -29,5 +30,8 @@ export const useAuthRole = (): AuthRole => {
   const isSuperAdmin = role === "SUPER_ADMIN";
   const isAdmin = isSuperAdmin || role === "ADMIN";
 
-  return { initialized, isAdmin, isSuperAdmin, role, user };
+  const can = (capability: Capability): boolean =>
+    isSuperAdmin || (user?.capabilities?.includes(capability) ?? false);
+
+  return { can, initialized, isAdmin, isSuperAdmin, role, user };
 };

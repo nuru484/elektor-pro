@@ -1,13 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-import { Logo } from "@/components/brand/logo";
-
 export default function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-20 text-center">
-      <Logo href="/" imgSize={40} showText={false} />
-      <p className="mt-8 text-sm font-medium tracking-[0.2em] text-muted-foreground uppercase">
+      <p className="text-sm font-medium tracking-[0.2em] text-muted-foreground uppercase">
         Error 404
       </p>
       <h1 className="mt-3 text-3xl font-medium md:text-4xl">

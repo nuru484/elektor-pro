@@ -1,7 +1,7 @@
 // src/controllers/governance.controller.ts
 import type { Request, RequestHandler, Response } from 'express';
 
-import { type Capability, type Role } from '../../generated/prisma/client.js';
+import { type Capability, type Role, type Status } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import { asyncHandler } from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
@@ -17,6 +17,7 @@ import {
   type StaffUserInput,
 } from '../services/governance/governance.service.js';
 import { requestContextOf } from '../utils/auth-session.js';
+import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendCreated, sendList, sendOk } from '../utils/http.js';
 import {
   assignAgentSchema,
@@ -43,7 +44,13 @@ export const createStaffUserController: RequestHandler[] = [
 export const listStaffUsersController = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await listStaffUsers(
-      { role: str(req.query.role) as Role | undefined, search: str(req.query.search) },
+      {
+        from: dayBoundary(req.query.from),
+        role: str(req.query.role) as Role | undefined,
+        search: str(req.query.search),
+        status: str(req.query.status) as Status | undefined,
+        to: dayBoundary(req.query.to, true),
+      },
       parsePagination(req.query),
     );
     sendList(res, 'Users retrieved', result.data, result.meta);
@@ -64,7 +71,16 @@ export const assignAgentController: RequestHandler[] = [
 
 export const listAgentAssignmentsController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'Assignments retrieved', await listAgentAssignments(str(req.query.electionId)));
+    const result = await listAgentAssignments(
+      {
+        electionId: str(req.query.electionId),
+        from: dayBoundary(req.query.from),
+        search: str(req.query.search),
+        to: dayBoundary(req.query.to, true),
+      },
+      parsePagination(req.query),
+    );
+    sendList(res, 'Assignments retrieved', result.data, result.meta);
   },
 );
 
@@ -89,10 +105,17 @@ export const grantController: RequestHandler[] = [
 
 export const listGrantsController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'Grants retrieved', await listGrants({
-      electionId: str(req.query.electionId),
-      userId: str(req.query.userId),
-    }));
+    const result = await listGrants(
+      {
+        capability: str(req.query.capability) as Capability | undefined,
+        electionId: str(req.query.electionId),
+        from: dayBoundary(req.query.from),
+        to: dayBoundary(req.query.to, true),
+        userId: str(req.query.userId),
+      },
+      parsePagination(req.query),
+    );
+    sendList(res, 'Grants retrieved', result.data, result.meta);
   },
 );
 

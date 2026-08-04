@@ -47,7 +47,22 @@ export type ChangeStatus =
 
 export type TwoFactorMethod = "EMAIL" | "TOTP";
 
+export type Capability =
+  | "ACCREDIT_VOTERS"
+  | "APPROVE_CHANGES"
+  | "CERTIFY_RESULTS"
+  | "MANAGE_AGENTS"
+  | "MANAGE_CANDIDATES"
+  | "MANAGE_ELECTIONS"
+  | "MANAGE_GROUPS"
+  | "MANAGE_ORGANIZATION"
+  | "MANAGE_PORTFOLIOS"
+  | "MANAGE_VOTERS"
+  | "VIEW_RESULTS";
+
 export interface CurrentUser {
+  /** Effective capabilities (runtime role matrix + global grants). */
+  capabilities?: Capability[];
   email: null | string;
   firstName: string;
   id: string;
@@ -59,6 +74,105 @@ export interface CurrentUser {
   status: Status;
   twoFactorEnabled: boolean;
   twoFactorMethod?: null | TwoFactorMethod;
+}
+
+export interface CapabilityMeta {
+  capability: Capability;
+  description: string;
+  label: string;
+}
+
+export interface CapabilityGroup {
+  capabilities: CapabilityMeta[];
+  group: string;
+}
+
+export interface PermissionsMatrix {
+  catalog: CapabilityGroup[];
+  editableRoles: Role[];
+  matrix: Record<string, Capability[]>;
+}
+
+/** A soft-deleted row from the deleted-records manager. */
+export interface DeletedRow {
+  createdAt: string;
+  deletedAt: string;
+  id: string;
+  label: string;
+  meta: null | string;
+}
+
+export interface Organization {
+  accentColor: string;
+  faviconUrl: null | string;
+  id: string;
+  locale: string;
+  logoUrl: null | string;
+  name: string;
+  primaryColor: string;
+  slug: string;
+  supportEmail: null | string;
+  supportPhone: null | string;
+  timezone: string;
+  website: null | string;
+}
+
+export interface StaffUser {
+  createdAt: string;
+  email: null | string;
+  firstName: string;
+  id: string;
+  lastName: string;
+  lockedAt: null | string;
+  phone: null | string;
+  role: Role;
+  status: Status;
+  twoFactorEnabled: boolean;
+}
+
+export interface GroupCategory {
+  _count?: { groups: number };
+  allowMultiple: boolean;
+  code: string;
+  description: null | string;
+  id: string;
+  name: string;
+  order: number;
+}
+
+export interface Group {
+  _count?: { voterMemberships: number };
+  category?: { id: string; name: string };
+  categoryId: string;
+  code: string;
+  description: null | string;
+  id: string;
+  name: string;
+  parent?: null | { id: string; name: string };
+}
+
+export interface AgentAssignment {
+  candidate: null | { id: string; name: string };
+  createdAt: string;
+  election: { id: string; name: string };
+  id: string;
+  user: { email: null | string; firstName: string; id: string; lastName: string };
+}
+
+export interface AccessGrant {
+  capability: Capability;
+  createdAt: string;
+  election: null | { id: string; name: string };
+  expiresAt: null | string;
+  id: string;
+  user: { email: null | string; firstName: string; id: string; lastName: string };
+}
+
+/** One assignment row from the agent's own dashboard. */
+export interface AgentDashboardRow {
+  candidate: null | { id: string; name: string };
+  election: { id: string; name: string; slug: string; status: ElectionStatus };
+  id: string;
 }
 
 /** A signed-in device from GET /auth/sessions. */
@@ -116,10 +230,18 @@ export interface Voter {
 
 export interface ChangeRequest {
   action: string;
+  appliedAt?: null | string;
   createdAt: string;
   entity: string;
+  entityId?: null | string;
+  error?: null | string;
   id: string;
+  payload?: Record<string, unknown>;
   requestedBy?: { firstName: string; lastName: string };
+  requestedById?: string;
+  reviewedAt?: null | string;
+  reviewedBy?: null | { firstName: string; lastName: string };
+  reviewNote?: null | string;
   status: ChangeStatus;
   summary: null | string;
 }

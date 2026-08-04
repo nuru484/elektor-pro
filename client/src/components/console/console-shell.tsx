@@ -10,7 +10,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  ShieldCheck,
   UserCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,8 +29,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -39,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuthRole } from "@/hooks/use-auth-role";
+import { clearSessionMarker, setSessionMarker } from "@/lib/session-marker";
 import { cn } from "@/lib/utils";
 import { useGetMeQuery, useLogoutMutation } from "@/redux/auth-api";
 
@@ -67,7 +67,7 @@ function NavList({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const { role } = useAuthRole();
+  const { role, user } = useAuthRole();
   if (!role) return null;
 
   return (
@@ -75,7 +75,7 @@ function NavList({
       aria-label="Console"
       className={cn("flex flex-1 flex-col gap-5 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}
     >
-      {sectionsForRole(role).map((section) => (
+      {sectionsForRole(role, user?.capabilities ?? []).map((section) => (
         <div key={section.label ?? "main"}>
           {section.label && !collapsed && (
             <p className="mb-1.5 px-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground/70 uppercase">
@@ -175,6 +175,7 @@ function UserMenu() {
         onConfirm={async () => {
           setConfirmOpen(false);
           await logout();
+          clearSessionMarker();
           router.replace("/login");
         }}
         onOpenChange={setConfirmOpen}
@@ -191,15 +192,25 @@ function ConsoleFooter() {
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-4 py-4 text-center sm:px-6 lg:flex-row lg:px-8 lg:text-left">
         <div className="hidden items-center gap-2 lg:flex">
           <Logo href={null} showText={false} />
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold">Elektor Pro</span>
-            <span className="text-[10px] text-muted-foreground">
-              Every ballot secret, every result provable
-            </span>
-          </div>
+          <span className="text-xs font-semibold">Elektor Pro</span>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          © {new Date().getFullYear()} Elektor Pro. All rights reserved.
+          {/* Each half is an unbreakable chunk: one line where both fit, the
+              credit drops down whole where they don't. */}
+          <span className="inline-block whitespace-nowrap">
+            © {new Date().getFullYear()} Elektor Pro. All rights reserved.
+          </span>{" "}
+          <span className="inline-block whitespace-nowrap">
+            Developed by{" "}
+            <a
+              className="font-semibold text-foreground transition-colors hover:text-brand"
+              href="https://manuru.dev"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              manuru
+            </a>
+          </span>
         </p>
       </div>
     </footer>
@@ -237,9 +248,16 @@ export function ConsoleShell({
 
   const allowed = Boolean(role && (!allowedRoles || allowedRoles.includes(role)));
 
+  // Keep the frontend-domain session marker fresh while a session exists, so
+  // the server-side proxy gate keeps seeing a signal (see lib/session-marker).
+  useEffect(() => {
+    if (user) setSessionMarker();
+  }, [user]);
+
   useEffect(() => {
     if (isLoading) return;
     if (isError || (initialized && !user)) {
+      clearSessionMarker();
       router.replace("/login");
       return;
     }
@@ -249,16 +267,7 @@ export function ConsoleShell({
   }, [allowed, initialized, isError, isLoading, role, router, user]);
 
   if (isLoading || !user || !allowed) {
-    return (
-      <div className="flex min-h-dvh flex-col gap-4 bg-background p-6 lg:grid lg:grid-cols-[264px_1fr] lg:gap-0 lg:p-0">
-        <Skeleton className="hidden h-dvh lg:block" />
-        <div className="space-y-4 lg:p-8">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-40 w-full rounded-xl" />
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   const sidebar = (collapsedRail: boolean) => (
@@ -274,18 +283,13 @@ export function ConsoleShell({
         <Logo href="/" showText={!collapsedRail} />
       </div>
       <NavList collapsed={collapsedRail} onNavigate={() => setDrawerOpen(false)} />
-      <div className="border-t border-sidebar-border p-3">
-        {collapsedRail ? (
-          <p className="flex justify-center text-muted-foreground">
-            <ShieldCheck className="size-4 text-brand" />
-          </p>
-        ) : (
-          <p className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-brand" />
+      {!collapsedRail && (
+        <div className="border-t border-sidebar-border p-3">
+          <p className="px-2 text-[11px] text-muted-foreground">
             Secured, audited elections
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
     </TooltipProvider>
   );

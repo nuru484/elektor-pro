@@ -15,7 +15,7 @@ export const createStaffUserSchema = z.object({
     .regex(/[A-Z]/)
     .regex(/[0-9]/),
   phone: z.string().min(6).max(20).optional(),
-  role: z.enum([Role.ADMIN, Role.AGENT, Role.CANDIDATE]),
+  role: z.enum([Role.ADMIN, Role.AGENT, Role.CANDIDATE, Role.ACCREDITOR]),
 });
 
 export const assignAgentSchema = z.object({

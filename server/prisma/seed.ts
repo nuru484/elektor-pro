@@ -10,6 +10,7 @@ import {
 // Idempotent seed: organization, a super-admin + one of each role, optional
 // voter groups, and a live demo election with portfolios, candidates, voters,
 // and a batch of cast ballots so dashboards/results look alive.
+import { DEFAULT_ROLE_CAPABILITIES, EDITABLE_ROLES } from '../src/config/capabilities.js';
 import ENV from '../src/config/env.js';
 import prisma from '../src/lib/prisma.js';
 import { resolveEligiblePortfolios } from '../src/services/voting/eligibility.service.js';
@@ -33,6 +34,19 @@ async function main() {
       },
     });
     console.log('✓ organization created');
+  }
+
+  // --- Role capability matrix. Seeded ONLY while the table is empty: once a
+  // super-admin has edited grants at runtime, re-running the seed must never
+  // re-add a capability they revoked. ---
+  const roleCapabilityCount = await prisma.roleCapability.count();
+  if (roleCapabilityCount === 0) {
+    await prisma.roleCapability.createMany({
+      data: EDITABLE_ROLES.flatMap((role) =>
+        DEFAULT_ROLE_CAPABILITIES[role].map((capability) => ({ capability, role })),
+      ),
+    });
+    console.log('✓ role capability defaults seeded');
   }
 
   // --- Accounts ---

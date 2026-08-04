@@ -17,6 +17,8 @@ import {
   rejectChangeRequestController,
   updateElectionStatusController,
   updateOrganizationController,
+  updateOrganizationFaviconController,
+  updateOrganizationLogoController,
   voterControllers,
 } from '../../controllers/domain.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
@@ -43,6 +45,18 @@ domainRoutes.patch(
   authenticateJWT,
   requireCapability(Capability.MANAGE_ORGANIZATION),
   ...updateOrganizationController,
+);
+domainRoutes.patch(
+  '/organization/logo',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_ORGANIZATION),
+  ...updateOrganizationLogoController,
+);
+domainRoutes.patch(
+  '/organization/favicon',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_ORGANIZATION),
+  ...updateOrganizationFaviconController,
 );
 
 // Groups & categories

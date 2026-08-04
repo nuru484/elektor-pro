@@ -610,6 +610,20 @@ model AccessGrant {
   @@index([electionId])
 }
 
+/// Runtime role → capability grants, edited by super-admins from the console
+/// (DMS RolePermission pattern). Seeded with the shipped defaults; the
+/// capability service reads these behind a short cache. SUPER_ADMIN is never
+/// stored - it implicitly holds every capability.
+model RoleCapability {
+  id         String     @id @default(cuid())
+  role       Role
+  capability Capability
+  createdAt  DateTime   @default(now())
+
+  @@unique([role, capability])
+  @@index([role])
+}
+
 model ChangeRequest {
   id       String       @id @default(cuid())
   action   ChangeAction

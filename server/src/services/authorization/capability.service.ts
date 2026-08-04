@@ -1,54 +1,55 @@
 import { Capability, Role } from '../../../generated/prisma/client.js';
 // src/services/authorization/capability.service.ts
-// Authorization = role defaults + per-user (optionally per-election) grants.
+// Authorization = runtime role matrix (RoleCapability table, cached) + per-
+// user (optionally per-election) AccessGrant rows. SUPER_ADMIN implicitly
+// holds everything; VOTER never holds role capabilities.
+import { isEditableRole } from '../../config/capabilities.js';
 import prisma from '../../lib/prisma.js';
+import { getRoleCapabilitySets } from './role-capability.service.js';
 
 const ALL_CAPABILITIES = Object.values(Capability);
+const ALL_SET: ReadonlySet<Capability> = new Set(ALL_CAPABILITIES);
+const EMPTY_SET: ReadonlySet<Capability> = new Set();
 
-/** Default capabilities granted purely by role. */
-const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
-  [Role.ACCREDITOR]: [Capability.ACCREDIT_VOTERS],
-  [Role.ADMIN]: [
-    Capability.MANAGE_ELECTIONS,
-    Capability.MANAGE_PORTFOLIOS,
-    Capability.MANAGE_CANDIDATES,
-    Capability.MANAGE_VOTERS,
-    Capability.MANAGE_AGENTS,
-    Capability.MANAGE_GROUPS,
-    Capability.MANAGE_ORGANIZATION,
-    Capability.ACCREDIT_VOTERS,
-    Capability.VIEW_RESULTS,
-  ],
-  [Role.AGENT]: [Capability.VIEW_RESULTS],
-  [Role.CANDIDATE]: [],
-  [Role.SUPER_ADMIN]: ALL_CAPABILITIES,
-  [Role.VOTER]: [],
+/** The role's capabilities per the runtime matrix. */
+const roleCapabilities = async (role: Role): Promise<ReadonlySet<Capability>> => {
+  if (role === Role.SUPER_ADMIN) return ALL_SET;
+  if (!isEditableRole(role)) return EMPTY_SET;
+  const sets = await getRoleCapabilitySets();
+  return sets[role];
 };
-
-/** Pure role-only check (no DB). */
-export const roleHasCapability = (
-  role: Role,
-  capability: Capability,
-): boolean => ROLE_CAPABILITIES[role].includes(capability);
 
 /** Only super-admins may delete (soft-delete) resources. */
 export const canDelete = (role: Role): boolean => role === Role.SUPER_ADMIN;
 
-/** Only super-admins may approve maker-checker change requests. */
+/**
+ * Hard super-admin gate. Kept for actions that are policy-locked to the top
+ * role regardless of the matrix (e.g. removing agent assignments).
+ */
 export const canApproveChanges = (role: Role): boolean =>
   role === Role.SUPER_ADMIN;
 
 /**
- * Full capability check: role default OR an active matching access grant.
- * A grant with a null electionId is global; a scoped grant only applies to its
- * election.
+ * Matrix-aware approver check for the maker-checker flow: super-admins
+ * always; other roles when the runtime matrix or a personal grant gives them
+ * APPROVE_CHANGES.
+ */
+export const canActorApproveChanges = (actor: {
+  id: string;
+  role: Role;
+}): Promise<boolean> => hasCapability(actor, Capability.APPROVE_CHANGES);
+
+/**
+ * Full capability check: runtime role matrix OR an active matching access
+ * grant. A grant with a null electionId is global; a scoped grant only
+ * applies to its election.
  */
 export const hasCapability = async (
   user: { id: string; role: Role },
   capability: Capability,
   electionId?: string,
 ): Promise<boolean> => {
-  if (roleHasCapability(user.role, capability)) return true;
+  if ((await roleCapabilities(user.role)).has(capability)) return true;
 
   const now = new Date();
   const grant = await prisma.accessGrant.findFirst({
@@ -67,4 +68,31 @@ export const hasCapability = async (
   });
 
   return Boolean(grant);
+};
+
+/**
+ * The capabilities a user effectively holds everywhere: runtime role matrix
+ * plus active GLOBAL grants (election-scoped grants only apply in context and
+ * are deliberately excluded). Returned in auth payloads so the client can
+ * gate navigation and actions; the server always re-checks.
+ */
+export const getEffectiveCapabilities = async (user: {
+  id: string;
+  role: Role;
+}): Promise<Capability[]> => {
+  if (user.role === Role.SUPER_ADMIN) return [...ALL_CAPABILITIES];
+
+  const capabilities = new Set(await roleCapabilities(user.role));
+  const now = new Date();
+  const grants = await prisma.accessGrant.findMany({
+    select: { capability: true },
+    where: {
+      electionId: null,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      revokedAt: null,
+      userId: user.id,
+    },
+  });
+  for (const grant of grants) capabilities.add(grant.capability);
+  return [...capabilities];
 };
