@@ -89,6 +89,23 @@ describe("LoginPage", () => {
     });
   });
 
+  it("routes a candidate to the candidate console", async () => {
+    server.use(
+      http.post(`${API}/auth/login`, () =>
+        HttpResponse.json({
+          data: { ...admin, role: "CANDIDATE" },
+          message: "ok",
+          success: true,
+        }),
+      ),
+    );
+    renderLogin();
+    fillAndSubmit();
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith("/candidate");
+    });
+  });
+
   it("shows the email-code 2FA step and completes it", async () => {
     server.use(
       http.post(`${API}/auth/login`, () =>

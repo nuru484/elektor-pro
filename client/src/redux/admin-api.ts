@@ -6,6 +6,7 @@ import type {
   Candidate,
   CandidateImportPreview,
   CandidateVetting,
+  CertificationSnapshot,
   ChangeRequest,
   DeletedRow,
   Election,
@@ -376,6 +377,34 @@ export const adminApi = apiSlice.injectEndpoints({
       providesTags: ["Roll"],
       query: (electionId) => `/elections/${electionId}/turnout`,
     }),
+    publishResults: build.mutation<unknown, string>({
+      invalidatesTags: ["Election", "Results"],
+      query: (electionId) => ({
+        method: "POST",
+        url: `/elections/${electionId}/results/publish`,
+      }),
+    }),
+    unpublishResults: build.mutation<unknown, string>({
+      invalidatesTags: ["Election", "Results"],
+      query: (electionId) => ({
+        method: "POST",
+        url: `/elections/${electionId}/results/unpublish`,
+      }),
+    }),
+    certifyResults: build.mutation<
+      ApiResponse<{ hash: string; snapshotId: string }>,
+      string
+    >({
+      invalidatesTags: ["Election", "Results"],
+      query: (electionId) => ({
+        method: "POST",
+        url: `/elections/${electionId}/results/certify`,
+      }),
+    }),
+    getCertification: build.query<ApiResponse<CertificationSnapshot>, string>({
+      providesTags: ["Results"],
+      query: (idOrSlug) => `/elections/${idOrSlug}/certification`,
+    }),
     listCriteria: build.query<ApiResponse<VettingCriterion[]>, string>({
       providesTags: ["Vetting"],
       query: (electionId) => `/elections/${electionId}/vetting/criteria`,
@@ -481,7 +510,11 @@ export const {
   useGetDeletedSummaryQuery,
   useGetElectionQuery,
   useGetPermissionsQuery,
+  useCertifyResultsMutation,
+  useGetCertificationQuery,
   useGetTurnoutQuery,
+  usePublishResultsMutation,
+  useUnpublishResultsMutation,
   useListAuditLogsQuery,
   useListCandidatesQuery,
   useListChangeRequestsQuery,

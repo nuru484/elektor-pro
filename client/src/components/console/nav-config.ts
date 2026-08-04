@@ -5,6 +5,7 @@
 // the backend enforces the real authorization on every endpoint.
 import {
   ArchiveRestore,
+  Award,
   BadgeCheck,
   Building2,
   CheckSquare,
@@ -107,6 +108,12 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/agent", icon: Eye, label: "My assignments", roles: ["AGENT"] },
       {
+        href: "/candidate",
+        icon: Award,
+        label: "My candidacies",
+        roles: ["CANDIDATE"],
+      },
+      {
         capability: "ACCREDIT_VOTERS",
         href: "/accredit",
         icon: BadgeCheck,
@@ -139,6 +146,7 @@ export const homeForRole = (role: Role): string => {
   if (role === "SUPER_ADMIN" || role === "ADMIN") return "/admin";
   if (role === "AGENT") return "/agent";
   if (role === "ACCREDITOR") return "/accredit";
+  if (role === "CANDIDATE") return "/candidate";
   if (role === "VOTER") return "/vote";
   return "/profile";
 };

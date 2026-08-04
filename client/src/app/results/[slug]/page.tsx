@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Crown, Lock, Radio } from "lucide-react";
+import { ArrowLeft, Crown, Lock, Radio, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
@@ -137,9 +138,20 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     const status = (error as { status?: number }).status;
     return (
       <EmptyState
+        action={
+          status === 403 ? (
+            <Link
+              className="text-sm font-medium text-brand hover:underline"
+              href={`/results/${slug}/verify`}
+              title="Integrity checks stay open even while results are hidden"
+            >
+              Verify election integrity instead
+            </Link>
+          ) : undefined
+        }
         description={
           status === 403
-            ? "Results for this election aren't available to the public yet."
+            ? "Results for this election aren't available to the public yet. The organisers release them according to the election's results policy."
             : getApiErrorMessage(error, "This election could not be found.")
         }
         icon={Lock}
@@ -164,10 +176,26 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
               {election.name}
             </h1>
             {election.status === "IN_PROGRESS" && connected && (
-              <Badge variant="success"><Radio className="size-3 animate-pulse" /> Live</Badge>
+              <Badge title="Updating in real time" variant="success">
+                <Radio className="size-3 animate-pulse" /> Live
+              </Badge>
             )}
-            {election.certifiedAt && <Badge variant="brand">Certified</Badge>}
+            {election.certifiedAt && (
+              <Badge
+                title="These results are certified: snapshotted, fingerprinted, and locked"
+                variant="brand"
+              >
+                Certified
+              </Badge>
+            )}
           </div>
+          <Link
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            href={`/results/${election.slug}/verify`}
+            title="Re-run the ballot-chain check or verify your own receipt"
+          >
+            <ShieldCheck className="size-3.5" /> Verify this election&apos;s integrity
+          </Link>
         </div>
       </div>
 

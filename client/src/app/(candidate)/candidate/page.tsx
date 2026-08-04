@@ -1,0 +1,208 @@
+"use client";
+
+// The candidate console: every election this person contests, their
+// portfolio, ballot number, nomination status, vetting progress (their own
+// record, panel identities redacted server-side), and the path to results
+// once the election's policy allows.
+import { ArrowUpRight, Award, ClipboardCheck } from "lucide-react";
+import { useState } from "react";
+
+import type { MyCandidacy } from "@/types/api";
+
+import { EntityAvatar } from "@/components/console/entity-avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { LinkButton } from "@/components/ui/link-button";
+import { CardGridSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { useGetCandidateVettingQuery } from "@/redux/admin-api";
+import { useGetMyCandidaciesQuery } from "@/redux/voting-api";
+
+/**
+ * The candidate's own vetting record: per-criterion averages and the total
+ * against the pass mark. Fetched on demand - most candidacies never open it.
+ */
+function VettingDetails({ candidacy }: { candidacy: MyCandidacy }) {
+  const { data, isError, isLoading } = useGetCandidateVettingQuery(candidacy.id);
+  const vetting = data?.data;
+  if (isLoading) return <Skeleton className="h-16 rounded-lg" />;
+  if (isError || !vetting) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Vetting details are not available yet.
+      </p>
+    );
+  }
+  const percent =
+    vetting.maxTotal > 0 ? Number(((vetting.total / vetting.maxTotal) * 100).toFixed(1)) : 0;
+  return (
+    <div className="space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+      {vetting.byCriterion.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          The panel has not defined criteria yet.
+        </p>
+      ) : (
+        <>
+          {vetting.byCriterion.map((entry) => (
+            <div
+              className="flex items-baseline justify-between gap-3 text-xs"
+              key={entry.criterion.id}
+            >
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {entry.criterion.name}
+              </span>
+              <span className="shrink-0 font-mono tabular-nums">
+                {entry.average ?? "not scored"} / {entry.criterion.maxScore}
+              </span>
+            </div>
+          ))}
+          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-1.5 text-xs font-semibold">
+            <span>Total</span>
+            <span className="font-mono tabular-nums">
+              {vetting.total} / {vetting.maxTotal} ({percent}%)
+            </span>
+          </div>
+          {candidacy.election.vettingPassPercent != null && (
+            <p className="text-[11px] text-muted-foreground">
+              Pass mark: {candidacy.election.vettingPassPercent}%
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
+  const [showVetting, setShowVetting] = useState(false);
+  const election = candidacy.election;
+  const resultsOpen =
+    election.resultsPublishedAt !== null ||
+    election.resultsPolicy === "LIVE" ||
+    (election.resultsPolicy === "ON_CLOSE" &&
+      (election.status === "ENDED" || election.status === "ARCHIVED"));
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle
+            className="min-w-0 text-base [overflow-wrap:anywhere]"
+            title={election.name}
+          >
+            {election.name}
+          </CardTitle>
+          <StatusBadge status={election.status} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <EntityAvatar name={candidacy.name} url={candidacy.profilePicture} />
+          <div className="min-w-0">
+            {/* Portfolio and nickname are user text: plain wrapped lines. */}
+            <p className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+              {candidacy.portfolio.name}
+            </p>
+            <p className="min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+              {candidacy.ballotNumber != null
+                ? `Ballot number ${String(candidacy.ballotNumber)}`
+                : "Ballot number not assigned yet"}
+              {candidacy.nickname ? ` · ${candidacy.nickname}` : ""}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge status={candidacy.status} />
+          {candidacy.vettingNote && (
+            <span
+              className="min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+              title="The vetting panel's decision note"
+            >
+              {candidacy.vettingNote}
+            </span>
+          )}
+        </div>
+
+        {election.vettingEnabled && (
+          <div>
+            <Button
+              onClick={() => {
+                setShowVetting((prev) => !prev);
+              }}
+              size="sm"
+              title="Your own scores; panel identities are never shown"
+              variant="outline"
+            >
+              <ClipboardCheck className="size-4" />
+              {showVetting ? "Hide vetting scores" : "My vetting scores"}
+            </Button>
+            {showVetting && (
+              <div className="mt-2">
+                <VettingDetails candidacy={candidacy} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {resultsOpen ? (
+          <LinkButton
+            className="w-full"
+            href={`/results/${election.slug}`}
+            title="Open this election's results page"
+            variant="outline"
+          >
+            View results <ArrowUpRight className="size-4" />
+          </LinkButton>
+        ) : (
+          <Button
+            className="w-full"
+            disabled
+            title="Results open according to the election's results policy"
+            variant="outline"
+          >
+            Results not yet released
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function CandidateDashboardPage() {
+  const { data, isError, isLoading } = useGetMyCandidaciesQuery();
+  const candidacies = data?.data ?? [];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        description="Your nominations: status, vetting, ballot numbers, and results."
+        title="My candidacies"
+      />
+
+      {isLoading ? (
+        <CardGridSkeleton count={3} />
+      ) : isError ? (
+        <ErrorState />
+      ) : candidacies.length === 0 ? (
+        <EmptyState
+          description="When you are nominated for a portfolio, your candidacy appears here with its vetting progress and results."
+          icon={Award}
+          title="No candidacies yet"
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {candidacies.map((candidacy) => (
+            <CandidacyCard candidacy={candidacy} key={candidacy.id} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

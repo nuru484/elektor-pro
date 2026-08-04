@@ -307,6 +307,63 @@ export interface VettingScoreRow {
 }
 
 /** GET /candidates/:id/vetting - criteria with averages + the grand total. */
+/** One of the signed-in candidate's own candidacies (candidate console). */
+export interface MyCandidacy {
+  ballotNumber: null | number;
+  election: {
+    endDate: string;
+    id: string;
+    name: string;
+    resultsPolicy: string;
+    resultsPublishedAt: null | string;
+    slug: string;
+    startDate: string;
+    status: ElectionStatus;
+    vettingEnabled: boolean;
+    vettingPassPercent: null | number;
+  };
+  id: string;
+  manifesto: null | string;
+  name: string;
+  nickname: null | string;
+  portfolio: { id: string; name: string };
+  profilePicture: null | string;
+  reviewedAt: null | string;
+  status: CandidateStatus;
+  vettingNote: null | string;
+}
+
+/** Whole-chain ballot verification outcome (public integrity check). */
+export interface ChainVerification {
+  brokenAt?: number;
+  electionId: string;
+  total: number;
+  valid: boolean;
+}
+
+/** A certified results snapshot: the hash is the official fingerprint. */
+export interface CertificationSnapshot {
+  certifiedBy: null | { firstName: string; id: string; lastName: string };
+  createdAt: string;
+  hash: string;
+  id: string;
+}
+
+/** A verified ballot receipt: proof the vote was recorded as cast. */
+export interface ReceiptVerification {
+  castAt: string;
+  choices: {
+    approve: boolean | null;
+    candidate: null | string;
+    portfolio: string;
+    type: "ABSTAIN" | "SKIP" | "VOTE";
+  }[];
+  /** Whether the stored ballot hash still recomputes (chain-intact). */
+  integrityValid: boolean;
+  receiptCode: string;
+  sequence: number;
+}
+
 export interface CandidateVetting {
   byCriterion: {
     average: null | number;

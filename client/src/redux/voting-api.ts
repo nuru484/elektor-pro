@@ -1,5 +1,12 @@
-// src/redux/voting-api.ts — voter OTP, ballot, and results endpoints.
-import type { ApiResponse, ElectionResults, Portfolio } from "@/types/api";
+// src/redux/voting-api.ts - voter OTP, ballot, results, and integrity endpoints.
+import type {
+  ApiResponse,
+  ChainVerification,
+  ElectionResults,
+  MyCandidacy,
+  Portfolio,
+  ReceiptVerification,
+} from "@/types/api";
 
 import { apiSlice } from "./api-slice";
 
@@ -72,8 +79,20 @@ export const votingApi = apiSlice.injectEndpoints({
     >({
       query: (body) => ({ body, method: "POST", url: "/voter/code-login" }),
     }),
-    verifyReceipt: build.query<ApiResponse<unknown>, { code: string; electionId: string }>({
+    verifyReceipt: build.query<
+      ApiResponse<ReceiptVerification>,
+      { code: string; electionId: string }
+    >({
       query: ({ code, electionId }) => `/elections/${electionId}/receipts/${code}`,
+    }),
+    verifyChain: build.query<ApiResponse<ChainVerification>, string>({
+      // Fresh verification every visit: this is the integrity check itself.
+      keepUnusedDataFor: 0,
+      query: (idOrSlug) => `/elections/${idOrSlug}/ballots/verify`,
+    }),
+    getMyCandidacies: build.query<ApiResponse<MyCandidacy[]>, void>({
+      providesTags: ["Candidate"],
+      query: () => "/my/candidacies",
     }),
   }),
 });
@@ -81,10 +100,12 @@ export const votingApi = apiSlice.injectEndpoints({
 export const {
   useCastBallotMutation,
   useCodeLoginMutation,
+  useGetMyCandidaciesQuery,
   useGetResultsQuery,
   useGetVoterBallotQuery,
   useLazyVerifyReceiptQuery,
   useListVoterElectionsQuery,
   useRequestOtpMutation,
+  useVerifyChainQuery,
   useVerifyOtpMutation,
 } = votingApi;
