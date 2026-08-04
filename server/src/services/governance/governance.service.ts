@@ -103,8 +103,11 @@ export const listStaffUsers = async (
   pagination: PaginationParams,
 ) => {
   const where = {
+    // The Users tab holds staff only; agents/candidates live in their own
+    // modules and appear here only when explicitly filtered (role=AGENT is
+    // how the agents page lists assignable accounts).
     role: filters.role ?? {
-      in: [Role.SUPER_ADMIN, Role.ADMIN, Role.AGENT, Role.CANDIDATE, Role.ACCREDITOR],
+      in: [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCREDITOR],
     },
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.from || filters.to

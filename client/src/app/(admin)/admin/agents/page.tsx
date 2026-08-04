@@ -29,6 +29,7 @@ import { useTableQueryState } from "@/hooks/use-table-query-state";
 import { useListCandidatesQuery, useListElectionsQuery } from "@/redux/admin-api";
 import {
   useAssignAgentMutation,
+  useCreateStaffUserMutation,
   useListAgentsQuery,
   useListStaffUsersQuery,
   useRemoveAgentMutation,
@@ -48,6 +49,96 @@ const FILTERS_SPEC: TableFiltersSpec<AgentFilters> = {
   search: { kind: "string" },
   to: { kind: "string" },
 };
+
+/** Create the agent's login account (agents never appear in the Users tab). */
+function NewAgentModal({ onClose, open }: { onClose: () => void; open: boolean }) {
+  const [create, { isLoading: creating }] = useCreateStaffUserMutation();
+  const [tempPassword, setTempPassword] = useState<null | string>(null);
+
+  const close = () => {
+    setTempPassword(null);
+    onClose();
+  };
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    try {
+      const res = (await create({
+        email: f.get("email"),
+        firstName: f.get("firstName"),
+        lastName: f.get("lastName"),
+        phone: f.get("phone") || undefined,
+        role: "AGENT",
+      }).unwrap()) as { data?: { temporaryPassword?: string } };
+      toast.success("Agent account created");
+      setTempPassword(res.data?.temporaryPassword ?? null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  return (
+    <Modal
+      description={
+        tempPassword
+          ? undefined
+          : "The system generates a temporary password and emails it to them; they set their own on first sign-in."
+      }
+      onClose={close}
+      open={open}
+      title={tempPassword ? "Agent account created" : "New agent"}
+    >
+      {tempPassword ? (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Share this temporary password with the agent - it is shown only
+            once (they also receive it by email).
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-center font-mono text-lg tracking-wider">
+              {tempPassword}
+            </code>
+            <Button
+              onClick={async () => {
+                await navigator.clipboard.writeText(tempPassword);
+                toast.success("Copied");
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Copy
+            </Button>
+          </div>
+          <Button className="w-full" onClick={close} variant="brand">
+            Done
+          </Button>
+        </div>
+      ) : (
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First name">
+              <Input name="firstName" placeholder="e.g. Kojo" required />
+            </Field>
+            <Field label="Last name">
+              <Input name="lastName" placeholder="e.g. Asare" required />
+            </Field>
+          </div>
+          <Field label="Email">
+            <Input name="email" placeholder="e.g. agent@org.com" required type="email" />
+          </Field>
+          <Field label="Phone">
+            <Input name="phone" placeholder="e.g. +233 24 000 0000 (optional)" type="tel" />
+          </Field>
+          <Button className="w-full" loading={creating} type="submit" variant="brand">
+            Create agent
+          </Button>
+        </form>
+      )}
+    </Modal>
+  );
+}
 
 function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [electionId, setElectionId] = useState("");
@@ -133,6 +224,7 @@ function AssignAgentModal({ onClose, open }: { onClose: () => void; open: boolea
 export default function AgentsPage() {
   const { isSuperAdmin } = useAuthRole();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [newAgentOpen, setNewAgentOpen] = useState(false);
   const [removing, setRemoving] = useState<AgentAssignment | null>(null);
   const [removeAgent] = useRemoveAgentMutation();
   const { data: elections } = useListElectionsQuery({ limit: 100 });
@@ -272,9 +364,14 @@ export default function AgentsPage() {
         toolbar={
           <TableToolbar
             actions={
-              <Button onClick={() => setAssignOpen(true)} variant="brand">
-                <Plus className="size-4" /> Assign agent
-              </Button>
+              <>
+                <Button onClick={() => setNewAgentOpen(true)} variant="outline">
+                  <Plus className="size-4" /> New agent
+                </Button>
+                <Button onClick={() => setAssignOpen(true)} variant="brand">
+                  <Plus className="size-4" /> Assign agent
+                </Button>
+              </>
             }
             filters={filters}
             onClear={() => handleFiltersChange(clearAllFiltersPatch(filters))}
@@ -324,6 +421,7 @@ export default function AgentsPage() {
       />
 
       <AssignAgentModal onClose={() => setAssignOpen(false)} open={assignOpen} />
+      <NewAgentModal onClose={() => setNewAgentOpen(false)} open={newAgentOpen} />
       <ConfirmationDialog
         confirmText="Remove assignment"
         description={`${removing?.user.firstName ?? ""} ${removing?.user.lastName ?? ""} will no longer observe "${removing?.election.name ?? ""}".`}

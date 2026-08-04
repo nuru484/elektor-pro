@@ -14,8 +14,10 @@ export const adminUpdateUserSchema = z
     message: 'At least one field must be provided',
   });
 
+/** Staff roles are interchangeable; AGENT/CANDIDATE/VOTER accounts belong
+ * to their own modules and never pass through the role changer. */
 export const updateUserRoleSchema = z.object({
-  role: z.enum(Role),
+  role: z.enum([Role.SUPER_ADMIN, Role.ADMIN, Role.ACCREDITOR]),
 });
 
 export const userListQuerySchema = z.object({

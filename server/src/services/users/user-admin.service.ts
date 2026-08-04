@@ -148,6 +148,11 @@ export const makeUserAdminService = (d: Pick<AppDeps, 'clock' | 'prisma'>) => {
       where: { id: userId },
     });
     if (!target) throw new NotFoundError('User not found');
+    if (target.role === Role.AGENT || target.role === Role.CANDIDATE || target.role === Role.VOTER) {
+      throw new BadRequestError(
+        'This account belongs to its own module and cannot change staff role',
+      );
+    }
 
     const updated = await prisma.user.update({
       data: { role },

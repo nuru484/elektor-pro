@@ -49,15 +49,14 @@ import {
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 
-const CREATABLE_ROLES = ["ADMIN", "AGENT", "CANDIDATE", "ACCREDITOR"] as const;
-const ALL_ROLES = ["SUPER_ADMIN", ...CREATABLE_ROLES] as const;
+// Staff only: agents, candidates, and voters live in their own modules.
+const CREATABLE_ROLES = ["ADMIN", "ACCREDITOR"] as const;
+const ALL_ROLES = ["SUPER_ADMIN", "ADMIN", "ACCREDITOR"] as const;
 const STATUSES = ["ACTIVE", "INACTIVE", "SUSPENDED", "LOCKED"] as const;
 
 const ROLE_LABELS: Record<string, string> = {
   ACCREDITOR: "Accreditor",
   ADMIN: "Administrator",
-  AGENT: "Agent",
-  CANDIDATE: "Candidate",
   SUPER_ADMIN: "Super admin",
 };
 
@@ -264,7 +263,7 @@ function ChangeRoleModal({
                 onChange={(e) => setRole(e.target.value)}
                 value={chosen}
               >
-                {CREATABLE_ROLES.map((r) => (
+                {ALL_ROLES.map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
                   </option>
@@ -449,7 +448,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        description="Every staff account: administrators, agents, candidates, and accreditation officers."
+        description="Staff accounts: super administrators, administrators, and accreditation officers."
         title="Users"
       />
 

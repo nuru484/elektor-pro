@@ -54,40 +54,37 @@ export function TableToolbar({
   const hasFilters = Boolean(children);
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Search row - actions join it right-aligned from lg. */}
-      {(onSearchChange || actions) && (
-        <div className="flex items-center gap-3">
-          {onSearchChange && (
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pr-8 pl-9"
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={searchPlaceholder}
-                value={search}
-              />
-              {search && (
-                <button
-                  aria-label="Clear search"
-                  className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  onClick={() => onSearchChange("")}
-                  type="button"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-          )}
-          {actions && (
-            <div className="ml-auto hidden items-center gap-2 lg:flex">{actions}</div>
+    // One flex-wrap container: on lg the search, every filter, Clear, and
+    // the actions all share a single row (wrapping only when they truly
+    // can't fit); below lg the full-width children stack into the
+    // search / toggle / panel arrangement.
+    <div className="flex flex-wrap items-end gap-3">
+      {/* Search - own row below lg, first cell of the lg row. */}
+      {onSearchChange && (
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pr-8 pl-9"
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            value={search}
+          />
+          {search && (
+            <button
+              aria-label="Clear search"
+              className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => onSearchChange("")}
+              type="button"
+            >
+              <X className="size-3.5" />
+            </button>
           )}
         </div>
       )}
 
       {/* Below lg: Filters toggle + clear left, actions right. */}
       {(hasFilters || actions) && (
-        <div className="flex flex-wrap items-center gap-2 lg:hidden">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:hidden">
           {hasFilters && (
             <Button
               aria-controls={panelId}
@@ -122,12 +119,13 @@ export function TableToolbar({
       )}
 
       {/* The filters. Phones: 2-col grid behind the toggle; tablets: compact
-          auto-fit columns; lg+: always visible, all on one row. */}
+          auto-fit columns; lg+: the wrapper dissolves (display: contents) so
+          each filter sits directly on the toolbar row beside the search. */}
       {hasFilters && (
         <div
           className={cn(
-            "w-full grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] lg:flex lg:flex-wrap lg:items-end",
-            filtersOpen ? "grid" : "hidden lg:flex",
+            "w-full grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]",
+            filtersOpen ? "grid lg:contents" : "hidden lg:contents",
           )}
           id={panelId}
         >
@@ -140,6 +138,11 @@ export function TableToolbar({
             </div>
           )}
         </div>
+      )}
+
+      {/* Actions at the right end of the lg row. */}
+      {actions && (
+        <div className="ml-auto hidden items-center gap-2 lg:flex">{actions}</div>
       )}
     </div>
   );

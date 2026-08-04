@@ -105,7 +105,7 @@ describe('user administration', () => {
 
   it('super-admin changes a role, which revokes the target sessions', async () => {
     await createUser(Role.SUPER_ADMIN, { email: 'root2@test.com' });
-    const target = await createUser(Role.AGENT, { email: 'promote@test.com' });
+    const target = await createUser(Role.ADMIN, { email: 'promote@test.com' });
     const cookie = await loginCookie('root2@test.com');
     const targetLogin = await api()
       .post('/api/v1/auth/login')
@@ -121,6 +121,17 @@ describe('user administration', () => {
     expect(
       (await api().post('/api/v1/auth/refresh').set('Cookie', targetCookie)).status,
     ).toBe(401);
+
+    // Module-owned accounts (agents/candidates) never pass the role changer.
+    const agent = await createUser(Role.AGENT, { email: 'owned@test.com' });
+    expect(
+      (
+        await api()
+          .patch(`/api/v1/users/${agent.id}/role`)
+          .set('Cookie', cookie)
+          .send({ role: 'ADMIN' })
+      ).status,
+    ).toBe(400);
   });
 
   it('super-admin cannot change their own role or delete themselves', async () => {
