@@ -27,6 +27,7 @@ import {
   useCertifyResultsMutation,
   useGetCertificationQuery,
   useGetElectionQuery,
+  useGetElectionReportQuery,
   usePublishResultsMutation,
   useUnpublishResultsMutation,
 } from "@/redux/admin-api";
@@ -42,6 +43,37 @@ function Tile({ hint, label, value }: { hint?: string; label: string; value: str
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">{value}</p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/** The commission's one-page numbers: accreditation, pipeline, integrity. */
+function ReportRow({ electionId }: { electionId: string }) {
+  const { data } = useGetElectionReportQuery(electionId);
+  const report = data?.data;
+  if (!report) return null;
+  const totalCandidates = Object.values(report.candidates).reduce((a, b) => a + b, 0);
+  return (
+    <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3">
+      <Tile
+        hint={`of ${fmt(report.turnout.eligible)} eligible voters`}
+        label="Accredited"
+        value={fmt(report.accredited)}
+      />
+      <Tile
+        hint={`${fmt(report.candidates.QUALIFIED ?? 0)} qualified across ${fmt(report.portfolios)} portfolios`}
+        label="Candidates"
+        value={fmt(totalCandidates)}
+      />
+      <Tile
+        hint={
+          report.chain.valid
+            ? `all ${fmt(report.chain.total)} ballots verified`
+            : `BROKEN at ballot #${String(report.chain.brokenAt ?? 0)}`
+        }
+        label="Ballot chain"
+        value={report.chain.valid ? "Intact" : "Broken"}
+      />
     </div>
   );
 }
@@ -129,6 +161,8 @@ export default function ElectionResultsTab({
         <Tile label="Turnout" value={`${String(results.turnout.percentage)}%`} />
         <Tile hint={publication.hint} label="Publication" value={publication.value} />
       </div>
+
+      <ReportRow electionId={id} />
 
       {/* Live tally + exports */}
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">

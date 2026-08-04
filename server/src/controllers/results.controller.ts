@@ -1,8 +1,15 @@
 // src/controllers/results.controller.ts
 import type { Request, Response } from 'express';
 
+import { Capability, Role } from '../../generated/prisma/client.js';
 import prisma from '../lib/prisma.js';
-import { asyncHandler, NotFoundError } from '../middlewares/error-handler.js';
+import {
+  asyncHandler,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from '../middlewares/error-handler.js';
+import { hasCapability } from '../services/authorization/capability.service.js';
 import {
   exportResultsCsv,
   exportResultsPdf,
@@ -18,6 +25,8 @@ import {
   computeResults,
   type ResultsViewer,
 } from '../services/results/results.service.js';
+import { getTurnout } from '../services/voting/accreditation.service.js';
+import { verifyBallotChain } from '../services/voting/voting.service.js';
 import { requestContextOf } from '../utils/auth-session.js';
 import { sendOk } from '../utils/http.js';
 import { actorOf } from './proposal-response.js';
@@ -98,6 +107,51 @@ export const certifyResultsController = asyncHandler(
       requestContextOf(req),
     );
     sendOk(res, 'Results certified', data);
+  },
+);
+
+/**
+ * One-page election report: turnout, accreditation, nomination pipeline, and
+ * integrity - the numbers an electoral commission wants on one screen.
+ * Staff and VIEW_RESULTS holders only (it exposes operational counts).
+ */
+export const getElectionReportController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new UnauthorizedError('Authentication required');
+    const election = await loadElectionForResults(req.params.electionId);
+    const isStaff = user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+    if (
+      !isStaff &&
+      !(await hasCapability(user, Capability.VIEW_RESULTS, election.id))
+    ) {
+      throw new ForbiddenError('The election report is not available to you');
+    }
+
+    const [turnout, candidateStatuses, portfolios, chain, accredited] =
+      await Promise.all([
+        getTurnout(election.id),
+        prisma.candidate.groupBy({
+          _count: { _all: true },
+          by: ['status'],
+          where: { electionId: election.id },
+        }),
+        prisma.portfolio.count({ where: { electionId: election.id } }),
+        verifyBallotChain(election.id),
+        prisma.voterElection.count({
+          where: { accreditedAt: { not: null }, electionId: election.id },
+        }),
+      ]);
+
+    sendOk(res, 'Report generated', {
+      accredited,
+      candidates: Object.fromEntries(
+        candidateStatuses.map((row) => [row.status, row._count._all]),
+      ),
+      chain,
+      portfolios,
+      turnout,
+    });
   },
 );
 

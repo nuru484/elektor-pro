@@ -229,13 +229,110 @@ const assertGroupsModeConsistent = async (
   }
 };
 
+/**
+ * Clone an election's STRUCTURE into a fresh DRAFT: eligibility mode +
+ * groups, policies, settings, vetting configuration and criteria, and every
+ * portfolio (with its group scoping). Candidates, rolls, and ballots stay
+ * behind - a new run starts clean; only the dates and name come from the
+ * caller.
+ */
+const cloneElectionInTx = async (
+  tx: TxClient,
+  actorId: string,
+  input: { cloneFromId: string; endDate: Date; name: string; slug?: string; startDate: Date },
+): Promise<{ id: string }> => {
+  const source = await tx.election.findFirst({
+    include: {
+      eligibilityGroups: { select: { groupId: true } },
+      portfolios: { include: { eligibilityGroups: { select: { groupId: true } } } },
+      vettingCriteria: true,
+    },
+    where: { id: input.cloneFromId },
+  });
+  if (!source) throw new NotFoundError('Election to clone was not found');
+
+  const slug = await uniqueSlug(input.slug ?? input.name, (s) => slugExists(tx, s));
+  const clone = await tx.election.create({
+    data: {
+      accreditationRequired: source.accreditationRequired,
+      createdBy: { connect: { id: actorId } },
+      description: source.description,
+      eligibilityMode: source.eligibilityMode,
+      endDate: input.endDate,
+      name: input.name,
+      resultsPolicy: source.resultsPolicy,
+      settings: (source.settings ?? undefined) as Prisma.InputJsonValue | undefined,
+      slug,
+      startDate: input.startDate,
+      status: ElectionStatus.DRAFT,
+      vettingEnabled: source.vettingEnabled,
+      vettingPassPercent: source.vettingPassPercent,
+      voteCodeEnabled: source.voteCodeEnabled,
+    },
+    select: { id: true },
+  });
+  if (source.eligibilityGroups.length > 0) {
+    await tx.electionEligibility.createMany({
+      data: source.eligibilityGroups.map((g) => ({
+        electionId: clone.id,
+        groupId: g.groupId,
+      })),
+    });
+  }
+  for (const portfolio of source.portfolios) {
+    const created = await tx.portfolio.create({
+      data: {
+        allowAbstain: portfolio.allowAbstain,
+        description: portfolio.description,
+        electionId: clone.id,
+        eligibility: portfolio.eligibility,
+        maxSelections: portfolio.maxSelections,
+        name: portfolio.name,
+        order: portfolio.order,
+        votingMethod: portfolio.votingMethod,
+      },
+      select: { id: true },
+    });
+    if (portfolio.eligibilityGroups.length > 0) {
+      await tx.portfolioEligibility.createMany({
+        data: portfolio.eligibilityGroups.map((g) => ({
+          groupId: g.groupId,
+          portfolioId: created.id,
+        })),
+      });
+    }
+  }
+  if (source.vettingCriteria.length > 0) {
+    await tx.vettingCriterion.createMany({
+      data: source.vettingCriteria.map((criterion) => ({
+        description: criterion.description,
+        electionId: clone.id,
+        maxScore: criterion.maxScore,
+        name: criterion.name,
+        order: criterion.order,
+      })),
+    });
+  }
+  return clone;
+};
+
 export const electionApplier: Applier = {
   create: async (tx, payload, actorId) => {
     const input = payload as Record<string, unknown> & {
+      cloneFromId?: string;
       groupIds?: string[];
       name: string;
       slug?: string;
     };
+    if (input.cloneFromId) {
+      return cloneElectionInTx(tx, actorId, {
+        cloneFromId: input.cloneFromId,
+        endDate: new Date(input.endDate as Date | string),
+        name: input.name,
+        slug: input.slug,
+        startDate: new Date(input.startDate as Date | string),
+      });
+    }
     const slug = await uniqueSlug(input.slug ?? input.name, (s) => slugExists(tx, s));
     const { groupIds, slug: _slug, ...rest } = input;
     const election = await tx.election.create({

@@ -9,6 +9,7 @@ import {
   bulkUploadVotersController,
   cancelChangeRequestController,
   candidateControllers,
+  cloneElectionController,
   createCandidateController,
   electionControllers,
   getChangeRequestController,
@@ -124,6 +125,12 @@ electionsRouter.patch(
   authenticateJWT,
   requireCapability(Capability.MANAGE_ELECTIONS),
   ...updateElectionStatusController,
+);
+electionsRouter.post(
+  '/:id/clone',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_ELECTIONS),
+  ...cloneElectionController,
 );
 domainRoutes.use('/elections', electionsRouter);
 
@@ -243,6 +250,7 @@ domainRoutes.post(
   '/change-requests/:id/cancel',
   authenticateJWT,
   cancelChangeRequestController,
+  cloneElectionController,
 );
 
 export default domainRoutes;

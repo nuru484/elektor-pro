@@ -2,9 +2,11 @@
 
 // Election workspace - Overview tab: the at-a-glance state of the election
 // with quick links into the other tabs.
-import { CalendarClock, ShieldCheck, UsersRound } from "lucide-react";
+import { CalendarClock, CopyPlus, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { use } from "react";
+import { useRouter } from "next/navigation";
+import { use, useState } from "react";
+import { toast } from "sonner";
 
 import type { EligibilityMode } from "@/types/api";
 
@@ -12,8 +14,13 @@ import {
   ELIGIBILITY_MODE_HINTS,
   ELIGIBILITY_MODE_LABELS,
 } from "@/components/elections/election-lifecycle";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetElectionQuery } from "@/redux/admin-api";
+import { useCloneElectionMutation, useGetElectionQuery } from "@/redux/admin-api";
+import { getApiErrorMessage } from "@/utils/extract-api-error";
 
 const RESULTS_POLICY_LABELS: Record<string, string> = {
   LIVE: "Live while voting is open",
@@ -51,8 +58,40 @@ export default function ElectionOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { data, isLoading } = useGetElectionQuery(id);
   const election = data?.data;
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloneElection, { isLoading: cloning }] = useCloneElectionMutation();
+
+  const onClone = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const name = String(f.get("name") ?? "").trim();
+    const startDate = String(f.get("startDate") ?? "");
+    const endDate = String(f.get("endDate") ?? "");
+    if (!name || !startDate || !endDate) {
+      toast.error("Name, start, and close dates are required");
+      return;
+    }
+    try {
+      const res = await cloneElection({
+        electionId: id,
+        endDate: new Date(endDate).toISOString(),
+        name,
+        startDate: new Date(startDate).toISOString(),
+      }).unwrap();
+      if (res.pending) {
+        toast.success("Clone submitted for approval");
+        setCloneOpen(false);
+      } else {
+        toast.success("Election cloned as a draft");
+        router.push(`/admin/elections/${res.data.id}`);
+      }
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Could not clone the election"));
+    }
+  };
 
   if (isLoading || !election) {
     return (
@@ -153,10 +192,66 @@ export default function ElectionOverviewPage({
           <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
             Scheduled elections open and close automatically at these times; you
-            can also change the status manually from the header.
+            can also change the status manually from the header. Voters are
+            notified automatically when voting opens and when results publish.
           </p>
         </section>
       </div>
+
+      {/* Run it again: clone the structure into next year's edition. */}
+      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <CopyPlus className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold">Run this election again</h2>
+            <p className="text-xs text-muted-foreground">
+              Clone the structure - portfolios, eligibility groups, settings,
+              and vetting criteria - into a fresh draft with new dates.
+              Candidates and the roll start clean.
+            </p>
+          </div>
+        </div>
+        <Button
+          className="sm:shrink-0"
+          onClick={() => {
+            setCloneOpen(true);
+          }}
+          title="Create next year's edition from this election's structure"
+          variant="outline"
+        >
+          <CopyPlus className="size-4" /> Clone election
+        </Button>
+      </section>
+
+      <Modal
+        description="The clone starts as a draft: adjust anything before scheduling it."
+        onClose={() => {
+          setCloneOpen(false);
+        }}
+        open={cloneOpen}
+        title="Clone this election"
+      >
+        <form className="space-y-4" onSubmit={onClone}>
+          <Field label="New election name">
+            <Input
+              defaultValue={`${election.name} (new run)`}
+              name="name"
+              required
+            />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Opens">
+              <Input name="startDate" required type="datetime-local" />
+            </Field>
+            <Field label="Closes">
+              <Input name="endDate" required type="datetime-local" />
+            </Field>
+          </div>
+          <Button className="w-full" loading={cloning} type="submit" variant="brand">
+            Create the clone
+          </Button>
+        </form>
+      </Modal>
     </div>
   );
 }

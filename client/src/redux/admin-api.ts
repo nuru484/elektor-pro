@@ -10,6 +10,7 @@ import type {
   ChangeRequest,
   DeletedRow,
   Election,
+  ElectionReport,
   ElectionTurnout,
   ImportCandidateRow,
   ImportPreview,
@@ -380,6 +381,21 @@ export const adminApi = apiSlice.injectEndpoints({
       providesTags: ["Roll"],
       query: (electionId) => `/elections/${electionId}/turnout`,
     }),
+    cloneElection: build.mutation<
+      ApiResponse<{ id: string }> & { pending?: boolean },
+      { electionId: string; endDate: string; name: string; startDate: string }
+    >({
+      invalidatesTags: ["Election", "ChangeRequest", "Dashboard"],
+      query: ({ electionId, ...body }) => ({
+        body,
+        method: "POST",
+        url: `/elections/${electionId}/clone`,
+      }),
+    }),
+    getElectionReport: build.query<ApiResponse<ElectionReport>, string>({
+      providesTags: ["Results", "Roll", "Candidate"],
+      query: (electionId) => `/elections/${electionId}/report`,
+    }),
     allocateCandidates: build.mutation<
       ApiResponse<{ added: number; skipped: number }>,
       { candidateIds: string[]; electionId: string; portfolioId: string }
@@ -526,6 +542,8 @@ export const {
   useGetElectionQuery,
   useGetPermissionsQuery,
   useCertifyResultsMutation,
+  useCloneElectionMutation,
+  useGetElectionReportQuery,
   useGetCertificationQuery,
   useGetTurnoutQuery,
   usePublishResultsMutation,

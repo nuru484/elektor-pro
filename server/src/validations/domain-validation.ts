@@ -110,6 +110,17 @@ export const updateElectionSchema = electionBase
 export const electionStatusSchema = z.object({
   status: z.enum(ElectionStatus),
 });
+export const cloneElectionSchema = z
+  .object({
+    endDate: z.coerce.date(),
+    name: z.string().min(2).max(150),
+    slug: z.string().max(80).optional(),
+    startDate: z.coerce.date(),
+  })
+  .refine((d) => d.endDate > d.startDate, {
+    message: 'End date must be after start date',
+    path: ['endDate'],
+  });
 export const electionQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   page: z.coerce.number().int().min(1).optional(),

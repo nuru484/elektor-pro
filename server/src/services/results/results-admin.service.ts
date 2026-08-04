@@ -15,6 +15,7 @@ import { emitElectionUpdate } from '../../realtime/io.js';
 import { sha256, stableStringify } from '../../utils/crypto.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { hasCapability } from '../authorization/capability.service.js';
+import { announceResultsPublished } from '../notifications/election-announcements.service.js';
 import { computeResults } from './results.service.js';
 
 interface Actor { id: string; role: Role }
@@ -54,6 +55,8 @@ export const publishResults = async (
     userAgent: ctx.userAgent,
   });
   emitElectionUpdate(electionId, 'results:invalidate', { electionId });
+  // Post-commit, best-effort: tell the voters the results are out.
+  void announceResultsPublished(electionId);
   return { resultsPublishedAt };
 };
 
@@ -143,6 +146,8 @@ export const certifyResults = async (
   });
 
   emitElectionUpdate(electionId, 'results:invalidate', { electionId });
+  // Certification publishes: announce unless the results were already out.
+  if (!election.resultsPublishedAt) void announceResultsPublished(electionId);
   return { hash, snapshotId: snapshot.id };
 };
 

@@ -60,12 +60,14 @@ import {
 } from '../services/domain/portfolio.service.js';
 import { previewVoterImport } from '../services/domain/voter-import.service.js';
 import { getVoter, listVoters } from '../services/domain/voter.service.js';
+import { announceElectionOpened } from '../services/notifications/election-announcements.service.js';
 import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendList, sendOk } from '../utils/http.js';
 import {
   allocateCandidatesSchema,
   bulkCandidateSchema,
   bulkVoterSchema,
+  cloneElectionSchema,
   createCandidateSchema,
   createElectionSchema,
   createGroupCategorySchema,
@@ -108,18 +110,42 @@ export const electionControllers = makeCrud({
 export const updateElectionStatusController: RequestHandler[] = [
   ...validationMiddleware.update(electionStatusSchema),
   asyncHandler(async (req, res) => {
+    const status = (req.body as { status: ElectionStatus }).status;
     const outcome = await proposeOrExecute(
       actorOf(req),
       {
         action: ChangeAction.UPDATE,
         entity: ChangeEntity.ELECTION,
         entityId: req.params.id,
-        payload: { status: (req.body as { status: ElectionStatus }).status },
-        summary: `Set election status to ${(req.body as { status: string }).status}`,
+        payload: { status },
+        summary: `Set election status to ${status}`,
       },
       ctxOf(req),
     );
+    // Announce openings after the commit; delivery never blocks the response.
+    if (outcome.applied && status === 'IN_PROGRESS') {
+      void announceElectionOpened(req.params.id);
+    }
     respondToProposal(res, outcome, 'Election status');
+  }),
+];
+
+/** Clone an election's structure into a fresh DRAFT with new dates. */
+export const cloneElectionController: RequestHandler[] = [
+  ...validationMiddleware.create(cloneElectionSchema),
+  asyncHandler(async (req, res) => {
+    const body = req.body as { endDate: Date; name: string; startDate: Date };
+    const outcome = await proposeOrExecute(
+      actorOf(req),
+      {
+        action: ChangeAction.CREATE,
+        entity: ChangeEntity.ELECTION,
+        payload: { ...body, cloneFromId: req.params.id },
+        summary: `Clone election into "${body.name}"`,
+      },
+      ctxOf(req),
+    );
+    respondToProposal(res, outcome, 'Election', HTTP_STATUS_CODES.CREATED);
   }),
 ];
 

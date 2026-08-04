@@ -333,6 +333,15 @@ export interface MyCandidacy {
   vettingNote: null | string;
 }
 
+/** One-page election report for staff (turnout, pipeline, integrity). */
+export interface ElectionReport {
+  accredited: number;
+  candidates: Record<string, number>;
+  chain: ChainVerification;
+  portfolios: number;
+  turnout: ElectionTurnout;
+}
+
 /** Whole-chain ballot verification outcome (public integrity check). */
 export interface ChainVerification {
   brokenAt?: number;

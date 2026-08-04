@@ -6,6 +6,7 @@ import {
   certifyResultsController,
   exportResultsController,
   getCertificationController,
+  getElectionReportController,
   getResultsController,
   publishResultsController,
   unpublishResultsController,
@@ -27,6 +28,12 @@ resultsRoutes.get(
   '/elections/:electionId/certification',
   optionalAuth,
   getCertificationController,
+);
+
+resultsRoutes.get(
+  '/elections/:electionId/report',
+  authenticateJWT,
+  getElectionReportController,
 );
 
 // Privileged actions

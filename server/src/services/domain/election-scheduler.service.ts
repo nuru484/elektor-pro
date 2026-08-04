@@ -8,6 +8,7 @@
 import { ElectionStatus } from '../../../generated/prisma/client.js';
 import prisma from '../../lib/prisma.js';
 import { appendAudit } from '../audit/audit.service.js';
+import { announceElectionOpened } from '../notifications/election-announcements.service.js';
 
 export interface SweepResult {
   closed: number;
@@ -29,12 +30,12 @@ export const sweepElectionStatuses = async (
   });
   let opened = 0;
   for (const election of dueToOpen) {
-    await prisma.$transaction(async (tx) => {
+    const didOpen = await prisma.$transaction(async (tx) => {
       const guard = await tx.election.updateMany({
         data: { status: ElectionStatus.IN_PROGRESS },
         where: { id: election.id, status: ElectionStatus.SCHEDULED },
       });
-      if (guard.count !== 1) return;
+      if (guard.count !== 1) return false;
       opened += 1;
       await appendAudit(tx, {
         action: 'election.auto_opened',
@@ -42,7 +43,10 @@ export const sweepElectionStatuses = async (
         entityId: election.id,
         metadata: { name: election.name },
       });
+      return true;
     });
+    // After commit: tell the eligible voters (best-effort, never blocking).
+    if (didOpen) void announceElectionOpened(election.id);
   }
 
   const dueToClose = await prisma.election.findMany({
