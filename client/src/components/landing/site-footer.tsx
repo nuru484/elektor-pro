@@ -4,8 +4,10 @@
 // a muted-half heading and inversion pill button, then a proper multi-column
 // footer (brand + link columns) over a hairline, and a slim bottom bar with
 // scroll-to-top.
-import { ArrowUp, ArrowUpRight } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Facebook, Linkedin, Youtube } from "lucide-react";
 import Link from "next/link";
+
+import { Logo } from "@/components/brand/logo";
 
 const COLUMNS = [
   {
@@ -56,13 +58,28 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 md:grid-cols-[1.3fr_repeat(3,minmax(0,1fr))] md:px-10">
           <div className="max-w-xs">
-            <Link className="text-xl font-semibold tracking-tight" href="/">
-              Elektor<span className="text-brand">Pro</span>
-            </Link>
+            <Logo imgSize={30} textClassName="text-xl" />
             <p className="mt-3 leading-relaxed text-muted-foreground">
               The secure e-voting platform for organizations that need results
               everyone can stand behind.
             </p>
+            {/* Social profiles (placeholders until the accounts exist). */}
+            <div className="mt-5 flex items-center gap-3">
+              {[
+                { Icon: Facebook, label: "Facebook" },
+                { Icon: Linkedin, label: "LinkedIn" },
+                { Icon: Youtube, label: "YouTube" },
+              ].map(({ Icon, label }) => (
+                <a
+                  aria-label={label}
+                  className="rounded-full border border-border bg-muted p-2 text-muted-foreground transition-all hover:bg-brand/10 hover:text-brand"
+                  href="#"
+                  key={label}
+                >
+                  <Icon className="size-4" />
+                </a>
+              ))}
+            </div>
           </div>
           {COLUMNS.map((column) => (
             <nav aria-label={column.heading} key={column.heading}>

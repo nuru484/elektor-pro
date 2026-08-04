@@ -1,5 +1,7 @@
-// Numbered, typography-first feature list (the portfolio's outlined-number
-// card pattern) - no icons, no chips.
+// Feature grid as clean bordered cards - Elektor's own take on the shared
+// language (hairlines, muted type, quiet numbering), distinct from the
+// portfolio's outlined-number signature. Each card carries a mono index, a
+// brand top rule that brightens on hover, title, and body.
 interface Feature {
   body: string;
   number: number;
@@ -41,23 +43,17 @@ const FEATURES: Feature[] = [
 
 function FeatureCard({ body, number, title }: Feature) {
   return (
-    <div>
-      <div className="relative pl-10">
-        <div
-          className="absolute text-6xl font-semibold opacity-30"
-          style={{
-            color: "transparent",
-            transform: "translate(-100%, -0%) rotate(-90deg)",
-            WebkitTextStroke: "1px var(--foreground)",
-          }}
-        >
-          {number.toString().padStart(2, "0")}
-        </div>
-        <div className="space-y-4">
-          <h3 className="text-3xl font-medium">{title}</h3>
-          <p className="max-w-md text-lg leading-relaxed text-muted-foreground">{body}</p>
-        </div>
-      </div>
+    <div className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card/60 p-7 transition-colors hover:border-brand/50">
+      {/* Brand top rule that brightens on hover. */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-brand/60 to-transparent opacity-40 transition-opacity group-hover:opacity-100"
+      />
+      <span className="font-mono text-xs tracking-[0.18em] text-muted-foreground/70">
+        {number.toString().padStart(2, "0")}
+      </span>
+      <h3 className="text-xl font-medium leading-snug md:text-2xl">{title}</h3>
+      <p className="leading-relaxed text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -65,13 +61,19 @@ function FeatureCard({ body, number, title }: Feature) {
 export function Features() {
   return (
     <section
-      className="mx-auto mb-24 flex max-w-6xl scroll-mt-8 flex-col gap-8 px-6 md:mb-32 md:px-12"
+      className="mx-auto mb-24 flex max-w-6xl scroll-mt-8 flex-col gap-8 px-6 md:mb-32 md:px-10"
       id="product"
     >
-      <h2 className="text-4xl font-medium md:text-5xl">
-        Everything an election needs
-      </h2>
-      <div className="grid grid-cols-1 items-start gap-12 md:grid-cols-2 lg:grid-cols-3">
+      <div className="max-w-2xl">
+        <h2 className="text-4xl font-medium md:text-5xl">
+          Everything an election needs
+        </h2>
+        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+          One platform carries your election end to end - no spreadsheets, no
+          paper trails, no arguments about the count.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((feature) => (
           <FeatureCard key={feature.number} {...feature} />
         ))}

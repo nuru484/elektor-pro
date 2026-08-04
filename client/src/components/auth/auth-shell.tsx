@@ -7,6 +7,9 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+import { Logo } from "@/components/brand/logo";
+import { SiteHeader } from "@/components/landing/site-header";
+
 interface AuthShellProps {
   backHref?: string;
   backLabel?: string;
@@ -23,16 +26,13 @@ export function AuthShell({
   title,
 }: AuthShellProps) {
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="flex min-h-dvh flex-col">
+      <SiteHeader />
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <div className="border-b border-border px-8 pt-8 pb-6 text-center">
-            <Link
-              className="inline-block text-xl font-semibold tracking-tight text-foreground"
-              href="/"
-            >
-              Elektor<span className="text-brand">Pro</span>
-            </Link>
+            <Logo className="justify-center" imgSize={30} textClassName="text-xl" />
             {title && (
               <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
                 {title}
@@ -47,13 +47,14 @@ export function AuthShell({
           <div className="px-8 py-6">{children}</div>
         </div>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <Link
-            className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
-            href={backHref}
-          >
-            <ArrowLeft className="size-3.5" /> {backLabel}
-          </Link>
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            <Link
+              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+              href={backHref}
+            >
+              <ArrowLeft className="size-3.5" /> {backLabel}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

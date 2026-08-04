@@ -9,13 +9,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
 const PAGE_LINKS = [
-  { href: "#product", label: "Product" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#security", label: "Security" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#product", label: "Product" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#security", label: "Security" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function SiteHeader() {
@@ -42,9 +43,7 @@ export function SiteHeader() {
     >
       <div className="mx-auto max-w-6xl px-6 md:px-10">
         <div className={cn("flex items-center justify-between transition-all duration-300", scrolled ? "py-3.5" : "py-6")}>
-          <Link className="text-2xl font-semibold tracking-tight" href="/">
-            Elektor<span className="text-brand">Pro</span>
-          </Link>
+          <Logo imgSize={34} textClassName="text-2xl" />
 
           {/* Page links, visually separate from the actions */}
           <div className="hidden items-center gap-6 md:flex">
