@@ -117,8 +117,29 @@ async function ensureFullContactDetails() {
     where: { manifesto: null },
   });
 
+  // Everyone gets a face: free portrait photos (randomuser.me's public
+  // avatar set) for every voter, user, and candidate still missing one, so
+  // ballots, tables, and profiles all render real images. One SQL pass per
+  // table (2,800+ voters would take minutes row by row); cycles 200
+  // portraits (men/women 0-99). Idempotent: only NULL pictures are filled.
+  const portraitSql = (table: string) => `
+    UPDATE "${table}" t SET "profilePicture" =
+      'https://randomuser.me/api/portraits/' ||
+      (CASE WHEN sub.rn % 2 = 0 THEN 'men/' ELSE 'women/' END) ||
+      ((sub.rn / 2) % 100)::text || '.jpg'
+    FROM (
+      SELECT id, row_number() OVER (ORDER BY id) AS rn
+      FROM "${table}" WHERE "profilePicture" IS NULL
+    ) sub
+    WHERE t.id = sub.id`;
+  const [voterFaces, userFaces, candidateFaces] = await Promise.all([
+    prisma.$executeRawUnsafe(portraitSql('Voter')),
+    prisma.$executeRawUnsafe(portraitSql('User')),
+    prisma.$executeRawUnsafe(portraitSql('Candidate')),
+  ]);
+
   console.log(
-    `✓ contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts, ${String(passwordless.length)} accounts given the shared password)`,
+    `✓ contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts, ${String(passwordless.length)} accounts given the shared password, faces: ${String(voterFaces)} voters / ${String(userFaces)} users / ${String(candidateFaces)} candidates)`,
   );
 }
 
