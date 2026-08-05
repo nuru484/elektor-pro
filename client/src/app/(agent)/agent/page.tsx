@@ -5,9 +5,16 @@
 // the election's shape (window, candidates, portfolios), live turnout, and a
 // straight path to the results.
 import { ArrowUpRight, CalendarClock, Eye } from "lucide-react";
+import { useState } from "react";
 
 import type { AgentDashboardRow } from "@/types/api";
 
+import {
+  ElectionFilterBar,
+  EMPTY_ELECTION_FILTER,
+  matchesElectionFilter,
+  type ElectionFilter,
+} from "@/components/console/election-filter-bar";
 import { EntityAvatar } from "@/components/console/entity-avatar";
 import {
   Card,
@@ -195,7 +202,9 @@ function AssignmentCard({ assignment }: { assignment: AgentDashboardRow }) {
 
 export default function AgentDashboardPage() {
   const { data, isError, isLoading } = useGetAgentDashboardQuery();
-  const assignments = data?.data ?? [];
+  const [filter, setFilter] = useState<ElectionFilter>(EMPTY_ELECTION_FILTER);
+  const all = data?.data ?? [];
+  const assignments = all.filter((a) => matchesElectionFilter(a.election, filter));
 
   return (
     <div className="space-y-6">
@@ -204,15 +213,21 @@ export default function AgentDashboardPage() {
         title="My assignments"
       />
 
+      <ElectionFilterBar filter={filter} onChange={setFilter} />
+
       {isLoading ? (
         <CardGridSkeleton count={3} />
       ) : isError ? (
         <ErrorState />
       ) : assignments.length === 0 ? (
         <EmptyState
-          description="When an administrator assigns you to an election, it appears here."
+          description={
+            all.length > 0
+              ? "No assignment matches your search or period. Clear the filters to see everything."
+              : "When an administrator assigns you to an election, it appears here."
+          }
           icon={Eye}
-          title="No assignments yet"
+          title={all.length > 0 ? "No matches" : "No assignments yet"}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -10,6 +10,12 @@ import { useState } from "react";
 
 import type { MyCandidacy } from "@/types/api";
 
+import {
+  ElectionFilterBar,
+  EMPTY_ELECTION_FILTER,
+  matchesElectionFilter,
+  type ElectionFilter,
+} from "@/components/console/election-filter-bar";
 import { EntityAvatar } from "@/components/console/entity-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -219,7 +225,9 @@ function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
 
 export default function CandidateDashboardPage() {
   const { data, isError, isLoading } = useGetMyCandidaciesQuery();
-  const candidacies = data?.data ?? [];
+  const [filter, setFilter] = useState<ElectionFilter>(EMPTY_ELECTION_FILTER);
+  const all = data?.data ?? [];
+  const candidacies = all.filter((c) => matchesElectionFilter(c.election, filter));
 
   return (
     <div className="space-y-6">
@@ -228,15 +236,21 @@ export default function CandidateDashboardPage() {
         title="My candidacies"
       />
 
+      <ElectionFilterBar filter={filter} onChange={setFilter} />
+
       {isLoading ? (
         <CardGridSkeleton count={3} />
       ) : isError ? (
         <ErrorState />
       ) : candidacies.length === 0 ? (
         <EmptyState
-          description="When you are nominated for a portfolio, your candidacy appears here with its vetting progress and results."
+          description={
+            all.length > 0
+              ? "No candidacy matches your search or period. Clear the filters to see everything."
+              : "When you are nominated for a portfolio, your candidacy appears here with its vetting progress and results."
+          }
           icon={Award}
-          title="No candidacies yet"
+          title={all.length > 0 ? "No matches" : "No candidacies yet"}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

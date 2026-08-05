@@ -48,6 +48,7 @@ const NO_REAUTH_PATHS = new Set([
   "auth/password/reset",
   "voter/otp/request",
   "voter/otp/verify",
+  "voter/code-login",
 ]);
 
 const skipsReauth = (args: FetchArgs | string): boolean => {
@@ -57,6 +58,16 @@ const skipsReauth = (args: FetchArgs | string): boolean => {
   return NO_REAUTH_PATHS.has((url.split("?")[0] ?? "").replace(/^\/+/, ""));
 };
 
+/**
+ * Once a refresh has failed, the session is KNOWN dead: every further 401 is
+ * final until something signs in again. Without this latch, the
+ * resetApiState() below makes still-subscribed queries refetch, those 401
+ * again, trigger another refresh and another reset - an infinite loop that
+ * hammers the server (the "shivering" log scroll) and aborts any login
+ * request caught mid-reset.
+ */
+let sessionDead = false;
+
 const baseQueryWithReauth: BaseQueryFn<
   FetchArgs | string,
   unknown,
@@ -65,7 +76,10 @@ const baseQueryWithReauth: BaseQueryFn<
   await mutex.waitForUnlock();
   let result = await baseQuery(args, api, extraOptions);
 
-  if (result.error?.status === 401 && !skipsReauth(args)) {
+  // A successful sign-in (login, 2FA, OTP, voting code) revives the session.
+  if (!result.error && skipsReauth(args)) sessionDead = false;
+
+  if (result.error?.status === 401 && !skipsReauth(args) && !sessionDead) {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
       try {
@@ -77,14 +91,18 @@ const baseQueryWithReauth: BaseQueryFn<
         const refreshed = refresh.data as ApiResponse<CurrentUser> | undefined;
 
         if (refreshed) {
+          sessionDead = false;
           api.dispatch(userLoggedIn({ user: refreshed.data }));
           result = await baseQuery(args, api, extraOptions);
         } else {
-          // Refresh failed: the session is gone. Clear the user AND the RTK
-          // Query cache - otherwise the 401 errors cached here survive the
-          // forced logout and flash on every card after the next login. The
-          // frontend-domain marker goes too, so the proxy gate stops letting
-          // dead sessions load the console shell.
+          // Refresh failed: the session is gone. Latch it FIRST so the
+          // refetch wave caused by resetApiState() 401s once and stops,
+          // instead of looping back into another refresh. Clear the user AND
+          // the RTK Query cache - otherwise the 401 errors cached here
+          // survive the forced logout and flash on every card after the next
+          // login. The frontend-domain marker goes too, so the proxy gate
+          // stops letting dead sessions load the console shell.
+          sessionDead = true;
           clearSessionMarker();
           api.dispatch(userLoggedOut());
           api.dispatch(apiSlice.util.resetApiState());

@@ -21,6 +21,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AuthShell } from "@/components/auth/auth-shell";
+import {
+  ElectionFilterBar,
+  EMPTY_ELECTION_FILTER,
+  matchesElectionFilter,
+  type ElectionFilter,
+} from "@/components/console/election-filter-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -228,9 +234,11 @@ function HistoryCard({ item }: { item: VoterHistoryItem }) {
   );
 }
 
-function VotingHistory() {
+function VotingHistory({ filter }: { filter: ElectionFilter }) {
   const { data, isLoading } = useGetVoterHistoryQuery();
-  const history = data?.data ?? [];
+  const history = (data?.data ?? []).filter((item) =>
+    matchesElectionFilter(item.election, filter),
+  );
   if (isLoading || history.length === 0) return null;
   return (
     <div className="space-y-3">
@@ -247,19 +255,23 @@ function VotingHistory() {
   );
 }
 
-function ElectionPicker() {
+function ElectionPicker({ filter }: { filter: ElectionFilter }) {
   const { data, isError, isLoading } = useListVoterElectionsQuery();
   if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
   if (isError) {
     return <EmptyState icon={Vote} title="Could not load your elections" />;
   }
-  const elections = data?.data ?? [];
+  const elections = (data?.data ?? []).filter((e) => matchesElectionFilter(e, filter));
   if (elections.length === 0) {
     return (
       <EmptyState
-        description="There are no open or upcoming elections for you right now. When one is scheduled, it appears here."
+        description={
+          (data?.data.length ?? 0) > 0
+            ? "No election matches your search or period. Clear the filters to see everything."
+            : "There are no open or upcoming elections for you right now. When one is scheduled, it appears here."
+        }
         icon={Vote}
-        title="No elections yet"
+        title={(data?.data.length ?? 0) > 0 ? "No matches" : "No elections yet"}
       />
     );
   }
@@ -282,6 +294,7 @@ export default function VotePage() {
     "identify",
   );
   const [errors, setErrors] = useState<FormErrors>({});
+  const [filter, setFilter] = useState<ElectionFilter>(EMPTY_ELECTION_FILTER);
 
   // A returning voter with a live session skips the sign-in forms entirely -
   // the login page is unreachable until they log out.
@@ -366,8 +379,9 @@ export default function VotePage() {
               Everything you can vote in - open now or coming up.
             </p>
           </div>
-          <ElectionPicker />
-          <VotingHistory />
+          <ElectionFilterBar filter={filter} onChange={setFilter} />
+          <ElectionPicker filter={filter} />
+          <VotingHistory filter={filter} />
         </div>
       </VoterChrome>
     );
