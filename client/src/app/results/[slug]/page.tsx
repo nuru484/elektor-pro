@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { initialsOf } from "@/utils/format-date";
 import { useElectionSocket } from "@/hooks/use-election-socket";
 import { useGetResultsQuery } from "@/redux/voting-api";
 import type { PortfolioResult } from "@/types/api";
@@ -28,8 +29,10 @@ import type { PortfolioResult } from "@/types/api";
 const fmt = (n: number) => n.toLocaleString();
 
 /**
- * Photo-first result tile: face on top, name, votes, and percent below -
- * tiles flow left to right and wrap early on narrow screens.
+ * Photo-first result tile, portrait-shaped: a SQUARE photo fills the card's
+ * full width (roughly the top 45% of its height), with the name, votes, and
+ * percent stacked in the space below. Tiles flow left to right and wrap
+ * early on narrow screens.
  */
 function CandidateTile({
   candidate,
@@ -41,35 +44,48 @@ function CandidateTile({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col items-center gap-1.5 rounded-lg border p-3 text-center",
+        "flex min-w-0 flex-col overflow-hidden rounded-lg border text-center",
         leading ? "border-brand bg-brand-muted/40" : "border-border",
       )}
       title={`${candidate.name}: ${fmt(candidate.votes)} votes (${candidate.percentage}%)`}
     >
-      <div className="relative">
-        <EntityAvatar
-          name={candidate.name}
-          size="size-16"
-          url={candidate.profilePicture}
-        />
-        {leading && (
-          <Crown className="absolute -top-1.5 -right-1.5 size-4 text-warning" />
+      {/* Full-bleed square photo - the card's top block. */}
+      <div className="relative aspect-square w-full overflow-hidden">
+        {candidate.profilePicture ? (
+          // eslint-disable-next-line @next/next/no-img-element -- external avatar
+          <img
+            alt={candidate.name}
+            className="size-full object-cover"
+            src={candidate.profilePicture}
+          />
+        ) : (
+          <div className="grid size-full place-items-center bg-brand text-2xl font-semibold text-brand-foreground">
+            {initialsOf(candidate.name)}
+          </div>
         )}
-      </div>
-      <span className="min-w-0 max-w-full text-sm font-medium whitespace-normal [overflow-wrap:anywhere]">
-        {candidate.ballotNumber != null && (
-          <span className="mr-1 font-mono text-xs text-muted-foreground">
-            {candidate.ballotNumber}.
+        {leading && (
+          <span className="absolute top-1.5 right-1.5 grid size-6 place-items-center rounded-full bg-background/90">
+            <Crown className="size-3.5 text-warning" />
           </span>
         )}
-        {candidate.name}
-      </span>
-      <span className="font-mono text-sm font-semibold tabular-nums">
-        {fmt(candidate.votes)} {candidate.votes === 1 ? "vote" : "votes"}
-      </span>
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-        {candidate.percentage}%
-      </span>
+      </div>
+      {/* The text block below the photo. */}
+      <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5 px-2 py-2.5">
+        <span className="min-w-0 max-w-full text-sm font-medium whitespace-normal [overflow-wrap:anywhere]">
+          {candidate.ballotNumber != null && (
+            <span className="mr-1 font-mono text-xs text-muted-foreground">
+              {candidate.ballotNumber}.
+            </span>
+          )}
+          {candidate.name}
+        </span>
+        <span className="mt-auto pt-1 font-mono text-sm font-semibold tabular-nums">
+          {fmt(candidate.votes)} {candidate.votes === 1 ? "vote" : "votes"}
+        </span>
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+          {candidate.percentage}%
+        </span>
+      </div>
     </div>
   );
 }
