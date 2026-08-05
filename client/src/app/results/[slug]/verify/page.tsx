@@ -17,6 +17,7 @@ import { use, useState } from "react";
 
 import type { ReceiptVerification } from "@/types/api";
 
+import { ReturnHomeLink } from "@/components/results/return-home-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -156,12 +157,15 @@ export default function VerifyPage({ params }: { params: Promise<{ slug: string 
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          href={`/results/${slug}`}
-        >
-          <ArrowLeft className="size-4" /> Back to results
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            href={`/results/${slug}`}
+          >
+            <ArrowLeft className="size-4" /> Back to results
+          </Link>
+          <ReturnHomeLink />
+        </div>
         <p className="mt-3 font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
           Election integrity
         </p>

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 
 import { EntityAvatar } from "@/components/console/entity-avatar";
+import { ReturnHomeLink } from "@/components/results/return-home-link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -240,6 +241,11 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   if (error) {
     const status = (error as { status?: number }).status;
     return (
+      <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <BackControl />
+        <ReturnHomeLink />
+      </div>
       <EmptyState
         action={
           status === 403 ? (
@@ -260,6 +266,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         icon={Lock}
         title={status === 403 ? "Results not yet released" : "Unavailable"}
       />
+      </div>
     );
   }
 
@@ -270,7 +277,10 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <BackControl />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <BackControl />
+            <ReturnHomeLink />
+          </div>
           <p className="mt-3 font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
             Election results
           </p>

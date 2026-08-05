@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VoterChrome } from "@/components/vote/voter-header";
 import { hasSessionMarker, setSessionMarker } from "@/lib/session-marker";
 import { useGetMeQuery } from "@/redux/auth-api";
@@ -236,18 +237,24 @@ function HistoryCard({ item }: { item: VoterHistoryItem }) {
 
 function VotingHistory({ filter }: { filter: ElectionFilter }) {
   const { data, isLoading } = useGetVoterHistoryQuery();
-  const history = (data?.data ?? []).filter((item) =>
-    matchesElectionFilter(item.election, filter),
-  );
-  if (isLoading || history.length === 0) return null;
+  const all = data?.data ?? [];
+  const history = all.filter((item) => matchesElectionFilter(item.election, filter));
+  if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
+  if (history.length === 0) {
+    return (
+      <EmptyState
+        description={
+          all.length > 0
+            ? "No vote matches your search or period. Clear the filters to see everything."
+            : "Once you cast a ballot, it appears here with your choices and receipt."
+        }
+        icon={CheckCircle2}
+        title={all.length > 0 ? "No matches" : "You have not voted yet"}
+      />
+    );
+  }
   return (
     <div className="space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold">My votes</h2>
-        <p className="text-sm text-muted-foreground">
-          The elections you have voted in, your choices, and your receipts.
-        </p>
-      </div>
       {history.map((item) => (
         <HistoryCard item={item} key={item.election.id} />
       ))}
@@ -372,16 +379,26 @@ export default function VotePage() {
   if (signedIn) {
     return (
       <VoterChrome>
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
             <h1 className="text-xl font-semibold">Your elections</h1>
             <p className="text-sm text-muted-foreground">
-              Everything you can vote in - open now or coming up.
+              Everything you can vote in - and everything you already voted.
             </p>
           </div>
-          <ElectionFilterBar filter={filter} onChange={setFilter} />
-          <ElectionPicker filter={filter} />
-          <VotingHistory filter={filter} />
+          <Tabs className="gap-4" defaultValue="elections">
+            <TabsList>
+              <TabsTrigger value="elections">Elections</TabsTrigger>
+              <TabsTrigger value="votes">My votes</TabsTrigger>
+            </TabsList>
+            <ElectionFilterBar filter={filter} onChange={setFilter} />
+            <TabsContent value="elections">
+              <ElectionPicker filter={filter} />
+            </TabsContent>
+            <TabsContent value="votes">
+              <VotingHistory filter={filter} />
+            </TabsContent>
+          </Tabs>
         </div>
       </VoterChrome>
     );
