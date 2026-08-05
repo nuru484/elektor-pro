@@ -1,0 +1,387 @@
+name: Deploy API
+
+# Ships the compiled API to EC2 after CI passes on main. Only server/ is
+# deployed here; the Next.js client is hosted separately (see .github/DEPLOY.md).
+#
+# Why the build happens here and not on the box: a small instance (1-2 GB) caps
+# Node's old-space heap well below what `tsc` needs to type-check this project
+# plus Prisma's generated client, so `npm run build` there dies with a heap OOM.
+# CI already builds the identical code, so the box only installs dependencies,
+# unpacks a prebuilt dist/, and restarts.
+#
+# Triggered by CI completing successfully rather than by the push itself, so the
+# suite runs exactly once per merge and a deploy can never outrun it. CI keeps
+# its own push trigger, so main is always covered even if this workflow is
+# disabled or misconfigured.
+#
+# Reaching the box: a GitHub-hosted runner connects from an Azure address, and
+# GitHub publishes over 7000 CIDR ranges for Actions, far beyond the 60 inbound
+# rules a security group allows. So either port 22 is open to the internet, or
+# this workflow opens it for the runner's single IP and closes it again. Set the
+# AWS_* secrets to get the second behaviour. See .github/DEPLOY.md.
+#
+# Safety properties:
+#   - Runs only for a successful CI run on main, and deploys that exact commit.
+#   - Skips cleanly (not a failure) until the deploy secrets are configured.
+#   - Every ssh/scp has a connect timeout, so an unreachable box fails fast
+#     instead of hanging a step until the job limit.
+#   - Any security-group hole this opens is closed again even if the deploy fails.
+#   - Migrations run before the restart; they are additive, so the still-running
+#     old code tolerates the new schema.
+#   - The previous dist/ is kept; a failed health check restores it, restarts,
+#     and fails the job, so a bad deploy self-reverts.
+#   - Concurrency-limited, so two merges cannot interleave on the box.
+#
+# Secrets reach the shell through `env:` only, never string-interpolated into a
+# `run:` command.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  # Manual re-deploy / rollback: pick any commit from the Actions tab.
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  # Shared by every ssh/scp call: fail fast, never prompt, never hang.
+  SSH_OPTS: -o ConnectTimeout=15 -o BatchMode=yes -o ServerAliveInterval=10 -o ServerAliveCountMax=3
+
+jobs:
+  deploy:
+    # For workflow_run, only a green CI run may deploy. workflow_dispatch is a
+    # deliberate manual action and is always allowed.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      SSH_HOST: ${{ secrets.EC2_HOST }}
+      SSH_USER: ${{ secrets.EC2_USER }}
+      APP_DIR: /home/ubuntu/elektor-pro-api
+      SERVICE: elektor-pro-api
+      HEALTH_URL: http://127.0.0.1:4040/health/ready
+
+    steps:
+      # Until the secrets exist this workflow must not fail, or every merge
+      # reports red for a deploy that was never set up. See .github/DEPLOY.md.
+      - name: Check deploy configuration
+        id: config
+        env:
+          SG_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        run: |
+          if [ -z "${SSH_HOST}" ] || [ -z "${SSH_USER}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EC2 deploy secrets are not configured; skipping. See .github/DEPLOY.md."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+          # Optional: manage the security group for the duration of the deploy.
+          if [ -n "${SG_ID}" ] && [ -n "${AWS_KEY}" ]; then
+            echo "manage_sg=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "manage_sg=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AWS_* secrets not set; assuming port 22 is already reachable from GitHub runners."
+          fi
+
+      - name: Record runner IP
+        id: runner_ip
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          IP="$(curl -fsS --max-time 15 https://api.ipify.org)"
+          echo "ip=$IP" >> "$GITHUB_OUTPUT"
+          echo "runner public IP: $IP"
+
+      # Opens port 22 to exactly this runner, for the length of this job. The
+      # matching revoke below runs with if: always(), so the hole closes even if
+      # the deploy fails midway.
+      - name: Open SSH access
+        id: open_sg
+        if: steps.config.outputs.configured == 'true' && steps.config.outputs.manage_sg == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          SG_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+          RUNNER_IP: ${{ steps.runner_ip.outputs.ip }}
+        run: |
+          # Distinguish "the rule is already there" (harmless, e.g. a retried run)
+          # from any real failure. Swallowing every error here would report success
+          # and then fail later at the TCP probe with a misleading message about
+          # the security group, hiding an AccessDenied or a wrong group id.
+          set +e
+          err="$(aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32,Description='github-actions-deploy (temporary)'}]" \
+            2>&1 >/dev/null)"
+          status=$?
+          set -e
+
+          if [ $status -ne 0 ]; then
+            case "$err" in
+              *InvalidPermission.Duplicate*)
+                echo "rule already present for ${RUNNER_IP}/32, continuing"
+                ;;
+              *UnauthorizedOperation*|*AccessDenied*)
+                echo "::error::AWS refused the request. The IAM user's policy must allow ec2:AuthorizeSecurityGroupIngress and ec2:RevokeSecurityGroupIngress on ${SG_ID}. AWS said: ${err}"
+                exit 1
+                ;;
+              *InvalidGroup.NotFound*)
+                echo "::error::Security group ${SG_ID} not found in region ${AWS_DEFAULT_REGION}. Check EC2_SECURITY_GROUP_ID and AWS_REGION. AWS said: ${err}"
+                exit 1
+                ;;
+              *)
+                echo "::error::Could not open port 22 for ${RUNNER_IP}/32 on ${SG_ID}. AWS said: ${err}"
+                exit 1
+                ;;
+            esac
+          else
+            echo "opened 22 for ${RUNNER_IP}/32 on $SG_ID"
+          fi
+
+      - name: Configure SSH
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Secrets pasted through a browser routinely carry trailing whitespace
+          # or a newline, which makes every later lookup of the host fail.
+          HOST="$(printf '%s' "$SSH_HOST" | tr -d '[:space:]')"
+          echo "SSH_HOST=$HOST" >> "$GITHUB_ENV"
+
+          # Reachability first, with an explicit diagnosis rather than a bare
+          # exit code. This is the step that fails when the security group does
+          # not admit the runner, which is the default state of any EC2 box.
+          if ! timeout 15 bash -c "cat < /dev/null > /dev/tcp/$HOST/22" 2>/dev/null; then
+            echo "::error::Cannot open TCP port 22 on the host from this runner. The EC2 security group is not admitting GitHub's address. Either set the AWS_* secrets so this workflow can open it per-run, or allow inbound 22. See .github/DEPLOY.md, 'Letting the runner reach the box'."
+            exit 1
+          fi
+          echo "port 22 reachable"
+
+          # stderr deliberately NOT suppressed: this is what tells you why.
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      # Fail before touching anything if the box cannot run this build. The
+      # runner is x86_64 glibc; a mismatched instance architecture would only
+      # surface as a native-module crash (bcrypt) after the restart.
+      - name: Preflight
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            SERVICE="$SERVICE" 'bash -euo pipefail -s' <<'REMOTE'
+            arch="$(uname -m)"
+            if [ "$arch" != "x86_64" ]; then
+              echo "EC2 is $arch but the release was built on x86_64." >&2
+              exit 1
+            fi
+            node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<22 || (a===22 && b<12)) { console.error("Node >= 22.12 required, found "+process.versions.node); process.exit(1); }'
+            sudo -n systemctl is-active "$SERVICE" >/dev/null 2>&1 || {
+              echo "passwordless sudo for systemctl is not configured (see .github/DEPLOY.md)" >&2
+              exit 1
+            }
+            echo "preflight ok: $arch, node $(node -v)"
+          REMOTE
+
+      # Run migrations from here, not on the box: the Prisma CLI is a
+      # devDependency, this keeps the production database URL in one place, and
+      # the output lands in the workflow log where it can be read afterwards.
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.configured == 'true'
+        with:
+          # Deploy the exact commit CI validated, not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        if: steps.config.outputs.configured == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        if: steps.config.outputs.configured == 'true'
+        working-directory: server
+        run: npm ci
+
+      - name: Build
+        if: steps.config.outputs.configured == 'true'
+        working-directory: server
+        run: npm run build
+
+      # dist/ is self-contained: tsc emits the compiled sources AND the
+      # generated Prisma client into it, and every import is a relative .js
+      # specifier that resolves after compilation. package.json drives
+      # `npm run start`, package-lock.json drives `npm ci`, and prisma/ ships so
+      # the migration history is present for reference. The box therefore needs
+      # no git checkout at all.
+      - name: Package release
+        if: steps.config.outputs.configured == 'true'
+        working-directory: server
+        run: tar -czf ../release.tar.gz dist prisma package.json package-lock.json
+
+      - name: Apply database migrations
+        if: steps.config.outputs.configured == 'true'
+        working-directory: server
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          npx prisma migrate status || true
+          npx prisma migrate deploy
+
+      - name: Upload release
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          # shellcheck disable=SC2086
+          scp $SSH_OPTS -i ~/.ssh/deploy_key release.tar.gz "$SSH_USER@$SSH_HOST:/tmp/release.tar.gz"
+
+      - name: Install and restart
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            APP_DIR="$APP_DIR" SERVICE="$SERVICE" 'bash -euo pipefail -s' <<'REMOTE'
+            cd "$APP_DIR"
+
+            # Keep the running build so a failed health check can revert to it.
+            rm -rf dist.prev
+            [ -d dist ] && cp -r dist dist.prev
+
+            tar -xzf /tmp/release.tar.gz -C "$APP_DIR"
+            rm -f /tmp/release.tar.gz
+
+            # NODE_ENV=production in the box environment makes npm skip
+            # devDependencies, which breaks the postinstall `prisma generate`
+            # (it needs the Prisma CLI). Nothing here needs it: the release is
+            # already compiled and carries its own generated client, so install
+            # production dependencies only and skip lifecycle scripts.
+            unset NODE_ENV
+            npm ci --omit=dev --ignore-scripts
+
+            sudo -n systemctl restart "$SERVICE"
+          REMOTE
+
+      - name: Health check, revert on failure
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            APP_DIR="$APP_DIR" SERVICE="$SERVICE" HEALTH_URL="$HEALTH_URL" \
+            'bash -euo pipefail -s' <<'REMOTE'
+            for i in $(seq 1 20); do
+              if curl -fsS --max-time 5 "$HEALTH_URL" >/dev/null 2>&1; then
+                echo "healthy after ${i} attempt(s)"
+                rm -rf "$APP_DIR/dist.prev"
+                exit 0
+              fi
+              sleep 3
+            done
+
+            echo "service did not become ready; restoring the previous build" >&2
+            cd "$APP_DIR"
+            if [ -d dist.prev ]; then
+              rm -rf dist && mv dist.prev dist
+              sudo -n systemctl restart "$SERVICE"
+              echo "previous build restored" >&2
+            fi
+            sudo -n journalctl -u "$SERVICE" -n 40 --no-pager >&2 || true
+            exit 1
+          REMOTE
+
+      # Runtime config lives in /etc/elektor-pro.env on the box, not in this
+      # repo, so nothing here can catch a missing value at build time. Most of
+      # these do not stop the app booting - they fail SILENTLY, which is worse
+      # than loudly, and on an election day a silently disabled scheduler is a
+      # ruined election. Report them so a forgotten variable is visible in the
+      # deploy log instead of at the worst possible moment.
+      - name: Check runtime configuration
+        if: steps.config.outputs.configured == 'true'
+        continue-on-error: true
+        run: |
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            'bash -euo pipefail -s' <<'REMOTE'
+            # The env file is usually root-owned and the deploy user's sudo
+            # rights are scoped to systemctl, so reading it may not be possible.
+            # Establish that FIRST: reporting "not set" when the truth is
+            # "could not look" would send someone chasing a variable that is
+            # already there.
+            reader=""
+            if [ -r /etc/elektor-pro.env ]; then
+              reader="cat"
+            elif sudo -n cat /etc/elektor-pro.env >/dev/null 2>&1; then
+              reader="sudo -n cat"
+            fi
+
+            if [ -z "$reader" ]; then
+              echo "::notice::Could not read /etc/elektor-pro.env (not readable by this user, and sudo is scoped). Skipping the configuration check; verify by hand if a feature looks disabled."
+              exit 0
+            fi
+
+            # Values are never printed - only whether a non-empty one exists.
+            env_body="$($reader /etc/elektor-pro.env)"
+            check() {
+              if printf '%s\n' "$env_body" | grep -qE "^[[:space:]]*${1}=.+"; then
+                echo "  ${1}: set"
+              else
+                echo "::warning::${1} is not set in /etc/elektor-pro.env. ${2}"
+              fi
+            }
+
+            echo "Runtime configuration:"
+            check REDIS_URL \
+              "Background queues are DISABLED: elections will not auto-open or auto-close on schedule, expired sessions and OTPs are never swept, and rate limits reset on every restart. Also required before running more than one instance."
+            check ENCRYPTION_KEY \
+              "The API refuses to boot in production without it (TOTP secrets are encrypted with it)."
+            check CLOUDINARY_CLOUD_NAME \
+              "Photo uploads for voters, candidates and branding will be refused."
+            check FROG_API_KEY \
+              "Voter OTPs cannot be sent by SMS. With OTP_MODE=live the API refuses to boot."
+            check GMAIL_USER \
+              "Email delivery is mocked: password resets, staff 2FA codes and candidate credentials go to the log instead of the recipient."
+            check SENTRY_DSN \
+              "Errors are logged but not reported to the tracker."
+            check FRONTEND_URL \
+              "Password-reset links in emails will point at localhost."
+            check CORS_ACCESS \
+              "The client's origin is not allowed, so every browser request fails CORS."
+          REMOTE
+
+      - name: Service status
+        if: always() && steps.config.outputs.configured == 'true'
+        continue-on-error: true
+        run: |
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+            SERVICE="$SERVICE" 'bash -euo pipefail -s' <<'REMOTE'
+            systemctl is-active "$SERVICE" || true
+            sudo -n journalctl -u "$SERVICE" -n 20 --no-pager || true
+          REMOTE
+
+      # Always, even on failure or cancellation: the security group must not be
+      # left open because a deploy died halfway.
+      - name: Close SSH access
+        if: always() && steps.open_sg.outcome == 'success'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          SG_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+          RUNNER_IP: ${{ steps.runner_ip.outputs.ip }}
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${RUNNER_IP}/32}]" \
+            >/dev/null 2>&1 && echo "closed 22 for ${RUNNER_IP}/32" \
+            || echo "::warning::Could not revoke the temporary SSH rule for ${RUNNER_IP}/32 on ${SG_ID}. Check the security group by hand."

@@ -1,0 +1,109 @@
+name: CI
+
+# Two independent jobs, because this is a monorepo: the API and the client fail
+# for different reasons and there is no value in one masking the other.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elektor_pro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/elektor_pro
+      # The suite creates this TEMPLATE database and one clone per worker from
+      # it. Set explicitly because there is no .env in CI for the resolver in
+      # test/test-database-url.ts to fall back on.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/elektor_pro_test
+      # Required by the fail-fast env module. Placeholders: the 32-character
+      # minimum only applies in production, and no real service is contacted.
+      ACCESS_TOKEN_SECRET: ci_access_secret_0123456789abcdef
+      REFRESH_TOKEN_SECRET: ci_refresh_secret_fedcba9876543210
+      # BullMQ and Socket.IO both no-op without this, which is what CI wants.
+      REDIS_URL: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # Runs the postinstall `prisma generate` too.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      # Compiles to dist/ exactly as the deploy does, so a build that only
+      # breaks in the production tsconfig is caught here rather than on a box.
+      - name: Build
+        run: npm run build
+
+      # Integration suite: real HTTP through supertest against real Postgres,
+      # each worker on its own clone of the migrated template.
+      - name: Test
+        run: npm test
+
+  client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    env:
+      # Baked into the bundle at build time, and into the CSP's connect-src.
+      # A placeholder is fine here: CI only proves it compiles.
+      NEXT_PUBLIC_API_URL: http://localhost:4040/api/v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
