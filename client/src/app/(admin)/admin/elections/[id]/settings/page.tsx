@@ -316,6 +316,7 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
           vettingEnabled: f.get("vettingEnabled") === "on",
           vettingPassPercent: passRaw === "" ? null : Number(passRaw),
           voteCodeEnabled: f.get("voteCodeEnabled") === "on",
+          voteVisibleToVoter: f.get("voteVisibleToVoter") === "on",
           // Merge into the settings JSON so unrelated keys survive.
           settings: {
             ...(election.settings ?? {}),
@@ -397,6 +398,32 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
             />
             Candidates pass vetting before reaching the ballot
           </label>
+          {/*
+            Not a display preference: this decides whether the election is a
+            secret ballot at all, so the consequence is spelled out rather
+            than left to the label.
+          */}
+          <label className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+            <input
+              className="mt-0.5 size-4 shrink-0 accent-brand"
+              defaultChecked={election.voteVisibleToVoter ?? false}
+              name="voteVisibleToVoter"
+              type="checkbox"
+            />
+            <span className="min-w-0">
+              <span className="font-medium">
+                Open ballot: voters can see what they voted
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Stores each voter&apos;s ballot against their name so they can
+                review it later. This makes the election NOT secret - anyone
+                with database access can see how each person voted, and voters
+                are told so before they cast. Right for a board or committee
+                vote; wrong wherever someone could be pressured. Turning it
+                off again deletes the stored links.
+              </span>
+            </span>
+          </label>
           <Field
             hint="Once every criterion is scored, candidates at or above this share of the maximum auto-qualify and the rest auto-disqualify. Leave empty for manual decisions."
             label="Vetting pass mark (%)"
@@ -473,6 +500,14 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
               election.voteCodeEnabled
                 ? "One-time sign-in code issued at accreditation"
                 : "Voters sign in with SMS/email codes"
+            }
+          />
+          <DetailRow
+            label="Ballot secrecy"
+            value={
+              election.voteVisibleToVoter
+                ? "Open ballot - each voter's choices are recorded against their name"
+                : "Secret ballot - no record links a voter to their ballot"
             }
           />
           <DetailRow

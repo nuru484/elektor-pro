@@ -4,6 +4,7 @@
 // renders read-only first; active inputs appear only after the matching Edit
 // button is pressed, and contact changes expand INLINE below their row (no
 // dialogs) - value step, then the code sent to the new contact.
+import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, Mail, Pencil, Phone } from "lucide-react";
 import { useRef, useState } from "react";
@@ -304,8 +305,15 @@ function PhotoCard({ user }: { user: CurrentUser }) {
           type="button"
         >
           {user.profilePicture ? (
-            // eslint-disable-next-line @next/next/no-img-element -- Cloudinary avatar
-            <img alt="Profile photo" className="size-full object-cover" src={user.profilePicture} />
+            <span className="relative size-full">
+              <Image
+                alt="Profile photo"
+                className="object-cover"
+                fill
+                sizes="64px"
+                src={user.profilePicture}
+              />
+            </span>
           ) : (
             initials
           )}

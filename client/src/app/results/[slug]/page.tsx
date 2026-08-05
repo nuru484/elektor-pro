@@ -112,6 +112,19 @@ function PortfolioCard({
             {fmt(portfolio.totalVotes)} votes
           </span>
         </div>
+        {/* A tie is stated outright rather than left to be inferred from two
+            equal bars - and no candidate is crowned while it stands. */}
+        {portfolio.isTied && (
+          <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
+            <Crown className="mt-0.5 size-3.5 shrink-0 text-warning" />
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              <strong className="font-semibold">Tied.</strong> No winner is
+              declared:{" "}
+              {portfolio.tiedCandidates.map((c) => c.name).join(" and ")} are
+              level on {fmt(portfolio.tiedCandidates[0]?.votes ?? 0)} votes.
+            </span>
+          </p>
+        )}
         {view === "grid" && !isYesNo ? (
           <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-3 sm:grid-cols-4">
             {portfolio.candidates.map((c) => (

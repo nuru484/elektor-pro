@@ -12,6 +12,15 @@
 //   domain),
 // - the ep_session marker the app sets on this domain at login (see
 //   src/lib/session-marker.ts), which covers split-domain deployments.
+//
+// Security headers, the Content-Security-Policy included, are set in
+// next.config.ts rather than here. A nonce-based CSP was tried first and
+// rejected on evidence: Next only stamps the nonce onto scripts of
+// DYNAMICALLY rendered pages, and most pages here prerender at build time, so
+// the served HTML carried 28 script tags and none of them the nonce - under
+// `script-src 'nonce-...' 'strict-dynamic'` the browser would have blocked
+// every one and shipped a blank app. Making the whole app dynamic to satisfy
+// the nonce would cost static rendering and CDN caching on the public pages.
 import { NextResponse, type NextRequest } from "next/server";
 
 import { SESSION_MARKER_COOKIE } from "@/lib/session-marker";

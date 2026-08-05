@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Copy, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Eye, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
 import { toast } from "sonner";
@@ -149,9 +149,30 @@ function BallotBody({ electionId }: { electionId: string }) {
         <h1 className="mt-3 min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
           {ballot.election.name}
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Make a choice for each position, then submit. Your ballot is secret.
-        </p>
+        {/*
+          The voter is told which kind of election this is BEFORE they cast.
+          An open ballot is a legitimate choice for a board or committee vote,
+          but only if the people voting know that is what they are in.
+        */}
+        {ballot.voteVisibleToVoter ? (
+          <p className="mt-2 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+            <Eye className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span className="min-w-0">
+              <strong className="font-semibold">This is an open ballot.</strong>{" "}
+              What you vote is recorded against your name so you can review it
+              later. It is not secret.
+            </span>
+          </p>
+        ) : (
+          <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+            <span className="min-w-0">
+              Make a choice for each position, then submit. Your ballot is
+              secret: nothing records how you voted, so keep your receipt code
+              to check it was counted.
+            </span>
+          </p>
+        )}
       </div>
 
       {ballot.portfolios.map((p) => {

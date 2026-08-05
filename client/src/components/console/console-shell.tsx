@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   UserCircle,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -159,8 +160,17 @@ function UserMenu() {
             type="button"
           >
             {user.profilePicture ? (
-              // eslint-disable-next-line @next/next/no-img-element -- avatar from Cloudinary, tiny
-              <img alt="" className="size-full object-cover" src={user.profilePicture} />
+              // Optimised rather than served as a full-size Cloudinary
+              // original; `fill` because the button above fixes the box.
+              <span className="relative size-full">
+                <Image
+                  alt=""
+                  className="object-cover"
+                  fill
+                  sizes="32px"
+                  src={user.profilePicture}
+                />
+              </span>
             ) : (
               initials
             )}

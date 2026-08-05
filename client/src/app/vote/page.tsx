@@ -179,8 +179,12 @@ function HistoryCard({ item }: { item: VoterHistoryItem }) {
           )}
         </div>
 
-        {/* Exactly what they voted, from their own stored receipt. */}
-        {item.choices && item.choices.length > 0 && (
+        {/*
+          Choices appear only for an open ballot, which is the election type
+          that deliberately stores the link. A secret ballot has nothing to
+          replay - by design, not by omission - so it says so instead.
+        */}
+        {item.choices && item.choices.length > 0 ? (
           <ul className="space-y-1 rounded-lg border border-border bg-muted/30 p-3">
             {item.choices.map((choice, index) => (
               <li className="min-w-0 text-xs [overflow-wrap:anywhere]" key={index}>
@@ -199,6 +203,12 @@ function HistoryCard({ item }: { item: VoterHistoryItem }) {
               </li>
             ))}
           </ul>
+        ) : (
+          <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            This ballot was secret, so your choices are not stored against your
+            name. Use the receipt code you saved when you voted to confirm it
+            was counted, exactly as cast.
+          </p>
         )}
 
         {item.receiptCode && (
@@ -247,7 +257,7 @@ function VotingHistory({ filter }: { filter: ElectionFilter }) {
         description={
           filter.search || filter.from || filter.to
             ? "No vote matches your search or period. Clear the filters to see everything."
-            : "Once you cast a ballot, it appears here with your choices and receipt."
+            : "Once you cast a ballot, the election appears here with the date you voted."
         }
         icon={CheckCircle2}
         title={

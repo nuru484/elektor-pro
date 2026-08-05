@@ -42,6 +42,12 @@ interface VoterBallot {
   };
   hasVoted: boolean;
   portfolios: (Portfolio & { candidates: NonNullable<Portfolio["candidates"]> })[];
+  /**
+   * Open ballot: this election records what the voter voted against their
+   * name. Shown on the ballot BEFORE they cast - consent to an open ballot
+   * only means something if it is informed.
+   */
+  voteVisibleToVoter: boolean;
 }
 
 interface BallotSelection {
@@ -73,6 +79,11 @@ export type { VoterElectionItem };
 
 /** One entry from the voter's own voting history. */
 export interface VoterHistoryItem {
+  /**
+   * What they voted. Present ONLY for open-ballot elections
+   * (voteVisibleToVoter). A secret ballot stores no link from a voter to
+   * their ballot, so there is nothing to replay.
+   */
   choices:
     | null
     | {
@@ -90,7 +101,10 @@ export interface VoterHistoryItem {
     slug: string;
     startDate: string;
     status: string;
+    /** Open ballot: this election records what each voter voted. */
+    voteVisibleToVoter: boolean;
   };
+  /** Their receipt, kept only for open-ballot elections. */
   receiptCode: null | string;
   votedAt: null | string;
 }

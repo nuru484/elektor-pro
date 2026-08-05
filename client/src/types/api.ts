@@ -254,6 +254,11 @@ export interface Election {
   vettingPassPercent?: null | number;
   /** Accreditation hands each voter a one-time sign-in code. */
   voteCodeEnabled?: boolean;
+  /**
+   * Open ballot. Stores each voter's receipt against their record so they can
+   * review what they voted - which also makes the election non-secret.
+   */
+  voteVisibleToVoter?: boolean;
 }
 
 /** One row from the accreditation desk's voter search. */
@@ -556,10 +561,15 @@ export interface PortfolioResult {
   abstain: number;
   candidates: CandidateResult[];
   id: string;
+  /** True when the top score is shared - there is no winner until resolved. */
+  isTied: boolean;
   name: string;
   skip: number;
+  /** Everyone level on the top score when it is contested; else empty. */
+  tiedCandidates: CandidateResult[];
   totalVotes: number;
   votingMethod: string;
+  /** Null while a race is tied: a tie has no winner, it has a decision to make. */
   winner: CandidateResult | null;
 }
 
