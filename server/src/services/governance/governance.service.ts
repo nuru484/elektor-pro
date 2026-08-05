@@ -7,6 +7,7 @@ import {
 // Staff/agent/candidate account creation, agent assignments, and capability
 // grants. These account-level actions are super-admin / capability gated and
 // apply directly (not via maker-checker), always audited.
+import { afterCommit } from '../../lib/outbox.js';
 import prisma from '../../lib/prisma.js';
 import {
   BadRequestError,
@@ -72,16 +73,17 @@ export const createStaffUser = async (
     },
     select: { id: true },
   });
-  // Best-effort credential delivery; the admin also sees the password once.
-  try {
-    await defaultDeps.mail.send({
+  // Best-effort credential delivery, and deliberately NOT awaited: a real
+  // SMTP relay costs seconds, and blocking the response on it would make
+  // creating an account feel broken. The account is already committed and the
+  // admin is shown the password, so a failed send loses nothing.
+  afterCommit(() =>
+    defaultDeps.mail.send({
       email: input.email.toLowerCase(),
       subject: 'Your Elektor Pro account',
       text: `Hello ${input.firstName},\n\nAn account has been created for you on Elektor Pro.\n\nTemporary password: ${temporaryPassword}\n\nSign in with your email and this password - you will be asked to set your own password before you can continue.`,
-    });
-  } catch {
-    // Delivery failure must not lose the account; the admin has the password.
-  }
+    }),
+  );
   await appendAudit(prisma, {
     action: 'user.created',
     actorId: actor.id,

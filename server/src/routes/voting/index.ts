@@ -25,7 +25,11 @@ import {
 } from '../../controllers/voting.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
-import { authRateLimiter, votingLimiter } from '../../middlewares/rateLimit.js';
+import {
+  authRateLimiter,
+  integrityVerifyLimiter,
+  votingLimiter,
+} from '../../middlewares/rateLimit.js';
 import { requireCapability } from '../../middlewares/require-capability.js';
 
 const votingRoutes = Router();
@@ -62,9 +66,15 @@ votingRoutes.post(
   ...castBallotController,
 );
 
-// Public integrity verification (receipt inclusion + whole-chain re-derivation)
+// Public integrity verification (receipt inclusion + whole-chain re-derivation).
+// Anyone may prove the chain is intact; the whole-chain check re-derives every
+// ballot, so it carries its own tighter limit on top of the cached result.
 votingRoutes.get('/elections/:electionId/receipts/:code', verifyReceiptController);
-votingRoutes.get('/elections/:electionId/ballots/verify', verifyBallotChainController);
+votingRoutes.get(
+  '/elections/:electionId/ballots/verify',
+  integrityVerifyLimiter,
+  verifyBallotChainController,
+);
 
 // Accreditation desk (staff with capability)
 votingRoutes.get(

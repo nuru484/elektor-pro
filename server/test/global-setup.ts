@@ -15,11 +15,10 @@
 import { execSync } from 'node:child_process';
 import pg from 'pg';
 
+import { TEST_DATABASE_URL } from './test-database-url.js';
 import { TEST_WORKER_COUNT } from './worker-count.js';
 
-export const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  'postgresql://nuru:0553997465@localhost:5432/elektor_pro_test';
+export { TEST_DATABASE_URL };
 
 const url = new URL(TEST_DATABASE_URL);
 const TEST_DB_NAME = url.pathname.slice(1).replaceAll('"', '');

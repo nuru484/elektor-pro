@@ -43,18 +43,52 @@ import {
   updateCriterionController,
 } from '../../controllers/vetting.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
-import { requireCapability } from '../../middlewares/require-capability.js';
+import {
+  requireAnyCapability,
+  requireCapability,
+} from '../../middlewares/require-capability.js';
 
 type Crud = ReturnType<typeof import('../../controllers/crud-factory.js').makeCrud>;
 
+/**
+ * Every capability that means "this person operates elections". Holding any
+ * one of them is what makes the election catalog (elections, portfolios)
+ * legitimately readable - an accreditor needs the election list to pick a
+ * desk, an agent needs it to find their assignment, a vetting panelist needs
+ * it to find their queue. Voters and candidates hold none of these and see
+ * their own scoped endpoints instead.
+ */
+const ELECTION_OPERATIONS = [
+  Capability.MANAGE_ELECTIONS,
+  Capability.MANAGE_PORTFOLIOS,
+  Capability.MANAGE_CANDIDATES,
+  Capability.MANAGE_VOTERS,
+  Capability.MANAGE_AGENTS,
+  Capability.MANAGE_GROUPS,
+  Capability.VET_CANDIDATES,
+  Capability.ACCREDIT_VOTERS,
+  Capability.VIEW_RESULTS,
+  Capability.CERTIFY_RESULTS,
+] as const;
+
+/**
+ * Reads are guarded as deliberately as writes. They used to sit on bare
+ * `authenticateJWT`, which meant any signed-in account - including a voter
+ * who had just logged in with an SMS code - could page the entire voter
+ * register: names, phone numbers, emails, and each person's per-election
+ * `hasVoted` flag. That is both a data-protection breach and an integrity
+ * problem, since "who has not voted yet" is the list you would buy.
+ */
 const crudRouter = (
   controllers: Crud,
   capability: Capability,
+  readCapabilities: readonly Capability[],
   overrides: { create?: RequestHandler[] } = {},
 ): Router => {
   const router = Router();
-  router.get('/', authenticateJWT, controllers.list);
-  router.get('/:id', authenticateJWT, controllers.getOne);
+  const canRead = requireAnyCapability(readCapabilities);
+  router.get('/', authenticateJWT, canRead, controllers.list);
+  router.get('/:id', authenticateJWT, canRead, controllers.getOne);
   router.post(
     '/',
     authenticateJWT,
@@ -90,14 +124,31 @@ domainRoutes.patch(
 );
 
 // Groups & categories
+// Group pickers appear on the voter, election, and portfolio forms, so the
+// read set is wider than MANAGE_GROUPS alone.
+const GROUP_READERS = [
+  Capability.MANAGE_GROUPS,
+  Capability.MANAGE_VOTERS,
+  Capability.MANAGE_ELECTIONS,
+  Capability.MANAGE_PORTFOLIOS,
+  Capability.MANAGE_CANDIDATES,
+] as const;
 domainRoutes.use(
   '/group-categories',
-  crudRouter(groupCategoryControllers, Capability.MANAGE_GROUPS),
+  crudRouter(groupCategoryControllers, Capability.MANAGE_GROUPS, GROUP_READERS),
 );
-domainRoutes.use('/groups', crudRouter(groupControllers, Capability.MANAGE_GROUPS));
+domainRoutes.use(
+  '/groups',
+  crudRouter(groupControllers, Capability.MANAGE_GROUPS, GROUP_READERS),
+);
 
 // Voters (with bulk upload + standalone photo)
-const votersRouter = crudRouter(voterControllers, Capability.MANAGE_VOTERS);
+// The register is personal data. Only voter management and the accreditation
+// desk may read it - notably NOT every signed-in account.
+const votersRouter = crudRouter(voterControllers, Capability.MANAGE_VOTERS, [
+  Capability.MANAGE_VOTERS,
+  Capability.ACCREDIT_VOTERS,
+]);
 votersRouter.post(
   '/bulk',
   authenticateJWT,
@@ -119,7 +170,11 @@ votersRouter.patch(
 domainRoutes.use('/voters', votersRouter);
 
 // Elections (with status transition)
-const electionsRouter = crudRouter(electionControllers, Capability.MANAGE_ELECTIONS);
+const electionsRouter = crudRouter(
+  electionControllers,
+  Capability.MANAGE_ELECTIONS,
+  ELECTION_OPERATIONS,
+);
 electionsRouter.patch(
   '/:id/status',
   authenticateJWT,
@@ -137,11 +192,19 @@ domainRoutes.use('/elections', electionsRouter);
 // Portfolios & candidates
 domainRoutes.use(
   '/portfolios',
-  crudRouter(portfolioControllers, Capability.MANAGE_PORTFOLIOS),
+  crudRouter(portfolioControllers, Capability.MANAGE_PORTFOLIOS, ELECTION_OPERATIONS),
 );
-const candidatesRouter = crudRouter(candidateControllers, Capability.MANAGE_CANDIDATES, {
-  create: createCandidateController,
-});
+const candidatesRouter = crudRouter(
+  candidateControllers,
+  Capability.MANAGE_CANDIDATES,
+  [
+    Capability.MANAGE_CANDIDATES,
+    Capability.MANAGE_ELECTIONS,
+    Capability.MANAGE_AGENTS,
+    Capability.VET_CANDIDATES,
+  ],
+  { create: createCandidateController },
+);
 candidatesRouter.post(
   '/bulk',
   authenticateJWT,

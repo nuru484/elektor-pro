@@ -268,6 +268,7 @@ const cloneElectionInTx = async (
       vettingEnabled: source.vettingEnabled,
       vettingPassPercent: source.vettingPassPercent,
       voteCodeEnabled: source.voteCodeEnabled,
+      voteVisibleToVoter: source.voteVisibleToVoter,
     },
     select: { id: true },
   });
@@ -355,6 +356,7 @@ export const electionApplier: Applier = {
     const { groupIds, ...rest } = payload as Record<string, unknown> & {
       groupIds?: string[];
       status?: ElectionStatus;
+      voteVisibleToVoter?: boolean;
     };
     // The certification lock freezes content, not lifecycle housekeeping: a
     // pure status change (e.g. ENDED -> ARCHIVED) stays possible and is still
@@ -381,6 +383,16 @@ export const electionApplier: Applier = {
       select: { id: true },
       where: { id },
     });
+    // Turning an open ballot back into a secret one must actually REMOVE the
+    // link, not just stop displaying it. Leaving the stored receipts behind
+    // would keep every past vote attributable in the database while the
+    // election claimed secrecy - the worst of both.
+    if (rest.voteVisibleToVoter === false) {
+      await tx.voterElection.updateMany({
+        data: { receiptCode: null },
+        where: { electionId: id },
+      });
+    }
     if (groupIds) await applyEligibilityGroups(tx, id, groupIds);
     await assertGroupsModeConsistent(tx, id);
     return election;

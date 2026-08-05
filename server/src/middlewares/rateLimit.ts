@@ -9,6 +9,7 @@ import { RedisStore } from "rate-limit-redis";
 
 import ENV from "../config/env.js";
 import { createRedisConnection } from "../jobs/connection.js";
+import { sha256 } from "../utils/crypto.js";
 import { CustomError, ErrorSeverity } from "./error-handler.js";
 
 // Custom rate limit exceeded error
@@ -49,6 +50,38 @@ const makeStore = (): RedisStore | undefined => {
 };
 
 /**
+ * Default bucket key.
+ *
+ * `req.user` is only populated by route-level authenticateJWT, so an
+ * app-level limiter never sees it and would key EVERY request by IP alone.
+ * That is how the global limiter came to cap a whole institution - every
+ * voter behind one campus NAT, plus every admin - at a single shared budget.
+ *
+ * So fall back to the session cookie, which cookie-parser has already put on
+ * the request by the time any limiter runs: it gives each signed-in device
+ * its own bucket without verifying (or logging) the token. Only genuinely
+ * anonymous traffic is keyed by IP.
+ */
+const defaultKey = (req: Request): string => {
+  if (req.user?.id) return `user:${req.user.id}`;
+  const cookies = req.cookies as Record<string, string | undefined> | undefined;
+  const token = cookies?.accessToken ?? cookies?.refreshToken;
+  // Hashed, and truncated: the raw token must never reach a Redis key.
+  if (token) return `sess:${sha256(token).slice(0, 32)}`;
+  return ipKeyGenerator(req.ip ?? "");
+};
+
+export interface RateLimiterOptions {
+  /**
+   * Bucket the limit by something request-specific instead of the caller -
+   * e.g. the account being signed into. Credential stuffing is per-account,
+   * so limiting per account stops it without punishing everyone sharing an
+   * institutional IP. Return undefined to fall back to the default key.
+   */
+  keyBy?: (req: Request) => string | undefined;
+}
+
+/**
  * Create a rate limiter. Every limit is multiplied by ENV.RATE_LIMIT_SCALE -
  * 1 in production (the real limits), a generous default outside it so
  * development never trips them.
@@ -57,6 +90,7 @@ export const createRateLimiter = (
   windowMs: number = 15 * 60 * 1000,
   maxRequests = 100,
   message = "Too many requests, please try again later.",
+  options: RateLimiterOptions = {},
 ): RateLimitRequestHandler => {
   return rateLimit({
     // Custom handler for rate limit exceeded
@@ -65,12 +99,8 @@ export const createRateLimiter = (
       res.set("Retry-After", String(retryAfter));
       next(new RateLimitExceededError(message));
     },
-    // Advanced key generation - combine IP with user ID when available
-    keyGenerator: (req: Request): string => {
-      const ipKey = ipKeyGenerator(req.ip ?? ""); // Use ipKeyGenerator for normalized IP
-      const userId = req.user?.id ? `-user-${req.user.id}` : "";
-      return `${ipKey}${userId}`;
-    },
+    keyGenerator: (req: Request): string =>
+      options.keyBy?.(req) ?? defaultKey(req),
     legacyHeaders: false,
     max: Math.max(1, Math.round(maxRequests * ENV.RATE_LIMIT_SCALE)),
     message,
@@ -95,11 +125,33 @@ export const createRateLimiter = (
   });
 };
 
-// Different limiters for different endpoints
+/**
+ * The account an auth request is aimed at. Login, voter OTP, and code sign-in
+ * all name their target in the body under one of these keys.
+ */
+const authTargetKey = (req: Request): string | undefined => {
+  const body = req.body as Record<string, unknown> | undefined;
+  const target =
+    body?.emailOrPhone ?? body?.identifier ?? body?.voterId ?? undefined;
+  if (typeof target !== "string" || target.trim() === "") return undefined;
+  return `auth:${sha256(target.trim().toLowerCase()).slice(0, 32)}`;
+};
+
+/**
+ * Auth attempts are limited PER ACCOUNT, not per IP.
+ *
+ * Credential stuffing targets one account at a time, so this is where the
+ * limit bites; keying by IP instead meant a whole campus behind one NAT
+ * shared a single login budget on the one day everybody signs in at once.
+ * Per-IP flooding is still bounded by the global limiter below, and the
+ * per-account defences (lockout after MAX_FAILED_LOGIN_ATTEMPTS, the OTP
+ * resend window, OTP attempt limits) are unaffected.
+ */
 export const authRateLimiter = createRateLimiter(
   15 * 60 * 1000,
-  500,
-  "Too many authentication attempts, please try again later.",
+  30,
+  "Too many authentication attempts for this account, please try again later.",
+  { keyBy: authTargetKey },
 );
 
 export const passwordResetLimiter = createRateLimiter(
@@ -124,11 +176,30 @@ export const globalLimiter = createRateLimiter(
   "Too many requests from this IP",
 );
 
-// API-specific limiter
+/**
+ * The blanket limiter in front of the whole API. It is a flood guard, not a
+ * usage quota: a console page fans out into many parallel queries, so the old
+ * 100-per-15-minutes ceiling threw 429s at admins doing ordinary work
+ * (measured: the 100th request of a normal session). The budget is now per
+ * signed-in device (see defaultKey), which is what makes a generous ceiling
+ * safe - anonymous callers still share their IP's bucket.
+ */
 export const apiLimiter = createRateLimiter(
   15 * 60 * 1000, // 15 minutes
-  100, // 100 requests per window
+  3000,
   "API rate limit exceeded",
+);
+
+/**
+ * Whole-chain verification re-derives every ballot in an election, so it is
+ * far more expensive to serve than a normal read and it is deliberately
+ * public. Limit it well below the general API budget; the service also caches
+ * the result between casts.
+ */
+export const integrityVerifyLimiter = createRateLimiter(
+  60 * 1000, // 1 minute
+  10,
+  "Too many verification requests, please try again shortly.",
 );
 
 // File upload limiter

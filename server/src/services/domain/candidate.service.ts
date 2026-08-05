@@ -7,11 +7,11 @@ import {
   type Prisma,
   Role,
 } from '../../../generated/prisma/client.js';
+import { takeCredential } from '../../lib/credential-pool.js';
+import { afterCommit } from '../../lib/outbox.js';
 import prisma from '../../lib/prisma.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
-import { hashPassword } from '../../utils/password.js';
-import { generateTempPassword } from '../../utils/temp-password.js';
 import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { defaultDeps } from '../deps.js';
@@ -394,7 +394,11 @@ const ensureCandidateAccount = async (
     return existing.id;
   }
 
-  const temporaryPassword = generateTempPassword();
+  // Pre-hashed outside the transaction (see lib/credential-pool). Hashing
+  // here instead cost ~300-500ms per nomination INSIDE the transaction, so a
+  // bulk import of twenty exhausted the transaction budget and failed the
+  // whole thing with a database error that never mentioned passwords.
+  const { hash, password: temporaryPassword } = await takeCredential();
   const [firstName, ...restName] = name.trim().split(/\s+/);
   const user = await tx.user.create({
     data: {
@@ -402,35 +406,36 @@ const ensureCandidateAccount = async (
       firstName: firstName || name,
       lastName: restName.join(' ') || '-',
       mustChangePassword: true,
-      password: await hashPassword(temporaryPassword),
+      password: hash,
       phone: normalPhone,
       role: Role.CANDIDATE,
     },
     select: { id: true },
   });
-  // Best-effort credential delivery on both channels; failures never lose the
-  // nomination (the candidate can always use the password-reset flow).
+  // Credential delivery is deferred to AFTER the transaction commits. Doing
+  // it inline put a network round-trip on the transaction's critical path:
+  // against a real SMTP relay each send cost seconds, and a bulk import of a
+  // few nominations exhausted the transaction timeout and failed outright.
+  // Deferring also means credentials never go out for a nomination that then
+  // rolls back. Still best-effort: the candidate can always use password
+  // reset, so a failed send must not lose the nomination.
   const message = `Hello ${firstName || name},\n\nYou have been nominated on Elektor Pro and a candidate account was created for you.\n\nTemporary password: ${temporaryPassword}\n\nSign in with your ${normalEmail ? 'email' : 'phone number'} and this password - you will be asked to set your own password before you can continue.`;
   if (normalEmail) {
-    try {
-      await defaultDeps.mail.send({
+    afterCommit(() =>
+      defaultDeps.mail.send({
         email: normalEmail,
         subject: 'Your Elektor Pro candidate account',
         text: message,
-      });
-    } catch {
-      /* delivery is best-effort */
-    }
+      }),
+    );
   }
   if (normalPhone) {
-    try {
-      await defaultDeps.sms.send(
+    afterCommit(() =>
+      defaultDeps.sms.send(
         normalPhone,
         `Elektor Pro: you have been nominated. Sign in with your phone number and temporary password ${temporaryPassword}, then set your own password.`,
-      );
-    } catch {
-      /* delivery is best-effort */
-    }
+      ),
+    );
   }
   return user.id;
 };
@@ -470,6 +475,12 @@ const createCandidateInTx = async (
   });
 };
 
+/** A nomination mints a login account when it carries a contact detail. */
+const nominationNeedsAccount = (row: unknown): boolean => {
+  const { email, phone } = (row ?? {}) as { email?: unknown; phone?: unknown };
+  return Boolean(email) || Boolean(phone);
+};
+
 export const candidateApplier: Applier = {
   create: async (tx, payload) => {
     // Bulk shape from the file import; single shape from the nomination form.
@@ -483,6 +494,14 @@ export const candidateApplier: Applier = {
       return { id: firstId || 'bulk' };
     }
     return createCandidateInTx(tx, payload as CandidatePayload);
+  },
+  // An upper bound is enough: the pool falls back to hashing on demand if it
+  // runs dry, and unused entries are simply discarded. Updates can mint an
+  // account too, for a nomination that had none.
+  credentialCount: (_action, payload) => {
+    const rows = (payload as { candidates?: unknown[] }).candidates;
+    if (Array.isArray(rows)) return rows.filter(nominationNeedsAccount).length;
+    return nominationNeedsAccount(payload) ? 1 : 0;
   },
   remove: async (tx, id) => {
     await assertCandidateUnlocked(tx, id);

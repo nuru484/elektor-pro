@@ -92,6 +92,9 @@ const electionBase = z.object({
   vettingEnabled: z.boolean().optional(),
   vettingPassPercent: z.number().int().min(1).max(100).optional().nullable(),
   voteCodeEnabled: z.boolean().optional(),
+  // Open ballot: stores each voter's receipt against their record so they can
+  // replay their own vote. Changes the election's TYPE, not just its display.
+  voteVisibleToVoter: z.boolean().optional(),
 });
 export const createElectionSchema = electionBase.refine(
   (d) => d.endDate > d.startDate,

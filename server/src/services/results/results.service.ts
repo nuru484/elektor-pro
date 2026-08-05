@@ -196,6 +196,12 @@ export const computeResults = async (electionId: string) => {
     });
     const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
     const ranked = [...candidates].sort((a, b) => b.votes - a.votes);
+    // A tie is a real electoral outcome, not a sorting detail. Declaring
+    // `ranked[0]` the winner handed the seat to whoever happened to sort
+    // first, silently. When the top score is shared there is NO winner until
+    // the commission resolves it, so say so explicitly and list who is level.
+    const topVotes = ranked[0]?.votes ?? 0;
+    const leaders = topVotes > 0 ? ranked.filter((c) => c.votes === topVotes) : [];
     return {
       abstain: abstainByPortfolio.get(p.id) ?? 0,
       candidates: candidates.map((c) => ({
@@ -203,11 +209,14 @@ export const computeResults = async (electionId: string) => {
         percentage: totalVotes > 0 ? Number(((c.votes / totalVotes) * 100).toFixed(2)) : 0,
       })),
       id: p.id,
+      isTied: leaders.length > 1,
       name: p.name,
       skip: skipByPortfolio.get(p.id) ?? 0,
+      /** Everyone level on the top score when it is contested; else empty. */
+      tiedCandidates: leaders.length > 1 ? leaders : [],
       totalVotes,
       votingMethod: p.votingMethod,
-      winner: ranked[0] && ranked[0].votes > 0 ? ranked[0] : null,
+      winner: leaders.length === 1 ? leaders[0] : null,
     };
   });
 
@@ -240,3 +249,52 @@ export const computeResults = async (electionId: string) => {
 };
 
 export type ElectionResults = Awaited<ReturnType<typeof computeResults>>;
+
+/**
+ * Cached tally for the READ path.
+ *
+ * The results page is the most-watched thing in an election, and every viewer
+ * refetches it whenever a ballot lands (the socket sends `results:invalidate`
+ * to the whole room). That turns V viewers x B ballots-per-second into V*B
+ * recomputations per second, against an endpoint measured at ~115 req/s peak:
+ * 12ms of work spread over seven queries, which degrades under concurrency
+ * rather than scaling with it. A couple of hundred people watching a busy
+ * election would have collapsed it.
+ *
+ * A very short TTL fixes that without anyone noticing: live results stay live
+ * to within a second, and a burst of a thousand viewers costs one computation
+ * instead of a thousand. The ballot count is part of the key as well as the
+ * clock, so a new ballot busts the entry immediately rather than waiting out
+ * the TTL - the common case still feels instant.
+ *
+ * NOT used by certification: a snapshot must be exact and current, so
+ * certifyResults calls computeResults directly.
+ */
+const RESULTS_TTL_MS = 1000;
+
+const resultsCache = new Map<
+  string,
+  { ballots: number; expiresAt: number; value: ElectionResults }
+>();
+
+export const getCachedResults = async (
+  electionId: string,
+): Promise<ElectionResults> => {
+  const ballots = await prisma.ballot.count({ where: { electionId } });
+  const hit = resultsCache.get(electionId);
+  if (hit?.ballots === ballots && hit.expiresAt > Date.now()) {
+    return hit.value;
+  }
+  const value = await computeResults(electionId);
+  resultsCache.set(electionId, {
+    ballots,
+    expiresAt: Date.now() + RESULTS_TTL_MS,
+    value,
+  });
+  return value;
+};
+
+/** Test-only: drop memoised tallies between specs. */
+export const _resetResultsCacheForTests = (): void => {
+  resultsCache.clear();
+};

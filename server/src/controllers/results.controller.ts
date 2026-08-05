@@ -22,7 +22,7 @@ import {
 } from '../services/results/results-admin.service.js';
 import {
   assertCanViewResults,
-  computeResults,
+  getCachedResults,
   type ResultsViewer,
 } from '../services/results/results.service.js';
 import { getTurnout } from '../services/voting/accreditation.service.js';
@@ -53,7 +53,7 @@ export const getResultsController = asyncHandler(
   async (req: Request, res: Response) => {
     const election = await loadElectionForResults(req.params.electionId);
     await assertCanViewResults(viewerOf(req), election);
-    sendOk(res, 'Results retrieved', await computeResults(election.id));
+    sendOk(res, 'Results retrieved', await getCachedResults(election.id));
   },
 );
 

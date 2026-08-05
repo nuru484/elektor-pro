@@ -60,11 +60,26 @@ export const listAuditLogs = async (
   return { data, meta: buildMeta(total, pagination.page, pagination.limit) };
 };
 
-/** Verify the integrity of the entire audit chain. */
+/**
+ * Verify the integrity of the entire audit chain. Selects the full hashed
+ * payload, not just the link fields: the verifier recomputes each row's hash
+ * from its own stored content, so content tampering is caught too.
+ */
 export const verifyAuditIntegrity = async () => {
   const entries = await prisma.auditLog.findMany({
     orderBy: { sequence: 'asc' },
-    select: { hash: true, prevHash: true, sequence: true },
+    select: {
+      action: true,
+      actorId: true,
+      actorRole: true,
+      createdAt: true,
+      entity: true,
+      entityId: true,
+      hash: true,
+      metadata: true,
+      prevHash: true,
+      sequence: true,
+    },
   });
   return { ...verifyAuditChain(entries), total: entries.length };
 };

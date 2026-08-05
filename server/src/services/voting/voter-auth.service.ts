@@ -5,7 +5,9 @@
 import { OtpPurpose, Role } from '../../../generated/prisma/client.js';
 import {
   BadRequestError,
+  CustomError,
   NotFoundError,
+  ServiceUnavailableError,
   UnauthorizedError,
 } from '../../middlewares/error-handler.js';
 import { validateAndFormatPhone } from '../../utils/validate-phone.js';
@@ -100,21 +102,44 @@ export const makeVoterAuthService = (
 
     let channel: 'email' | 'sms';
     let destinationMasked: string;
-    if (voter.phoneNumber) {
-      channel = 'sms';
-      destinationMasked = maskPhone(voter.phoneNumber);
-      await d.sms.send(voter.phoneNumber, message);
-    } else if (voter.email) {
-      channel = 'email';
-      destinationMasked = maskEmail(voter.email);
-      await d.mail.send({
-        email: voter.email,
-        subject: 'Your Elektor Pro verification code',
-        text: message,
-      });
-    } else {
-      // Unreachable (guarded above); typed for exhaustiveness.
-      throw new BadRequestError('No delivery channel available');
+    try {
+      if (voter.phoneNumber) {
+        channel = 'sms';
+        destinationMasked = maskPhone(voter.phoneNumber);
+        // sendSms REPORTS failure rather than throwing, and the result used to
+        // be dropped: the voter was told "code sent", no code ever arrived,
+        // and the resend throttle then blocked them from trying again. On
+        // election day that is a disenfranchised voter, so a failed send is
+        // now an error they can see and act on.
+        const result = await d.sms.send(voter.phoneNumber, message);
+        if (!result.delivered) {
+          throw new ServiceUnavailableError(
+            'We could not send your code by SMS just now. Please try again, or ask an official to check you in.',
+            { code: 'OTP_DELIVERY_FAILED', layer: 'voter-auth' },
+          );
+        }
+      } else if (voter.email) {
+        channel = 'email';
+        destinationMasked = maskEmail(voter.email);
+        await d.mail.send({
+          email: voter.email,
+          subject: 'Your Elektor Pro verification code',
+          text: message,
+        });
+      } else {
+        // Unreachable (guarded above); typed for exhaustiveness.
+        throw new BadRequestError('No delivery channel available');
+      }
+    } catch (error) {
+      // Undeliverable code: drop it so the throttle does not hold the voter
+      // hostage to a send that never happened.
+      await otp.discard(issued.id);
+      if (error instanceof CustomError) throw error;
+      d.logger.error({ error, userId }, 'Voter OTP delivery failed');
+      throw new ServiceUnavailableError(
+        'We could not send your code just now. Please try again in a moment.',
+        { code: 'OTP_DELIVERY_FAILED', layer: 'voter-auth' },
+      );
     }
 
     return {

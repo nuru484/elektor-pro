@@ -16,6 +16,8 @@ import {
 // src/services/change-request/change-request.service.ts
 // Maker-checker governance engine. Admin mutations are staged as pending change
 // requests; super-admin mutations apply immediately. Both are audited.
+import { withCredentialPool } from '../../lib/credential-pool.js';
+import { withOutbox } from '../../lib/outbox.js';
 import prisma from '../../lib/prisma.js';
 import {
   BadRequestError,
@@ -53,6 +55,42 @@ const runApplier = (
 };
 
 /**
+ * A bulk import's work scales with its payload, so the default 5s interactive
+ * transaction budget is the wrong shape for this path: 20 candidate rows
+ * already exceeded it. Everything expensive that does NOT need the database
+ * has been moved out (credential hashing below, notifications into the
+ * outbox), so what remains is pure database work - but a 1000-row import is
+ * still a lot of it, and timing out here means losing the whole import.
+ */
+const APPLY_TIMEOUT_MS = 120_000;
+
+/**
+ * Run an applier inside a transaction with the two escapes it needs:
+ *
+ *  - a CREDENTIAL POOL, filled before the transaction opens, so bcrypt (slow
+ *    by design, and once per account created) never runs on the transaction's
+ *    critical path;
+ *  - an OUTBOX, drained after it commits, so credential emails and SMS never
+ *    run inside the transaction and never go out for a change that rolled
+ *    back.
+ *
+ * Both were real failures, not theory: a bulk import of two nominations blew
+ * the transaction budget on SMTP, and twenty blew it on hashing.
+ */
+const applyInTransaction = async <T>(
+  applier: Applier,
+  input: { action: ChangeAction; payload: unknown },
+  work: (tx: TxClient) => Promise<T>,
+): Promise<T> => {
+  const credentials = applier.credentialCount?.(input.action, input.payload) ?? 0;
+  return withOutbox(() =>
+    withCredentialPool(credentials, () =>
+      prisma.$transaction(work, { timeout: APPLY_TIMEOUT_MS }),
+    ),
+  );
+};
+
+/**
  * Either apply the change immediately (super-admin) or stage it as a pending
  * change request (admin). Deletes are super-admin only and never staged.
  */
@@ -74,7 +112,7 @@ export const proposeOrExecute = async (
   // directly - there is nobody above them to approve. Other roles apply
   // directly only when the matrix or a grant gives them APPROVE_CHANGES.
   if (actor.role === Role.SUPER_ADMIN || (await canActorApproveChanges(actor))) {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await applyInTransaction(applier, input, async (tx) => {
       const r = await runApplier(
         applier,
         { action: input.action, entityId: input.entityId, payload: input.payload },
@@ -131,6 +169,16 @@ export const approveChangeRequest = async (
   }
   const cr = await prisma.changeRequest.findUnique({ where: { id } });
   if (!cr) throw new NotFoundError('Change request not found');
+  // Four eyes, actually. The capability check alone let anyone who gained
+  // APPROVE_CHANGES after submitting sign off their own request, which is
+  // exactly the review this queue exists to force. Cancel it and resubmit, or
+  // have someone else approve.
+  if (cr.requestedById === actor.id) {
+    throw new ForbiddenError('You cannot approve your own change request', {
+      code: 'SELF_APPROVAL',
+      layer: 'governance',
+    });
+  }
   if (cr.status !== ChangeStatus.PENDING) {
     throw new BadRequestError('Change request is not pending');
   }
@@ -138,7 +186,9 @@ export const approveChangeRequest = async (
   if (!applier) throw new BadRequestError(`Unsupported entity: ${cr.entity}`);
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    // Same escapes as the direct path: a staged bulk import is applied HERE,
+    // at approval time, so it needs them just as much.
+    return await applyInTransaction(applier, cr, async (tx) => {
       const r = await runApplier(
         applier,
         { action: cr.action, entityId: cr.entityId, payload: cr.payload },

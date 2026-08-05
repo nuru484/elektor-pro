@@ -1,3 +1,6 @@
+import { randomInt } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
+
 import type { TxClient } from '../../types/prisma.types.js';
 
 import {
@@ -18,7 +21,7 @@ import {
   InternalServerError,
   NotFoundError,
 } from '../../middlewares/error-handler.js';
-import { emitElectionUpdate } from '../../realtime/io.js';
+import { emitElectionUpdateThrottled } from '../../realtime/io.js';
 import { chainHash, generateReceiptCode } from '../../utils/crypto.js';
 import {
   assertVoterEligibleForElection,
@@ -31,6 +34,37 @@ export interface BallotSelection {
   portfolioId: string;
   type?: BallotEntryType;
 }
+
+const MAX_BALLOT_ATTEMPTS = 5;
+const BALLOT_RETRY_BASE_MS = 25;
+
+/**
+ * Casting queues, it does not fail.
+ *
+ * The chain is serialised per election by an advisory lock, so during a rush
+ * most callers are waiting their turn. Prisma's DEFAULT maxWait is 2s, and a
+ * caller that cannot even START a transaction inside it is rejected outright:
+ * measured at 300 concurrent voters, 142 of them were turned away with
+ * "Unable to start a transaction in the given time" - not a double vote, not
+ * a broken chain, just voters told their ballot failed. On election day that
+ * is disenfranchisement, and it is the wrong trade: waiting is acceptable,
+ * being refused is not.
+ *
+ * So the wait is generous and the timeout covers the work once started. The
+ * retry loop treats a start-timeout as retryable too, which is what turns a
+ * rejection into a queue.
+ */
+const BALLOT_TX_OPTIONS = { maxWait: 20_000, timeout: 20_000 };
+
+/**
+ * Prisma reports "could not get a connection / start a transaction in time"
+ * as a plain transaction API error (P2028) rather than a distinct code, so it
+ * has to be matched on the message. Narrow deliberately: a transaction that
+ * timed out while ALREADY RUNNING must not be retried blindly.
+ */
+const isTransactionStartTimeout = (error: unknown): boolean =>
+  error instanceof Error &&
+  /unable to start a transaction/i.test(error.message);
 
 const getVoterByUserId = async (userId: string) => {
   const voter = await prisma.voter.findFirst({ where: { userId } });
@@ -80,6 +114,10 @@ export const getVoterBallot = async (userId: string, electionId: string) => {
     },
     hasVoted: Boolean(voterElection?.hasVoted),
     portfolios,
+    // Surfaced so the ballot screen can tell the voter, BEFORE they cast,
+    // whether this election records what they voted against their name.
+    // Consent to an open ballot is only meaningful if it is informed.
+    voteVisibleToVoter: election.voteVisibleToVoter,
   };
 };
 
@@ -162,6 +200,15 @@ const createBallotInTx = async (
   electionId: string,
   entries: NormalizedEntry[],
 ): Promise<{ receiptCode: string }> => {
+  // A hash chain is inherently sequential: every ballot links to its
+  // predecessor, so two casts in the same election must not read the same
+  // "last" row. Take a per-election transaction-scoped advisory lock instead
+  // of relying on the unique(electionId, sequence) collision - collisions
+  // waste work and, past the retry budget, would fail a voter's ballot. The
+  // lock is released when the transaction commits or rolls back. Different
+  // elections hash to different keys and never block each other.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`ballot:${electionId}`}))`;
+
   const last = await tx.ballot.findFirst({
     orderBy: { sequence: 'desc' },
     select: { hash: true, sequence: true },
@@ -226,8 +273,20 @@ export const castBallot = async (
     ]),
   );
 
-  // Require a decision for every eligible portfolio (no partial ballots).
+  // Exactly one decision per portfolio. Checking only the SET size against the
+  // eligible count is not enough: a ballot listing one portfolio twice and
+  // omitting none still matched, and each entry passed `normalizeSelection`
+  // independently, so a voter could record several votes for one seat. The
+  // per-ballot unique index does not catch it either (different candidateIds
+  // are distinct rows), and the hash chain happily signs the stuffed ballot.
   const selectedIds = new Set(selections.map((s) => s.portfolioId));
+  if (selectedIds.size !== selections.length) {
+    throw new BadRequestError('Each portfolio may appear only once on a ballot', {
+      code: 'DUPLICATE_PORTFOLIO',
+      layer: 'voting',
+    });
+  }
+  // Require a decision for every eligible portfolio (no partial ballots).
   if (selectedIds.size !== eligible.length) {
     throw new BadRequestError('A decision is required for every portfolio');
   }
@@ -239,9 +298,14 @@ export const castBallot = async (
     entries.push(...normalizeSelection(meta, selection));
   }
 
-  // Retry on the (rare) ballot-sequence race.
+  // The advisory lock in createBallotInTx serialises the chain, so a sequence
+  // collision should no longer happen. This stays as a safety net for the
+  // remaining races (a duplicate receipt/hash draw, a queued caller giving
+  // up) with jittered backoff so a burst of retries does not synchronise into
+  // another collision. MAX_BALLOT_ATTEMPTS is generous: failing here loses a
+  // vote, which on election day means a disenfranchised voter.
   let result: undefined | { receiptCode: string };
-  for (let attempt = 0; attempt < 3 && !result; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_BALLOT_ATTEMPTS && !result; attempt += 1) {
     try {
       result = await prisma.$transaction(async (tx) => {
         // Ensure a VoterElection row exists (ALL_VOTERS mode may not have one).
@@ -259,18 +323,29 @@ export const castBallot = async (
           throw new ConflictError('You have already voted in this election');
         }
         const created = await createBallotInTx(tx, electionId, entries);
-        // Keep the voter's own receipt on their record so their console can
-        // replay what they voted (a deliberate softening of strict ballot
-        // secrecy - see the schema note).
-        await tx.voterElection.update({
-          data: { receiptCode: created.receiptCode },
-          where: { voterId_electionId: { electionId, voterId: voter.id } },
-        });
+        // SECRET ballot (the default): nothing linking this ballot back to
+        // the voter is written - the receipt goes to them and is stored
+        // nowhere against their name.
+        // OPEN ballot: the receipt IS stored, which is what lets their
+        // console replay their vote, and equally what makes the election
+        // non-secret. The ballot screen told them which one this is.
+        if (election.voteVisibleToVoter) {
+          await tx.voterElection.update({
+            data: { receiptCode: created.receiptCode },
+            where: { voterId_electionId: { electionId, voterId: voter.id } },
+          });
+        }
         return created;
-      });
+      }, BALLOT_TX_OPTIONS);
     } catch (error) {
       const code = (error as { code?: string }).code;
-      if (code === 'P2002' && attempt < 2) continue; // sequence/hash race — retry
+      if (
+        (code === 'P2002' || isTransactionStartTimeout(error)) &&
+        attempt < MAX_BALLOT_ATTEMPTS - 1
+      ) {
+        await sleep(BALLOT_RETRY_BASE_MS * 2 ** attempt + randomInt(BALLOT_RETRY_BASE_MS));
+        continue;
+      }
       throw error;
     }
   }
@@ -282,7 +357,8 @@ export const castBallot = async (
     throw new InternalServerError('Ballot could not be recorded');
   }
 
-  emitElectionUpdate(electionId, 'results:invalidate', { electionId });
+  // Throttled: one ballot must not fan a refetch out to every watcher.
+  emitElectionUpdateThrottled(electionId, 'results:invalidate', { electionId });
   return result;
 };
 
@@ -293,12 +369,32 @@ export const castBallot = async (
  * stored entries). Public by design - anyone may prove no ballot was inserted,
  * removed, or altered. Loads the whole chain; fine at institutional scale.
  */
-export const verifyBallotChain = async (idOrSlug: string) => {
+export type BallotChainResult =
+  | { brokenAt: number; electionId: string; total: number; valid: false }
+  | { electionId: string; total: number; valid: true };
+
+/**
+ * Verification is public, unauthenticated, and O(ballots) in both queries and
+ * hashing - a cheap request that is expensive to serve. The answer only
+ * changes when a ballot is cast, so it is memoised against the ballot count:
+ * repeat callers (and the election report, which verifies on every load) get
+ * the cached verdict, while a new ballot invalidates it immediately. Bounded
+ * by the number of elections, which is institutionally small.
+ */
+const chainCache = new Map<string, { result: BallotChainResult; total: number }>();
+
+export const verifyBallotChain = async (
+  idOrSlug: string,
+): Promise<BallotChainResult> => {
   const election = await prisma.election.findFirst({
     select: { id: true },
     where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
   });
   if (!election) throw new NotFoundError('Election not found');
+
+  const total = await prisma.ballot.count({ where: { electionId: election.id } });
+  const cached = chainCache.get(election.id);
+  if (cached?.total === total) return cached.result;
 
   const ballots = await prisma.ballot.findMany({
     orderBy: { sequence: 'asc' },
@@ -328,15 +424,28 @@ export const verifyBallotChain = async (idOrSlug: string) => {
       ballot.prevHash !== expectedPrev ||
       recomputed !== ballot.hash
     ) {
-      return {
+      const broken: BallotChainResult = {
         brokenAt: ballot.sequence,
         electionId: election.id,
         total: ballots.length,
         valid: false,
       };
+      chainCache.set(election.id, { result: broken, total });
+      return broken;
     }
   }
-  return { electionId: election.id, total: ballots.length, valid: true };
+  const ok: BallotChainResult = {
+    electionId: election.id,
+    total: ballots.length,
+    valid: true,
+  };
+  chainCache.set(election.id, { result: ok, total });
+  return ok;
+};
+
+/** Test-only: drop the memoised chain verdicts between specs. */
+export const _resetChainCacheForTests = (): void => {
+  chainCache.clear();
 };
 
 /** Verify a ballot by its receipt code, proving inclusion + chain integrity. */

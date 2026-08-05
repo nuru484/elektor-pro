@@ -22,10 +22,32 @@ import { type BallotSelection, castBallot } from '../src/services/voting/voting.
 import { chainHash, generateReceiptCode, sha256, stableStringify } from '../src/utils/crypto.js';
 import { hashPassword } from '../src/utils/password.js';
 
+/**
+ * This seed is DEVELOPMENT DATA. It creates demo accounts that all share one
+ * password, a demo election, and fabricated cast ballots. None of that
+ * belongs in a real deployment, and `npm run deploy` used to run it - which
+ * would have put a super-admin with a repo-published password, plus fake
+ * ballots, into a production database.
+ *
+ * Production bootstrapping (organization, capability defaults, and the first
+ * super-admin, nothing else) lives in prisma/bootstrap.ts instead.
+ *
+ * The escape hatch exists only for restoring a demo environment that happens
+ * to run with NODE_ENV=production; it has to be asked for explicitly.
+ */
+if (ENV.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+  throw new Error(
+    'Refusing to seed demo data with NODE_ENV=production. Use `npm run bootstrap` for a real deployment, or set ALLOW_PRODUCTION_SEED=true if you genuinely want demo data here.',
+  );
+}
+
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-/** Every seeded user account signs in with this (development data only). */
-const SEED_PASSWORD = 'ORACLE1995@B9s';
+/**
+ * The shared password for every seeded account. Development data only - the
+ * guard above keeps it out of production. Override with SEED_PASSWORD.
+ */
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'ORACLE1995@B9s';
 
 /**
  * Finishing pass: every voter carries a phone (and most an email), and every

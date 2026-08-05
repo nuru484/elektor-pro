@@ -1,11 +1,13 @@
+import { authenticator } from 'otplib';
 // Email-OTP 2FA enrollment + login, recovery codes, and OTP hygiene
 // (throttle, attempts, expiry) - service-level with capturing fakes.
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { OtpPurpose, Role } from '../../generated/prisma/client.js';
+import { OtpPurpose, Role, Status } from '../../generated/prisma/client.js';
+import { MAX_FAILED_LOGIN_ATTEMPTS } from '../../src/config/constants.js';
 import { makeAuthService } from '../../src/services/auth/auth.service.js';
 import { makeOtpService } from '../../src/services/auth/otp.service.js';
-import { codeFrom, createUser, makeTestDeps, resetDb } from '../helpers.js';
+import { codeFrom, createUser, makeTestDeps, prisma, resetDb } from '../helpers.js';
 
 describe('email two-factor authentication', () => {
   beforeEach(resetDb);
@@ -154,6 +156,69 @@ describe('otp service hygiene', () => {
     await otp.verify(user.id, OtpPurpose.STAFF_LOGIN, issued.code);
     await expect(
       otp.verify(user.id, OtpPurpose.STAFF_LOGIN, issued.code),
+    ).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hardening regressions: the second factor must be as brute-force resistant as
+// the first, and a code must be usable exactly once.
+// ---------------------------------------------------------------------------
+describe('two-factor hardening', () => {
+  beforeEach(resetDb);
+
+  it('locks the account after repeated wrong 2FA codes', async () => {
+    // The original bug: failed second factors incremented nothing, so a
+    // challenge token was an unlimited guessing oracle for its whole 5-minute
+    // life. Password failures locked the account; 2FA failures did not.
+    const user = await createUser(Role.ADMIN, { email: 'lock2fa@test.com' });
+    const t = makeTestDeps();
+    const auth = makeAuthService(t.deps);
+    await auth.requestEmailTwoFactor(user.id);
+    await auth.activateEmailTwoFactor(user.id, codeFrom(t.sentMail.at(-1)?.text), {});
+
+    t.advanceClock(61_000);
+    const result = await auth.authenticateStaff('lock2fa@test.com', 'Password123!', {});
+    if (result.status !== 'two_factor_required') throw new Error('expected 2FA');
+
+    for (let attempt = 0; attempt < MAX_FAILED_LOGIN_ATTEMPTS; attempt += 1) {
+      await expect(
+        auth.verifyStaffTwoFactor(result.userId, '000000', {}),
+      ).rejects.toMatchObject({ status: 401 });
+    }
+
+    const locked = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(locked.status).toBe(Status.LOCKED);
+    expect(locked.lockedAt).not.toBeNull();
+
+    // And the password path is closed too, not just this challenge.
+    await expect(
+      auth.authenticateStaff('lock2fa@test.com', 'Password123!', {}),
+    ).rejects.toMatchObject({ code: 'ACCOUNT_LOCKED' });
+  });
+
+  it('refuses a TOTP code that has already been used', async () => {
+    // The original bug: verification only asked "is this code valid now", and
+    // a code stays valid across its +/-1-step drift window - so an observed
+    // code could be replayed for about 90 seconds.
+    const user = await createUser(Role.ADMIN, { email: 'totp@test.com' });
+    const t = makeTestDeps();
+    const auth = makeAuthService(t.deps);
+
+    const { secret } = await auth.setupTwoFactor(user.id);
+    await auth.activateTwoFactor(user.id, authenticator.generate(secret), {});
+
+    const result = await auth.authenticateStaff('totp@test.com', 'Password123!', {});
+    if (result.status !== 'two_factor_required') throw new Error('expected 2FA');
+    expect(result.method).toBe('TOTP');
+
+    const code = authenticator.generate(secret);
+    const first = await auth.verifyStaffTwoFactor(result.userId, code, {});
+    expect(first.userId).toBe(user.id);
+
+    // Same code, still inside its window: must not sign in a second time.
+    await expect(
+      auth.verifyStaffTwoFactor(result.userId, code, {}),
     ).rejects.toMatchObject({ status: 401 });
   });
 });

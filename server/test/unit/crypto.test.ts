@@ -45,22 +45,85 @@ describe('crypto utils', () => {
 });
 
 describe('audit chain verification', () => {
+  // A row exactly as the verifier will read it back from Postgres. The hash
+  // is derived from the SAME payload appendAudit hashes, so these specs also
+  // pin the payload shape: change one without the other and they fail.
+  const row = (
+    sequence: number,
+    prevHash: string,
+    overrides: Partial<{
+      action: string;
+      createdAt: Date;
+      metadata: unknown;
+    }> = {},
+  ) => {
+    const base = {
+      action: overrides.action ?? `thing.${String(sequence)}`,
+      actorId: null,
+      actorRole: null,
+      createdAt: overrides.createdAt ?? new Date(1_700_000_000_000 + sequence),
+      entity: 'Thing',
+      entityId: null,
+      metadata: overrides.metadata ?? null,
+      prevHash,
+      sequence,
+    };
+    const hash = chainHash(prevHash, {
+      action: base.action,
+      actorId: base.actorId,
+      actorRole: base.actorRole,
+      entity: base.entity,
+      entityId: base.entityId,
+      metadata: base.metadata,
+      timestamp: base.createdAt.toISOString(),
+    });
+    return { ...base, hash };
+  };
+
   it('accepts a well-formed chain', () => {
-    const h1 = chainHash(GENESIS_HASH, { a: 1 });
-    const h2 = chainHash(h1, { a: 2 });
-    const result = verifyAuditChain([
-      { hash: h1, prevHash: GENESIS_HASH, sequence: 1 },
-      { hash: h2, prevHash: h1, sequence: 2 },
-    ]);
-    expect(result.valid).toBe(true);
+    const first = row(1, GENESIS_HASH);
+    const second = row(2, first.hash);
+    expect(verifyAuditChain([first, second]).valid).toBe(true);
   });
 
   it('detects a broken link', () => {
-    const result = verifyAuditChain([
-      { hash: 'h1', prevHash: GENESIS_HASH, sequence: 1 },
-      { hash: 'h2', prevHash: 'tampered', sequence: 2 },
-    ]);
+    const first = row(1, GENESIS_HASH);
+    const second = row(2, 'tampered');
+    const result = verifyAuditChain([first, second]);
     expect(result.valid).toBe(false);
     expect(result.brokenAt).toBe(2);
+    expect(result.reason).toBe('link');
+  });
+
+  it('detects content edited in place, with the links left intact', () => {
+    const first = row(1, GENESIS_HASH);
+    const second = row(2, first.hash);
+    // Exactly what a link-only check missed: rewrite what an entry SAYS while
+    // leaving prevHash/hash untouched, and the chain still joins up.
+    const doctored = { ...second, action: 'nothing.happened' };
+    const result = verifyAuditChain([first, doctored]);
+    expect(result.valid).toBe(false);
+    expect(result.brokenAt).toBe(2);
+    expect(result.reason).toBe('content');
+  });
+
+  it('detects a rewritten timestamp', () => {
+    const first = row(1, GENESIS_HASH);
+    const result = verifyAuditChain([
+      { ...first, createdAt: new Date(1_800_000_000_000) },
+    ]);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('content');
+  });
+
+  it('detects rewritten metadata', () => {
+    const first = row(1, GENESIS_HASH, { metadata: { amount: 1 } });
+    const result = verifyAuditChain([{ ...first, metadata: { amount: 999 } }]);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('content');
+  });
+
+  it('accepts an empty chain', () => {
+    expect(verifyAuditChain([]).valid).toBe(true);
   });
 });

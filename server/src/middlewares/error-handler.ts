@@ -332,6 +332,16 @@ export class NotFoundError extends CustomError {
   }
 }
 
+/** A dependency the request needed (SMS gateway, mail relay) is unavailable. */
+export class ServiceUnavailableError extends CustomError {
+  constructor(
+    message = 'Service temporarily unavailable',
+    options?: { code?: string; context?: Record<string, unknown>; layer?: string },
+  ) {
+    super(503, message, { ...options, severity: ErrorSeverity.HIGH });
+  }
+}
+
 export class TokenExpiredError extends CustomError {
   constructor(message = 'Authentication token expired', options?: { code?: string; context?: Record<string, unknown>; layer?: string; }) {
     super(401, message, { ...options, severity: ErrorSeverity.MEDIUM });

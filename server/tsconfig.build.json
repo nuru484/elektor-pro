@@ -1,0 +1,27 @@
+// Production build: emit real JavaScript to dist/.
+//
+// The base tsconfig is type-check-only (noEmit) and spans tests, prisma
+// scripts, and config files. Production must not ship any of those, and it
+// must not run through a transpiler either: `tsx server.ts` compiled every
+// file on every boot and kept a dev toolchain on the critical path.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "generated/**/*.ts", "app.ts", "server.ts"],
+  "exclude": [
+    "build",
+    "dist",
+    "eslint.config.js",
+    "node_modules",
+    "prisma",
+    "prisma.config.ts",
+    "test",
+    "vitest.config.ts"
+  ]
+}

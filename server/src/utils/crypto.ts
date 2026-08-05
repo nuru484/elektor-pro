@@ -72,7 +72,20 @@ export const generateReceiptCode = (groups = 3, groupLen = 4): string => {
 
 // --- Symmetric encryption (AES-256-GCM) for secrets at rest (TOTP secret) ---
 
-const KEY = scryptSync(ENV.ACCESS_TOKEN_SECRET, 'elektor-pro-secret-salt', 32);
+const SALT = 'elektor-pro-secret-salt';
+const KEY = scryptSync(ENV.ENCRYPTION_KEY, SALT, 32);
+
+/**
+ * The key this data used to be encrypted under, before ENCRYPTION_KEY was
+ * split out of ACCESS_TOKEN_SECRET. Decryption falls back to it so rotating
+ * to a dedicated key does not strand rows written by an older deploy. Nothing
+ * is ever ENCRYPTED with it, so the fallback disappears naturally as secrets
+ * are re-enrolled.
+ */
+const LEGACY_KEY =
+  ENV.ENCRYPTION_KEY === ENV.ACCESS_TOKEN_SECRET
+    ? null
+    : scryptSync(ENV.ACCESS_TOKEN_SECRET, SALT, 32);
 
 export const encryptSecret = (plaintext: string): string => {
   const iv = randomBytes(12);
@@ -82,15 +95,26 @@ export const encryptSecret = (plaintext: string): string => {
   return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
 };
 
+const decryptWith = (key: Buffer, iv: string, tag: string, data: string): string => {
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64'));
+  decipher.setAuthTag(Buffer.from(tag, 'base64'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(data, 'base64')),
+    decipher.final(),
+  ]).toString('utf8');
+};
+
 export const decryptSecret = (payload: string): string => {
   const [ivB64, tagB64, dataB64] = payload.split(':');
   if (!ivB64 || !tagB64 || !dataB64) {
     throw new Error('Malformed encrypted secret');
   }
-  const decipher = createDecipheriv('aes-256-gcm', KEY, Buffer.from(ivB64, 'base64'));
-  decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
-  return Buffer.concat([
-    decipher.update(Buffer.from(dataB64, 'base64')),
-    decipher.final(),
-  ]).toString('utf8');
+  try {
+    return decryptWith(KEY, ivB64, tagB64, dataB64);
+  } catch (error) {
+    // GCM authentication failed: either the wrong key, or real tampering.
+    // Only the legacy key is worth a second attempt.
+    if (!LEGACY_KEY) throw error;
+    return decryptWith(LEGACY_KEY, ivB64, tagB64, dataB64);
+  }
 };

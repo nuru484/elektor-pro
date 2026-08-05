@@ -190,6 +190,9 @@ model User {
   twoFactorEnabled Boolean          @default(false)
   twoFactorMethod  TwoFactorMethod? // set while 2FA is enabled
   totpSecret       String? // encrypted at rest
+  /// Highest TOTP time-step already accepted for this account. A code is
+  /// single-use: replaying one inside its ±1-step drift window is refused.
+  totpLastCounter  Int?
 
   // Pending contact changes awaiting OTP confirmation
   pendingEmail String?
@@ -395,6 +398,13 @@ model Voter {
   updatedAt DateTime  @updatedAt
 
   @@index([deletedAt])
+  // Voter lookup is a `contains` + case-insensitive search (accreditation
+  // desk, roll, register). A B-tree cannot serve that, so at register scale
+  // every keystroke becomes a sequential scan. Trigram GIN indexes make these
+  // index scans; pg_trgm is created by the accompanying migration.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([voterId(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([phoneNumber(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 
 // ===========================================================================
@@ -431,6 +441,17 @@ model Election {
   /// Accreditation hands each voter a one-time sign-in code (for polling
   /// stations where SMS/email OTPs are impractical).
   voteCodeEnabled       Boolean @default(false)
+  /// OPEN BALLOT. When on, each voter's ballot receipt is stored against
+  /// their record so their console can replay what they voted.
+  ///
+  /// This is not a display preference, it is a change of election TYPE. The
+  /// stored link means one join reconstructs how every named voter voted, so
+  /// an election with this on is an open (roll-call) ballot, not a secret
+  /// one - a legitimate choice for a board or committee vote, and the wrong
+  /// one wherever a voter could be pressured. The ballot screen states which
+  /// kind of election the voter is in BEFORE they cast, and turning this off
+  /// purges the links already stored.
+  voteVisibleToVoter    Boolean @default(false)
   isLocked              Boolean @default(false) // set on certification
 
   // Per-election role-based UI visibility + branding overrides (over org defaults).
@@ -658,9 +679,11 @@ model VoterElection {
   voteCodeIssuedAt DateTime?
   voteCodeUsedAt   DateTime?
 
-  /// The voter's own ballot receipt, kept so their console can replay what
-  /// they voted. A DELIBERATE product trade-off: it links a voter to their
-  /// ballot, softening strict ballot secrecy in exchange for "my votes".
+  /// The voter's ballot receipt, stored ONLY for open-ballot elections
+  /// (Election.voteVisibleToVoter). It is what lets their console replay what
+  /// they voted - and equally what lets one join reconstruct how every named
+  /// voter voted, which is why a secret-ballot election leaves it null and
+  /// turning the setting off purges it.
   receiptCode String?
 
   createdAt DateTime @default(now())

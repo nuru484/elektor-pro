@@ -1,14 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
+import { TEST_DATABASE_URL } from './test/test-database-url.js';
 import { TEST_WORKER_COUNT } from './test/worker-count.js';
-
-// Single source of truth for the TEMPLATE test DB shared with
-// test/global-setup.ts; override with TEST_DATABASE_URL to run the suite
-// elsewhere (CI, containers). Each worker runs against its own clone
-// (elektor_pro_test_wN) - see test/setup-worker-db.ts.
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  'postgresql://nuru:0553997465@localhost:5432/elektor_pro_test';
 
 export default defineConfig({
   test: {

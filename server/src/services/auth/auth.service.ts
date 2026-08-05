@@ -39,6 +39,7 @@ import {
   buildQrDataUrl,
   generateTotpSecret,
   verifyTotp,
+  verifyTotpStep,
 } from './totp.service.js';
 
 const PASSWORD_LOGIN_ROLES = new Set<Role>([
@@ -231,9 +232,11 @@ export const makeAuthService = (
     const user = await prisma.user.findUnique({
       select: {
         email: true,
+        failedLoginAttempts: true,
         id: true,
         role: true,
         status: true,
+        totpLastCounter: true,
         totpSecret: true,
         twoFactorEnabled: true,
         twoFactorMethod: true,
@@ -248,10 +251,21 @@ export const makeAuthService = (
     }
 
     let verified = false;
+    // The time step a TOTP code belonged to, recorded on success so the same
+    // code cannot be presented twice inside its drift window.
+    let usedTotpStep: null | number = null;
     const method = effectiveMethod(user);
 
     if (method === TwoFactorMethod.TOTP && user.totpSecret) {
-      verified = verifyTotp(code.trim(), decryptSecret(user.totpSecret));
+      const step = verifyTotpStep(
+        code.trim(),
+        decryptSecret(user.totpSecret),
+        clock.now(),
+      );
+      if (step !== null && (user.totpLastCounter === null || step > user.totpLastCounter)) {
+        verified = true;
+        usedTotpStep = step;
+      }
     } else if (method === TwoFactorMethod.EMAIL) {
       try {
         await otp.verify(userId, OtpPurpose.STAFF_LOGIN, code);
@@ -266,20 +280,46 @@ export const makeAuthService = (
     }
 
     if (!verified) {
+      // A failed second factor counts toward the SAME lockout budget as a
+      // failed password. Without this the challenge token was an unlimited
+      // guessing oracle for its whole 5-minute life: an attacker holding a
+      // correct password could grind codes with nothing but an IP-level
+      // limiter in the way, and the account never locked.
+      const attempts = user.failedLoginAttempts + 1;
+      const shouldLock = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+      await prisma.user.update({
+        data: {
+          failedLoginAttempts: attempts,
+          ...(shouldLock
+            ? {
+                lockedAt: clock.now(),
+                lockedReason: 'Exceeded maximum failed two-factor attempts',
+                status: Status.LOCKED,
+              }
+            : {}),
+        },
+        where: { id: userId },
+      });
+      if (shouldLock) await sessions.revokeAllSessions(userId);
       await appendAudit(prisma, {
-        action: 'auth.2fa_failed',
+        action: shouldLock ? 'auth.account_locked' : 'auth.2fa_failed',
         actorId: userId,
         actorRole: user.role,
         entity: 'User',
         entityId: userId,
         ipAddress: ctx.ipAddress,
+        metadata: { attempts },
         userAgent: ctx.userAgent,
       });
       throw new UnauthorizedError('Invalid authentication code');
     }
 
     await prisma.user.update({
-      data: { failedLoginAttempts: 0, lastLoginAt: clock.now() },
+      data: {
+        failedLoginAttempts: 0,
+        lastLoginAt: clock.now(),
+        ...(usedTotpStep === null ? {} : { totpLastCounter: usedTotpStep }),
+      },
       where: { id: userId },
     });
     await appendAudit(prisma, {
@@ -411,6 +451,10 @@ export const makeAuthService = (
     if (!record || record.usedAt || record.expiresAt < clock.now()) {
       throw new BadRequestError('Invalid or expired reset token');
     }
+    // Hashed BEFORE the transaction opens: bcrypt is deliberately slow, and
+    // holding a transaction open across it wastes a pooled connection and
+    // eats into the transaction's time budget for no reason.
+    const passwordHash = await hashPassword(newPassword);
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         data: {
@@ -419,7 +463,7 @@ export const makeAuthService = (
           // A completed reset proves control of the account's contact channel;
           // it satisfies the first-login change requirement too.
           mustChangePassword: false,
-          password: await hashPassword(newPassword),
+          password: passwordHash,
           passwordChangedAt: clock.now(),
           status: Status.ACTIVE,
         },
@@ -511,7 +555,8 @@ export const makeAuthService = (
     const label = user.email ?? user.firstName;
     const otpAuthUrl = buildOtpAuthUrl(secret, label, 'Elektor Pro');
     await prisma.user.update({
-      data: { totpSecret: encryptSecret(secret) },
+      // Fresh secret, fresh replay counter.
+      data: { totpLastCounter: null, totpSecret: encryptSecret(secret) },
       where: { id: userId },
     });
     return { otpAuthUrl, qrCode: await buildQrDataUrl(otpAuthUrl), secret };
@@ -630,7 +675,14 @@ export const makeAuthService = (
     }
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
-        data: { totpSecret: null, twoFactorEnabled: false, twoFactorMethod: null },
+        // The replay counter belongs to the retired secret; a later
+        // re-enrolment starts a fresh one and must not inherit it.
+        data: {
+          totpLastCounter: null,
+          totpSecret: null,
+          twoFactorEnabled: false,
+          twoFactorMethod: null,
+        },
         where: { id: userId },
       });
       await tx.twoFactorRecoveryCode.deleteMany({ where: { userId } });

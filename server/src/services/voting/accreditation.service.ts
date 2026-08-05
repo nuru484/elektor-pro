@@ -420,8 +420,13 @@ export const listVoterElections = async (
 
 /**
  * The voter's own voting history: every election they voted in (hidden ones
- * excluded), with their receipt code and - via the stored receipt - exactly
- * what they voted, plus the path to public verification.
+ * excluded) and when.
+ *
+ * What they voted appears ONLY for open-ballot elections
+ * (Election.voteVisibleToVoter), which are the ones that deliberately store
+ * the link. For a secret ballot nothing on the row points at the ballot, so
+ * there is nothing to replay - here or for anyone with database access - and
+ * the voter verifies with the receipt they kept.
  */
 export const getVoterHistory = async (
   userId: string,
@@ -449,6 +454,7 @@ export const getVoterHistory = async (
           slug: true,
           startDate: true,
           status: true,
+          voteVisibleToVoter: true,
         },
       },
       receiptCode: true,
@@ -465,29 +471,34 @@ export const getVoterHistory = async (
 
   const data = await Promise.all(
     pageRows.map(async (entry) => {
-      // Older ballots (cast before receipts were stored) have no replay.
-      const ballot = entry.receiptCode
-        ? await prisma.ballot.findUnique({
-            select: {
-              entries: {
-                select: {
-                  approve: true,
-                  candidate: { select: { name: true, profilePicture: true } },
-                  portfolio: { select: { name: true } },
-                  type: true,
+      // Only an open ballot has a stored receipt to replay from. The
+      // election flag is checked as well as the column, so flipping an
+      // election back to secret hides the replay immediately even before the
+      // purge lands.
+      const replay =
+        entry.election.voteVisibleToVoter && entry.receiptCode
+          ? await prisma.ballot.findUnique({
+              select: {
+                entries: {
+                  select: {
+                    approve: true,
+                    candidate: { select: { name: true, profilePicture: true } },
+                    portfolio: { select: { name: true } },
+                    type: true,
+                  },
                 },
               },
-            },
-            where: { receiptCode: entry.receiptCode },
-          })
-        : null;
+              where: { receiptCode: entry.receiptCode },
+            })
+          : null;
       return {
-        choices: ballot?.entries ?? null,
+        choices: replay?.entries ?? null,
         election: entry.election,
-        receiptCode: entry.receiptCode,
+        receiptCode: entry.election.voteVisibleToVoter ? entry.receiptCode : null,
         votedAt: entry.votedAt,
       };
     }),
   );
+
   return { data, meta: buildMeta(visible.length, pagination.page, pagination.limit) };
 };

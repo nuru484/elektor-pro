@@ -32,6 +32,21 @@ export const exportResultsCsv = async (electionId: string): Promise<string> => {
     rows.push(
       [csvEscape(portfolio.name), 'Skipped', '', portfolio.skip, ''].join(','),
     );
+    // An unresolved tie must be visible on the official export, not inferred
+    // from two equal rows.
+    if (portfolio.isTied) {
+      rows.push(
+        [
+          csvEscape(portfolio.name),
+          csvEscape(
+            `TIE - no winner: ${portfolio.tiedCandidates.map((c) => c.name).join(' / ')}`,
+          ),
+          '',
+          '',
+          '',
+        ].join(','),
+      );
+    }
   }
   rows.push('');
   rows.push(
@@ -76,6 +91,15 @@ export const exportResultsPdf = async (electionId: string): Promise<Buffer> => {
       }
       if (portfolio.winner) {
         doc.fillColor('#15803d').text(`  Winner: ${portfolio.winner.name}`);
+        doc.fillColor('#333');
+      } else if (portfolio.isTied) {
+        doc
+          .fillColor('#b45309')
+          .text(
+            `  TIE - no winner declared: ${portfolio.tiedCandidates
+              .map((c) => c.name)
+              .join(' / ')}`,
+          );
         doc.fillColor('#333');
       }
     }

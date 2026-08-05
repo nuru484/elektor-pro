@@ -282,12 +282,41 @@ export class CloudinaryUploadService implements ICloudinaryUploadService {
   }
 }
 
-export const createCloudinaryService = (config: ICloudinaryConfig): ICloudinaryUploadService => {
-  if (!config.api_key || !config.cloud_name || !config.api_secret) {
-    throw new Error('Invalid Cloudinary config: missing apiKey or cloudName');
-  }
-  return new CloudinaryUploadService(config);
+export const isCloudinaryConfigured = (config: ICloudinaryConfig): boolean =>
+  Boolean(config.api_key && config.cloud_name && config.api_secret);
+
+/**
+ * A service that fails only when an upload is actually attempted.
+ *
+ * The eager version threw while this MODULE was being imported, so a
+ * deployment missing Cloudinary credentials died at boot with
+ * "Invalid Cloudinary config" - even though env.ts marks those variables
+ * optional and most of the app never touches an image. Failing at the point
+ * of use keeps the contract honest and the error legible.
+ */
+const unconfiguredService: ICloudinaryUploadService = {
+  deleteImage: () => {
+    throw new InternalServerError('Image storage is not configured', {
+      code: 'CLOUDINARY_NOT_CONFIGURED',
+      layer: 'cloudinary',
+    });
+  },
+  uploadImage: () => {
+    throw new InternalServerError('Image storage is not configured', {
+      code: 'CLOUDINARY_NOT_CONFIGURED',
+      layer: 'cloudinary',
+    });
+  },
 };
+
+export const createCloudinaryService = (config: ICloudinaryConfig): ICloudinaryUploadService =>
+  isCloudinaryConfigured(config) ? new CloudinaryUploadService(config) : unconfiguredService;
 
 // Default service instance
 export const cloudinaryService = createCloudinaryService(defaultCloudinaryConfig);
+
+if (!isCloudinaryConfigured(defaultCloudinaryConfig)) {
+  logger.warn(
+    'Cloudinary is not configured; image uploads will be refused until CLOUDINARY_* are set',
+  );
+}

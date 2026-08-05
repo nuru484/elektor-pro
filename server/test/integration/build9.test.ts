@@ -142,7 +142,7 @@ describe('announcements and report', () => {
 describe('voter history and portal hiding', () => {
   beforeEach(resetDb);
 
-  it('stores the receipt on cast, replays it in history, and hides hidden elections', async () => {
+  it('records that a voter voted without linking them to their ballot, and hides hidden elections', async () => {
     const { candidates, election, portfolio } = await createElectionFixture();
     await createVoterFixture('HIST1', '+233550000121');
 
@@ -163,20 +163,43 @@ describe('voter history and portal hiding', () => {
       });
     expect(castRes.status).toBe(201);
     const receipt = bodyOf<{ data: { receiptCode: string } }>(castRes).data.receiptCode;
+    // The receipt is handed to the voter and kept nowhere else.
+    expect(receipt).toBeTruthy();
 
-    // The history replays exactly what was voted, with the receipt.
+    // History records THAT they voted and when - never what they voted.
     const history = await api().get('/api/v1/voter/history').set('Cookie', cookie);
     expect(history.status).toBe(200);
     const rows = bodyOf<{
       data: {
-        choices: null | { candidate: null | { name: string } }[];
+        choices: null | unknown[];
         election: { id: string };
         receiptCode: null | string;
+        votedAt: null | string;
       }[];
     }>(history).data;
     expect(rows).toHaveLength(1);
-    expect(rows[0].receiptCode).toBe(receipt);
-    expect(rows[0].choices?.[0].candidate?.name).toBe(candidates[0].name);
+    expect(rows[0].election.id).toBe(election.id);
+    expect(rows[0].votedAt).toBeTruthy();
+    // Secret ballot: the fields exist on the shape an open ballot fills in,
+    // but there is nothing to fill them with - no choices, and no receipt to
+    // join back to the ballot.
+    expect(rows[0].choices).toBeNull();
+    expect(rows[0].receiptCode).toBeNull();
+
+    // And nothing in the database links the voter's row to their ballot.
+    const entry = await prisma.voterElection.findFirst({
+      where: { election: { id: election.id } },
+    });
+    expect(Object.values(entry ?? {})).not.toContain(receipt);
+
+    // The voter can still prove their own ballot, using the code they kept.
+    const verified = await api().get(
+      `/api/v1/elections/${election.id}/receipts/${receipt}`,
+    );
+    expect(verified.status).toBe(200);
+    expect(
+      bodyOf<{ data: { integrityValid: boolean } }>(verified).data.integrityValid,
+    ).toBe(true);
 
     // Hiding the election clears it from the voter portal - history included.
     await prisma.election.update({

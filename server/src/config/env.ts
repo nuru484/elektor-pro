@@ -39,6 +39,23 @@ const envEnum = <T extends string>(
 
 const isProduction = (process.env.NODE_ENV ?? "development") === "production";
 
+/**
+ * Secrets must actually be secret-sized. A short ACCESS_TOKEN_SECRET is a
+ * guessable HMAC key, and every session in the system hangs off it, so this
+ * is refused outright in production rather than warned about.
+ */
+const MIN_SECRET_LENGTH = 32;
+
+const envSecret = (name: string): string => {
+  const value = envRequired(name);
+  if (isProduction && value.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `Environment variable ${name} must be at least ${String(MIN_SECRET_LENGTH)} characters in production`,
+    );
+  }
+  return value;
+};
+
 interface IENV {
   ACCESS_TOKEN_EXPIRY: string;
   ACCESS_TOKEN_SECRET: string;
@@ -55,6 +72,15 @@ interface IENV {
   DATABASE_URL: string;
   /** Max connections in the shared pg pool (API + in-process workers). */
   DB_POOL_MAX: number;
+  /**
+   * Key for data encrypted at rest (TOTP secrets). Separate from the JWT
+   * secrets on purpose: deriving it from ACCESS_TOKEN_SECRET meant rotating
+   * that token secret - a routine operation - silently made every stored TOTP
+   * secret undecryptable and locked out every 2FA user. Required in
+   * production; outside it, falls back to the access secret so existing dev
+   * databases keep working.
+   */
+  ENCRYPTION_KEY: string;
   FROG_API_KEY: string;
   FROG_SENDER_ID: string;
   FROG_USERNAME: string;
@@ -90,7 +116,7 @@ interface IENV {
 
 const ENV: IENV = {
   ACCESS_TOKEN_EXPIRY: envOptional("ACCESS_TOKEN_EXPIRY", "30m"),
-  ACCESS_TOKEN_SECRET: envRequired("ACCESS_TOKEN_SECRET"),
+  ACCESS_TOKEN_SECRET: envSecret("ACCESS_TOKEN_SECRET"),
   ADMIN_EMAIL: envOptional("ADMIN_EMAIL", "admin@elektorpro.com"),
   ADMIN_FIRST_NAME: envOptional("ADMIN_FIRST_NAME", "Super"),
   ADMIN_LAST_NAME: envOptional("ADMIN_LAST_NAME", "Admin"),
@@ -103,6 +129,9 @@ const ENV: IENV = {
   CORS_ACCESS: envOptional("CORS_ACCESS", "http://localhost:3000"),
   DATABASE_URL: envRequired("DATABASE_URL"),
   DB_POOL_MAX: envNumber("DB_POOL_MAX", 20),
+  ENCRYPTION_KEY: isProduction
+    ? envSecret("ENCRYPTION_KEY")
+    : envOptional("ENCRYPTION_KEY") || envRequired("ACCESS_TOKEN_SECRET"),
   FROG_API_KEY: envOptional("FROG_API_KEY"),
   FROG_SENDER_ID: envOptional("FROG_SENDER_ID"),
   FROG_USERNAME: envOptional("FROG_USERNAME"),
@@ -123,7 +152,7 @@ const ENV: IENV = {
   RATE_LIMIT_SCALE: envNumber("RATE_LIMIT_SCALE", isProduction ? 1 : 1000),
   REDIS_URL: envOptional("REDIS_URL"),
   REFRESH_TOKEN_EXPIRY: envOptional("REFRESH_TOKEN_EXPIRY", "7d"),
-  REFRESH_TOKEN_SECRET: envRequired("REFRESH_TOKEN_SECRET"),
+  REFRESH_TOKEN_SECRET: envSecret("REFRESH_TOKEN_SECRET"),
   SENTRY_DSN: envOptional("SENTRY_DSN"),
   SMTP_HOST: envOptional("SMTP_HOST"),
   SMTP_MAIL: envOptional("SMTP_MAIL"),

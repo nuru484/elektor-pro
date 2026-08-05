@@ -26,7 +26,7 @@ export const makeOtpService = (d: Pick<AppDeps, 'clock' | 'config' | 'prisma'>) 
   const issue = async (
     userId: string,
     purpose: OtpPurpose,
-  ): Promise<{ code: string; expiresAt: Date; ttlMinutes: number }> => {
+  ): Promise<{ code: string; expiresAt: Date; id: string; ttlMinutes: number }> => {
     const recent = await prisma.otp.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
@@ -44,11 +44,22 @@ export const makeOtpService = (d: Pick<AppDeps, 'clock' | 'config' | 'prisma'>) 
       data: { consumedAt: clock.now() },
       where: { consumedAt: null, purpose, userId },
     });
-    await prisma.otp.create({
+    const created = await prisma.otp.create({
       data: { codeHash: sha256(code), expiresAt, purpose, userId },
+      select: { id: true },
     });
 
-    return { code, expiresAt, ttlMinutes: config.OTP_TTL_MINUTES };
+    return { code, expiresAt, id: created.id, ttlMinutes: config.OTP_TTL_MINUTES };
+  };
+
+  /**
+   * Throw away a code that was issued but never actually delivered. Deleted,
+   * not consumed: the resend throttle looks at the most recent row for the
+   * (user, purpose) pair regardless of state, so leaving the row behind would
+   * make a failed send lock the user out of retrying for the whole window.
+   */
+  const discard = async (otpId: string): Promise<void> => {
+    await prisma.otp.deleteMany({ where: { id: otpId } });
   };
 
   /** Verify and consume the latest outstanding code for (user, purpose). */
@@ -78,7 +89,7 @@ export const makeOtpService = (d: Pick<AppDeps, 'clock' | 'config' | 'prisma'>) 
     });
   };
 
-  return { issue, verify };
+  return { discard, issue, verify };
 };
 
 export type OtpService = ReturnType<typeof makeOtpService>;
