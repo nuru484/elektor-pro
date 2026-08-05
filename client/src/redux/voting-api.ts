@@ -13,7 +13,14 @@ import { apiSlice } from "./api-slice";
 interface VoterBallot {
   accreditationRequired: boolean;
   accredited: boolean;
-  election: { description: null | string; id: string; name: string; slug: string };
+  election: {
+    description: null | string;
+    id: string;
+    name: string;
+    /** Admin presentation choices (e.g. ballotLayout: "list" | "grid"). */
+    settings?: null | Record<string, unknown>;
+    slug: string;
+  };
   hasVoted: boolean;
   portfolios: (Portfolio & { candidates: NonNullable<Portfolio["candidates"]> })[];
 }
@@ -44,6 +51,30 @@ interface VoterElectionItem {
 }
 
 export type { VoterElectionItem };
+
+/** One entry from the voter's own voting history. */
+export interface VoterHistoryItem {
+  choices:
+    | null
+    | {
+        approve: boolean | null;
+        candidate: null | { name: string; profilePicture: null | string };
+        portfolio: { name: string };
+        type: "ABSTAIN" | "SKIP" | "VOTE";
+      }[];
+  election: {
+    endDate: string;
+    id: string;
+    name: string;
+    resultsPolicy: string;
+    resultsPublishedAt: null | string;
+    slug: string;
+    startDate: string;
+    status: string;
+  };
+  receiptCode: null | string;
+  votedAt: null | string;
+}
 
 export const votingApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -101,6 +132,9 @@ export const votingApi = apiSlice.injectEndpoints({
       keepUnusedDataFor: 0,
       query: (idOrSlug) => `/elections/${idOrSlug}/ballots/verify`,
     }),
+    getVoterHistory: build.query<ApiResponse<VoterHistoryItem[]>, void>({
+      query: () => "/voter/history",
+    }),
     getMyCandidacies: build.query<ApiResponse<MyCandidacy[]>, void>({
       providesTags: ["Candidate"],
       query: () => "/my/candidacies",
@@ -114,6 +148,7 @@ export const {
   useGetMyCandidaciesQuery,
   useGetResultsQuery,
   useGetVoterBallotQuery,
+  useGetVoterHistoryQuery,
   useLazyVerifyReceiptQuery,
   useListVoterElectionsQuery,
   useRequestOtpMutation,

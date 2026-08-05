@@ -69,6 +69,16 @@ const buildColumns = (
     id: "phone",
   },
   {
+    cell: ({ row }) => (
+      <CellText
+        className="max-w-48 text-xs text-muted-foreground"
+        text={row.original.email ?? "—"}
+      />
+    ),
+    header: "Email",
+    id: "email",
+  },
+  {
     // Group names are admin-authored free text - plain truncated text, not badges.
     cell: ({ row }) => (
       <CellText

@@ -28,6 +28,7 @@ const assertCandidateUnlocked = async (tx: TxClient, id: string): Promise<void> 
 };
 
 const CANDIDATE_INCLUDE = {
+  account: { select: { email: true, phone: true } },
   election: {
     select: {
       id: true,

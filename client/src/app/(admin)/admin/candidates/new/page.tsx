@@ -43,6 +43,8 @@ export default function NewCandidatePage() {
     } else if (email && !isValidEmail(email)) {
       errs.email = "Enter a valid email address";
     }
+    // The ballot shows faces: a candidate photo is compulsory.
+    if (!photo) errs.photo = "A candidate photo is required";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     const body = new FormData();
@@ -194,7 +196,12 @@ export default function NewCandidatePage() {
             )}
           </div>
         </Field>
-        <PhotoInput file={photo} onChange={setPhoto} />
+        <div>
+          <PhotoInput file={photo} label="Candidate photo (required)" onChange={setPhoto} />
+          {errors.photo && (
+            <p className="mt-1 text-xs text-destructive">{errors.photo}</p>
+          )}
+        </div>
         <div className="flex gap-2">
           <Button
             onClick={() => router.push("/admin/candidates")}

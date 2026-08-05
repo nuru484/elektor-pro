@@ -335,6 +335,16 @@ export const verifyVoteCode = async (
  * merely refused. Carries the voter's standing so the portal can show
  * accreditation and voting state per election.
  */
+/**
+ * Admin kill-switch: an election with settings.hiddenFromVoters = true never
+ * reaches the voter portal (upcoming, open, or history) - so a commission can
+ * clear the console down to only the election that matters on voting day.
+ * Checked in JS, not SQL: a JSON-path filter under NOT silently drops rows
+ * whose settings column is NULL (three-valued logic), which is most of them.
+ */
+const isHiddenFromVoters = (settings: unknown): boolean =>
+  (settings as null | { hiddenFromVoters?: unknown })?.hiddenFromVoters === true;
+
 export const listVoterElections = async (userId: string) => {
   const voter = await prisma.voter.findFirst({
     select: { id: true },
@@ -343,7 +353,7 @@ export const listVoterElections = async (userId: string) => {
   if (!voter) return [];
   const now = new Date();
   const visibility = await electionVisibilityFilter(voter.id);
-  return prisma.election.findMany({
+  const elections = await prisma.election.findMany({
     orderBy: { startDate: 'asc' },
     select: {
       accreditationRequired: true,
@@ -354,6 +364,7 @@ export const listVoterElections = async (userId: string) => {
       resultsPolicy: true,
       resultsPublishedAt: true,
       slug: true,
+      settings: true,
       startDate: true,
       status: true,
       voterElections: {
@@ -367,4 +378,68 @@ export const listVoterElections = async (userId: string) => {
       status: { in: ['IN_PROGRESS', 'SCHEDULED'] },
     },
   });
+  return elections.filter((e) => !isHiddenFromVoters(e.settings));
+};
+
+/**
+ * The voter's own voting history: every election they voted in (hidden ones
+ * excluded), with their receipt code and - via the stored receipt - exactly
+ * what they voted, plus the path to public verification.
+ */
+export const getVoterHistory = async (userId: string) => {
+  const voter = await prisma.voter.findFirst({
+    select: { id: true },
+    where: { userId },
+  });
+  if (!voter) return [];
+
+  const entries = await prisma.voterElection.findMany({
+    orderBy: { votedAt: 'desc' },
+    select: {
+      election: {
+        select: {
+          endDate: true,
+          id: true,
+          name: true,
+          resultsPolicy: true,
+          resultsPublishedAt: true,
+          settings: true,
+          slug: true,
+          startDate: true,
+          status: true,
+        },
+      },
+      receiptCode: true,
+      votedAt: true,
+    },
+    where: { hasVoted: true, voterId: voter.id },
+  });
+  const visible = entries.filter((e) => !isHiddenFromVoters(e.election.settings));
+
+  return Promise.all(
+    visible.map(async (entry) => {
+      // Older ballots (cast before receipts were stored) have no replay.
+      const ballot = entry.receiptCode
+        ? await prisma.ballot.findUnique({
+            select: {
+              entries: {
+                select: {
+                  approve: true,
+                  candidate: { select: { name: true, profilePicture: true } },
+                  portfolio: { select: { name: true } },
+                  type: true,
+                },
+              },
+            },
+            where: { receiptCode: entry.receiptCode },
+          })
+        : null;
+      return {
+        choices: ballot?.entries ?? null,
+        election: entry.election,
+        receiptCode: entry.receiptCode,
+        votedAt: entry.votedAt,
+      };
+    }),
+  );
 };

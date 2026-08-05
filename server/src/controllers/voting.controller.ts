@@ -12,6 +12,7 @@ import { hasCapability } from '../services/authorization/capability.service.js';
 import {
   accreditVoter,
   getTurnout,
+  getVoterHistory,
   listVoterElections,
   revokeAccreditation,
   searchVotersForAccreditation,
@@ -64,6 +65,12 @@ export const verifyOtpController: RequestHandler[] = [
 export const listVoterElectionsController = asyncHandler(
   async (req: Request, res: Response) => {
     sendOk(res, 'Elections retrieved', await listVoterElections(voterId(req)));
+  },
+);
+
+export const voterHistoryController = asyncHandler(
+  async (req: Request, res: Response) => {
+    sendOk(res, 'History retrieved', await getVoterHistory(voterId(req)));
   },
 );
 

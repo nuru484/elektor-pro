@@ -375,10 +375,15 @@ export default function UsersPage() {
             </p>
             <p
               className="max-w-[90%] truncate text-xs text-muted-foreground"
-              title={row.original.email ?? row.original.phone ?? undefined}
+              title={row.original.email ?? undefined}
             >
-              {row.original.email ?? row.original.phone ?? "—"}
+              {row.original.email ?? "—"}
             </p>
+            {row.original.phone && (
+              <p className="max-w-[90%] truncate text-xs text-muted-foreground">
+                {row.original.phone}
+              </p>
+            )}
           </div>
         </div>
       ),

@@ -11,9 +11,12 @@ import {
   BarChart3,
   CalendarClock,
   CheckCircle2,
+  Copy,
+  ShieldCheck,
   ShieldX,
   Vote,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -27,18 +30,16 @@ import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
 import { VoterChrome } from "@/components/vote/voter-header";
-import {
-  clearSessionMarker,
-  hasSessionMarker,
-  setSessionMarker,
-} from "@/lib/session-marker";
-import { useGetMeQuery, useLogoutMutation } from "@/redux/auth-api";
+import { hasSessionMarker, setSessionMarker } from "@/lib/session-marker";
+import { useGetMeQuery } from "@/redux/auth-api";
 import {
   useCodeLoginMutation,
+  useGetVoterHistoryQuery,
   useListVoterElectionsQuery,
   useRequestOtpMutation,
   useVerifyOtpMutation,
   type VoterElectionItem,
+  type VoterHistoryItem,
 } from "@/redux/voting-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { formatDate } from "@/utils/format-date";
@@ -155,6 +156,97 @@ function ElectionCard({ election }: { election: VoterElectionItem }) {
   );
 }
 
+function HistoryCard({ item }: { item: VoterHistoryItem }) {
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-5">
+        <div className="min-w-0">
+          <p className="min-w-0 font-medium [overflow-wrap:anywhere]">
+            {item.election.name}
+          </p>
+          {item.votedAt && (
+            <p className="text-xs text-muted-foreground">
+              You voted on {formatDate(item.votedAt)}
+            </p>
+          )}
+        </div>
+
+        {/* Exactly what they voted, from their own stored receipt. */}
+        {item.choices && item.choices.length > 0 && (
+          <ul className="space-y-1 rounded-lg border border-border bg-muted/30 p-3">
+            {item.choices.map((choice, index) => (
+              <li className="min-w-0 text-xs [overflow-wrap:anywhere]" key={index}>
+                <span className="text-muted-foreground">
+                  {choice.portfolio.name}:{" "}
+                </span>
+                <span className="font-medium">
+                  {choice.type === "ABSTAIN"
+                    ? "Abstained"
+                    : choice.type === "SKIP"
+                      ? "Skipped"
+                      : (choice.candidate?.name ?? "Vote")}
+                  {choice.approve === true ? " (Yes)" : ""}
+                  {choice.approve === false ? " (No)" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {item.receiptCode && (
+          <button
+            className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-1.5 font-mono text-xs"
+            onClick={() => {
+              void navigator.clipboard.writeText(item.receiptCode ?? "");
+              toast.success("Receipt copied");
+            }}
+            title="Your ballot receipt code - click to copy"
+            type="button"
+          >
+            {item.receiptCode} <Copy className="size-3 text-muted-foreground" />
+          </button>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+            href={`/results/${item.election.slug}/verify`}
+            title="Verify your ballot was recorded exactly as cast"
+          >
+            <ShieldCheck className="size-3.5" /> Verify my ballot
+          </Link>
+          <Link
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            href={`/results/${item.election.slug}`}
+            title="This election's results page"
+          >
+            <BarChart3 className="size-3.5" /> Results
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function VotingHistory() {
+  const { data, isLoading } = useGetVoterHistoryQuery();
+  const history = data?.data ?? [];
+  if (isLoading || history.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="text-lg font-semibold">My votes</h2>
+        <p className="text-sm text-muted-foreground">
+          The elections you have voted in, your choices, and your receipts.
+        </p>
+      </div>
+      {history.map((item) => (
+        <HistoryCard item={item} key={item.election.id} />
+      ))}
+    </div>
+  );
+}
+
 function ElectionPicker() {
   const { data, isError, isLoading } = useListVoterElectionsQuery();
   if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
@@ -184,7 +276,6 @@ export default function VotePage() {
   const [requestOtp, { isLoading: requesting }] = useRequestOtpMutation();
   const [verifyOtp, { isLoading: verifying }] = useVerifyOtpMutation();
   const [codeLogin, { isLoading: codeSigning }] = useCodeLoginMutation();
-  const [logout] = useLogoutMutation();
   const [identifier, setIdentifier] = useState("");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"code" | "done" | "identify" | "verify">(
@@ -200,17 +291,6 @@ export default function VotePage() {
   });
   const sessionVoter = meData?.data.role === "VOTER" ? meData.data : null;
   const signedIn = stage === "done" || sessionVoter !== null;
-
-  const onLogout = async () => {
-    try {
-      await logout().unwrap();
-    } catch {
-      // Even a failed API logout clears this browser's state below.
-    }
-    clearSessionMarker();
-    // Full reload drops every cached query and returns to the sign-in form.
-    window.location.assign("/vote");
-  };
 
   // Polling-station path: the one-time code handed over at accreditation.
   const onCodeLogin = async (e: React.FormEvent) => {
@@ -278,14 +358,7 @@ export default function VotePage() {
 
   if (signedIn) {
     return (
-      <VoterChrome
-        onLogout={() => void onLogout()}
-        signedInName={
-          sessionVoter
-            ? `${sessionVoter.firstName} ${sessionVoter.lastName}`
-            : undefined
-        }
-      >
+      <VoterChrome>
         <div className="space-y-6">
           <div>
             <h1 className="text-xl font-semibold">Your elections</h1>
@@ -294,6 +367,7 @@ export default function VotePage() {
             </p>
           </div>
           <ElectionPicker />
+          <VotingHistory />
         </div>
       </VoterChrome>
     );

@@ -21,6 +21,7 @@ import {
   verifyBallotChainController,
   verifyOtpController,
   verifyReceiptController,
+  voterHistoryController,
 } from '../../controllers/voting.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
@@ -40,6 +41,12 @@ votingRoutes.get(
   authenticateJWT,
   authorizeRole([Role.VOTER]),
   listVoterElectionsController,
+);
+votingRoutes.get(
+  '/voter/history',
+  authenticateJWT,
+  authorizeRole([Role.VOTER]),
+  voterHistoryController,
 );
 votingRoutes.get(
   '/voter/elections/:electionId/ballot',

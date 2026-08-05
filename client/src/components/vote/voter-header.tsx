@@ -1,52 +1,84 @@
 "use client";
 
-import { LogOut, UserCircle } from "lucide-react";
+import { LogOut, UserCircle, Vote } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { useState } from "react";
 
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { cn } from "@/lib/utils";
+import { clearSessionMarker } from "@/lib/session-marker";
+import { useLogoutMutation } from "@/redux/auth-api";
 
 /**
- * Slim wordmark header + centered column for authenticated voter views.
- * When signed in, the header carries the voter's profile link and logout -
- * the portal behaves like a real console, not a one-off page.
+ * The voter portal's chrome: wordmark plus a slim top navbar (elections,
+ * profile, logout) so every voter page keeps the same light layout - no
+ * sidebar console. `nav` is off only for the signed-out state.
  */
 export function VoterChrome({
   children,
-  onLogout,
-  signedInName,
+  nav = true,
 }: {
   children: React.ReactNode;
-  onLogout?: () => void;
-  signedInName?: string;
+  nav?: boolean;
 }) {
+  const pathname = usePathname();
+  const [logout] = useLogoutMutation();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+
+  const onLogout = async () => {
+    try {
+      await logout().unwrap();
+    } catch {
+      // Even a failed API logout clears this browser's state below.
+    }
+    clearSessionMarker();
+    // Full reload drops every cached query and returns to the sign-in form.
+    window.location.assign("/vote");
+  };
+
+  const linkCls = (href: string) =>
+    cn(
+      "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
+      pathname === href
+        ? "bg-accent text-foreground"
+        : "text-muted-foreground hover:text-foreground",
+    );
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <header>
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-6 pt-8 pb-4">
-          <Logo imgSize={30} textClassName="text-xl" />
-          {onLogout ? (
-            <div className="flex shrink-0 items-center gap-1.5">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
+          <Logo imgSize={28} textClassName="max-[380px]:hidden text-lg" />
+          {nav ? (
+            <nav className="flex shrink-0 items-center gap-0.5">
+              <Link className={linkCls("/vote")} href="/vote" title="Your elections">
+                <Vote className="size-4" />
+                <span className="max-[430px]:hidden">My elections</span>
+              </Link>
               <Link
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                href="/profile"
-                title={
-                  signedInName
-                    ? `Signed in as ${signedInName} - view your profile`
-                    : "View your profile"
-                }
+                className={linkCls("/vote/profile")}
+                href="/vote/profile"
+                title="Your profile and security settings"
               >
-                <UserCircle className="size-4" /> My profile
+                <UserCircle className="size-4" />
+                <span className="max-[430px]:hidden">Profile</span>
               </Link>
               <Button
-                onClick={onLogout}
+                onClick={() => {
+                  setConfirmingLogout(true);
+                }}
                 size="sm"
                 title="Sign out of the voter portal"
-                variant="outline"
+                variant="ghost"
               >
-                <LogOut className="size-3.5" /> Log out
+                <LogOut className="size-4" />
+                <span className="max-[430px]:hidden">Log out</span>
               </Button>
-            </div>
+            </nav>
           ) : (
             <span className="text-sm font-medium text-muted-foreground">
               Voter portal
@@ -54,7 +86,21 @@ export function VoterChrome({
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-6 sm:py-10">{children}</main>
+      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
+        {children}
+      </main>
+      <ConfirmationDialog
+        confirmText="Sign out"
+        description="You will be signed out of the voter portal on this device."
+        isDestructive
+        onConfirm={() => {
+          setConfirmingLogout(false);
+          void onLogout();
+        }}
+        onOpenChange={setConfirmingLogout}
+        open={confirmingLogout}
+        title="Sign out?"
+      />
     </div>
   );
 }

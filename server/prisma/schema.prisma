@@ -658,6 +658,11 @@ model VoterElection {
   voteCodeIssuedAt DateTime?
   voteCodeUsedAt   DateTime?
 
+  /// The voter's own ballot receipt, kept so their console can replay what
+  /// they voted. A DELIBERATE product trade-off: it links a voter to their
+  /// ballot, softening strict ballot secrecy in exchange for "my votes".
+  receiptCode String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

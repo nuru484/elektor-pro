@@ -72,6 +72,8 @@ export const getVoterBallot = async (userId: string, electionId: string) => {
       endDate: election.endDate,
       id: election.id,
       name: election.name,
+      // The admin's presentation choices ride along (e.g. ballotLayout).
+      settings: election.settings,
       slug: election.slug,
       startDate: election.startDate,
       status: election.status,
@@ -256,7 +258,15 @@ export const castBallot = async (
         if (guard.count !== 1) {
           throw new ConflictError('You have already voted in this election');
         }
-        return createBallotInTx(tx, electionId, entries);
+        const created = await createBallotInTx(tx, electionId, entries);
+        // Keep the voter's own receipt on their record so their console can
+        // replay what they voted (a deliberate softening of strict ballot
+        // secrecy - see the schema note).
+        await tx.voterElection.update({
+          data: { receiptCode: created.receiptCode },
+          where: { voterId_electionId: { electionId, voterId: voter.id } },
+        });
+        return created;
       });
     } catch (error) {
       const code = (error as { code?: string }).code;

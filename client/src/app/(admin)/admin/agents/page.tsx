@@ -287,6 +287,12 @@ export default function AgentsPage() {
               className="max-w-[90%] text-xs text-muted-foreground"
               text={row.original.user.email ?? "—"}
             />
+            {row.original.user.phone && (
+              <CellText
+                className="max-w-[90%] text-xs text-muted-foreground"
+                text={row.original.user.phone}
+              />
+            )}
           </div>
         </div>
       ),

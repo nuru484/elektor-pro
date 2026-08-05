@@ -221,7 +221,7 @@ export const listAgentAssignments = async (
       include: {
         candidate: { select: { id: true, name: true } },
         election: { select: { id: true, name: true } },
-        user: { select: { email: true, firstName: true, id: true, lastName: true, profilePicture: true } },
+        user: { select: { email: true, firstName: true, id: true, lastName: true, phone: true, profilePicture: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: pagination.skip,
@@ -317,7 +317,7 @@ export const listGrants = async (
     prisma.accessGrant.findMany({
       include: {
         election: { select: { id: true, name: true } },
-        user: { select: { email: true, firstName: true, id: true, lastName: true, profilePicture: true } },
+        user: { select: { email: true, firstName: true, id: true, lastName: true, phone: true, profilePicture: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: pagination.skip,

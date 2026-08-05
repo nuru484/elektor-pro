@@ -319,6 +319,8 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
           // Merge into the settings JSON so unrelated keys survive.
           settings: {
             ...(election.settings ?? {}),
+            ballotLayout: String(f.get("ballotLayout") ?? "list"),
+            hiddenFromVoters: f.get("hiddenFromVoters") === "on",
             resultsVisibleToRoles: f.getAll("resultsVisibleToRoles").map(String),
           },
         },
@@ -365,6 +367,18 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
             />
             Voters must be accredited before voting
           </label>
+          <label
+            className="flex items-center gap-2 text-sm"
+            title="Removes this election from the voter portal entirely - upcoming, open, and history. Use it to clear the console down to only the election that matters on voting day."
+          >
+            <input
+              className="size-4 accent-brand"
+              defaultChecked={election.settings?.hiddenFromVoters === true}
+              name="hiddenFromVoters"
+              type="checkbox"
+            />
+            Hide this election from the voter portal
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input
               className="size-4 accent-brand"
@@ -396,6 +410,18 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
               placeholder="e.g. 60"
               type="number"
             />
+          </Field>
+          <Field
+            hint="How candidates appear on the voter's ballot: a vertical list, or cards side by side."
+            label="Ballot layout"
+          >
+            <NativeSelect
+              defaultValue={String(election.settings?.ballotLayout ?? "list")}
+              name="ballotLayout"
+            >
+              <option value="list">Vertical list (stacked)</option>
+              <option value="grid">Horizontal cards (side by side)</option>
+            </NativeSelect>
           </Field>
           <fieldset>
             <legend className="text-sm font-medium">Early results access</legend>
@@ -457,6 +483,22 @@ function VotingCard({ editable, election }: { editable: boolean; election: Elect
                   ? `Vetting panel, auto-decided at a ${String(election.vettingPassPercent)}% pass mark`
                   : "Vetting panel, manual decisions"
                 : "Candidates go straight onto the ballot"
+            }
+          />
+          <DetailRow
+            label="Voter portal"
+            value={
+              election.settings?.hiddenFromVoters === true
+                ? "Hidden from voters"
+                : "Visible to eligible voters"
+            }
+          />
+          <DetailRow
+            label="Ballot layout"
+            value={
+              String(election.settings?.ballotLayout ?? "list") === "grid"
+                ? "Horizontal cards (side by side)"
+                : "Vertical list (stacked)"
             }
           />
           <DetailRow

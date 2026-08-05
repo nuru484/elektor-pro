@@ -171,7 +171,13 @@ export interface AgentAssignment {
   createdAt: string;
   election: { id: string; name: string };
   id: string;
-  user: { email: null | string; firstName: string; id: string; lastName: string };
+  user: {
+    email: null | string;
+    firstName: string;
+    id: string;
+    lastName: string;
+    phone?: null | string;
+  };
 }
 
 export interface AccessGrant {
@@ -267,11 +273,12 @@ export interface ElectionTurnout {
 }
 
 export interface Candidate {
+  /** List payloads carry contact only; the detail payload adds identity. */
   account?: null | {
     email: null | string;
-    firstName: string;
-    id: string;
-    lastName: string;
+    firstName?: string;
+    id?: string;
+    lastName?: string;
     phone?: null | string;
   };
   ballotNumber?: null | number;

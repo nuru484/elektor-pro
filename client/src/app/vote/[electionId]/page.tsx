@@ -1,11 +1,15 @@
 "use client";
 
-import { CheckCircle2, Copy, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { use, useState } from "react";
 import { toast } from "sonner";
 
+import { EntityAvatar } from "@/components/console/entity-avatar";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
 import { LinkButton } from "@/components/ui/link-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
@@ -21,6 +25,7 @@ function BallotBody({ electionId }: { electionId: string }) {
   const [cast, { isLoading: casting }] = useCastBallotMutation();
   const [selections, setSelections] = useState<Record<string, Selection>>({});
   const [receipt, setReceipt] = useState<null | string>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   if (isLoading) {
     return (
@@ -109,6 +114,7 @@ function BallotBody({ electionId }: { electionId: string }) {
   const allAnswered = ballot.portfolios.every((p) => selections[p.id]);
 
   const submit = async () => {
+    setReviewing(false);
     try {
       const payload = ballot.portfolios.map((p) => {
         const sel = selections[p.id]!;
@@ -126,10 +132,23 @@ function BallotBody({ electionId }: { electionId: string }) {
     }
   };
 
+  // The admin chooses how candidates are presented: a vertical list, or
+  // horizontal cards side by side.
+  const gridLayout = ballot.election.settings?.ballotLayout === "grid";
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold sm:text-2xl">{ballot.election.name}</h1>
+        <Link
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          href="/vote"
+          title="Back to your elections"
+        >
+          <ArrowLeft className="size-4" /> Back to my elections
+        </Link>
+        <h1 className="mt-3 min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
+          {ballot.election.name}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Make a choice for each position, then submit. Your ballot is secret.
         </p>
@@ -154,9 +173,21 @@ function BallotBody({ electionId }: { electionId: string }) {
             <CardContent className="space-y-2">
               {p.votingMethod === "YES_NO"
                 ? p.candidates.map((c) => (
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3" key={c.id}>
-                      <span className="font-medium">{c.name}</span>
-                      <div className="flex gap-2">
+                    <div
+                      className="flex flex-col gap-2 rounded-lg border border-border p-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between"
+                      key={c.id}
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <EntityAvatar
+                          name={c.name}
+                          size="size-9"
+                          url={c.profilePicture}
+                        />
+                        <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
+                          {c.name}
+                        </span>
+                      </span>
+                      <div className="flex shrink-0 gap-2">
                         {[true, false].map((approve) => (
                           <button
                             className={cn(
@@ -177,44 +208,112 @@ function BallotBody({ electionId }: { electionId: string }) {
                       </div>
                     </div>
                   ))
-                : p.candidates.map((c) => {
-                    const chosen = sel?.candidateIds.includes(c.id);
-                    return (
-                      <button
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
-                          chosen ? "border-brand bg-brand-muted" : "border-border hover:bg-accent",
-                        )}
-                        key={c.id}
-                        onClick={() =>
+                : (
+                    <div
+                      className={cn(
+                        gridLayout
+                          ? "grid grid-cols-2 gap-2 min-[480px]:grid-cols-3"
+                          : "space-y-2",
+                      )}
+                    >
+                      {p.candidates.map((c) => {
+                        const chosen = sel?.candidateIds.includes(c.id);
+                        const pickIt = () =>
                           p.votingMethod === "MULTI_SELECT"
                             ? toggleMulti(p.id, c.id, p.maxSelections)
-                            : setSingle(p.id, c.id)
-                        }
-                        type="button"
-                      >
-                        <span
-                          className={cn(
-                            "flex size-5 shrink-0 items-center justify-center rounded-full border",
-                            chosen ? "border-brand bg-brand text-brand-foreground" : "border-muted-foreground/40",
-                          )}
-                        >
-                          {chosen && <CheckCircle2 className="size-3.5" />}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium">
-                            {c.ballotNumber != null && (
-                              <span className="mr-1.5 font-mono text-xs text-muted-foreground">
-                                {c.ballotNumber}.
-                              </span>
+                            : setSingle(p.id, c.id);
+                        return gridLayout ? (
+                          // Horizontal cards: photo on top, name below.
+                          <button
+                            className={cn(
+                              "flex w-full flex-col items-center gap-2 rounded-lg border p-3 text-center transition-colors",
+                              chosen
+                                ? "border-brand bg-brand-muted"
+                                : "border-border hover:bg-accent",
                             )}
-                            {c.name}
-                          </span>
-                          {c.nickname && <span className="block truncate text-xs text-muted-foreground">{c.nickname}</span>}
-                        </span>
-                      </button>
-                    );
-                  })}
+                            key={c.id}
+                            onClick={pickIt}
+                            type="button"
+                          >
+                            <EntityAvatar
+                              name={c.name}
+                              size="size-16"
+                              url={c.profilePicture}
+                            />
+                            <span className="min-w-0 max-w-full">
+                              <span className="block min-w-0 text-sm font-medium whitespace-normal [overflow-wrap:anywhere]">
+                                {c.ballotNumber != null && (
+                                  <span className="mr-1 font-mono text-xs text-muted-foreground">
+                                    {c.ballotNumber}.
+                                  </span>
+                                )}
+                                {c.name}
+                              </span>
+                              {c.nickname && (
+                                <span className="block min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                                  {c.nickname}
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className={cn(
+                                "flex size-5 shrink-0 items-center justify-center rounded-full border",
+                                chosen
+                                  ? "border-brand bg-brand text-brand-foreground"
+                                  : "border-muted-foreground/40",
+                              )}
+                            >
+                              {chosen && <CheckCircle2 className="size-3.5" />}
+                            </span>
+                          </button>
+                        ) : (
+                          // Vertical list: photo beside the name.
+                          <button
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                              chosen
+                                ? "border-brand bg-brand-muted"
+                                : "border-border hover:bg-accent",
+                            )}
+                            key={c.id}
+                            onClick={pickIt}
+                            type="button"
+                          >
+                            <span
+                              className={cn(
+                                "flex size-5 shrink-0 items-center justify-center rounded-full border",
+                                chosen
+                                  ? "border-brand bg-brand text-brand-foreground"
+                                  : "border-muted-foreground/40",
+                              )}
+                            >
+                              {chosen && <CheckCircle2 className="size-3.5" />}
+                            </span>
+                            <EntityAvatar
+                              name={c.name}
+                              size="size-10"
+                              url={c.profilePicture}
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">
+                                {c.ballotNumber != null && (
+                                  <span className="mr-1.5 font-mono text-xs text-muted-foreground">
+                                    {c.ballotNumber}.
+                                  </span>
+                                )}
+                                {c.name}
+                              </span>
+                              {c.nickname && (
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {c.nickname}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
               <button
                 className={cn(
                   "w-full rounded-lg border border-dashed p-2.5 text-sm transition-colors",
@@ -234,10 +333,77 @@ function BallotBody({ electionId }: { electionId: string }) {
         <span className="text-sm text-muted-foreground">
           {Object.keys(selections).length}/{ballot.portfolios.length} answered
         </span>
-        <Button disabled={!allAnswered} loading={casting} onClick={submit} variant="brand">
-          Submit ballot
+        <Button
+          disabled={!allAnswered}
+          onClick={() => {
+            setReviewing(true);
+          }}
+          title="Review your choices before they are recorded"
+          variant="brand"
+        >
+          Review and submit
         </Button>
       </div>
+
+      {/* One last look: exactly who they are voting for, before it counts. */}
+      <Modal
+        description="Check every choice below. Once submitted, your ballot is final and cannot be changed."
+        onClose={() => {
+          setReviewing(false);
+        }}
+        open={reviewing}
+        title="Confirm your ballot"
+      >
+        <div className="space-y-4">
+          <ul className="space-y-2">
+            {ballot.portfolios.map((p) => {
+              const sel = selections[p.id];
+              const chosen = p.candidates.filter((c) =>
+                sel?.candidateIds.includes(c.id),
+              );
+              return (
+                <li className="rounded-lg border border-border p-3" key={p.id}>
+                  <p className="min-w-0 text-xs font-medium text-muted-foreground [overflow-wrap:anywhere]">
+                    {p.name}
+                  </p>
+                  {sel?.type === "ABSTAIN" ? (
+                    <p className="mt-1 text-sm">Abstain / skip this position</p>
+                  ) : (
+                    chosen.map((c) => (
+                      <div className="mt-1.5 flex min-w-0 items-center gap-2" key={c.id}>
+                        <EntityAvatar
+                          name={c.name}
+                          size="size-7"
+                          url={c.profilePicture}
+                        />
+                        <span className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                          {c.name}
+                          {sel.approve === true ? " (Yes)" : ""}
+                          {sel.approve === false ? " (No)" : ""}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              onClick={() => {
+                setReviewing(false);
+              }}
+              type="button"
+              variant="outline"
+            >
+              Go back and change
+            </Button>
+            <Button loading={casting} onClick={submit} variant="brand">
+              Yes, submit my ballot
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

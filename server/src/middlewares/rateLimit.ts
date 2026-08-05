@@ -98,7 +98,7 @@ export const createRateLimiter = (
 // Different limiters for different endpoints
 export const authRateLimiter = createRateLimiter(
   15 * 60 * 1000,
-  50,
+  500,
   "Too many authentication attempts, please try again later.",
 );
 

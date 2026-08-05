@@ -77,6 +77,22 @@ const buildColumns = (
   },
   {
     cell: ({ row }) => (
+      <div className="min-w-0">
+        <CellText
+          className="max-w-48 text-xs text-muted-foreground"
+          text={row.original.account?.email ?? "—"}
+        />
+        <CellText
+          className="max-w-48 text-xs text-muted-foreground"
+          text={row.original.account?.phone ?? "—"}
+        />
+      </div>
+    ),
+    header: "Contact",
+    id: "contact",
+  },
+  {
+    cell: ({ row }) => (
 <TableDate value={row.original.createdAt} />
     ),
     header: "Added",
