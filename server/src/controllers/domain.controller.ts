@@ -308,7 +308,16 @@ export const allocateCandidatesController: RequestHandler[] = [
 /** The signed-in candidate's own candidacies (candidate console home). */
 export const myCandidaciesController = asyncHandler(async (req, res) => {
   if (!req.user) throw new UnauthorizedError('Authentication required');
-  sendOk(res, 'Candidacies retrieved', await listMyCandidacies(req.user.id));
+  const { data, meta } = await listMyCandidacies(
+    req.user.id,
+    {
+      from: dayBoundary(req.query.from),
+      search: str(req.query.search),
+      to: dayBoundary(req.query.to, true),
+    },
+    parsePagination(req.query),
+  );
+  sendList(res, 'Candidacies retrieved', data, meta);
 });
 
 // --- Voters ---

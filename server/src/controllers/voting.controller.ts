@@ -30,7 +30,8 @@ import {
   verifyReceipt,
 } from '../services/voting/voting.service.js';
 import { issueSession, requestContextOf } from '../utils/auth-session.js';
-import { sendOk } from '../utils/http.js';
+import { dayBoundary } from '../utils/date-window.js';
+import { parsePagination, sendList, sendOk } from '../utils/http.js';
 import {
   castBallotSchema,
   codeLoginSchema,
@@ -43,6 +44,13 @@ const voterId = (req: Request): string => {
   if (!req.user) throw new UnauthorizedError('Authentication required');
   return req.user.id;
 };
+
+/** Shared search + period filters for the voter's personal lists. */
+const voterListFilters = (req: Request) => ({
+  from: dayBoundary(req.query.from),
+  search: typeof req.query.search === 'string' ? req.query.search : undefined,
+  to: dayBoundary(req.query.to, true),
+});
 
 export const requestOtpController: RequestHandler[] = [
   ...validationMiddleware.create(otpRequestSchema),
@@ -64,13 +72,23 @@ export const verifyOtpController: RequestHandler[] = [
 
 export const listVoterElectionsController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'Elections retrieved', await listVoterElections(voterId(req)));
+    const { data, meta } = await listVoterElections(
+      voterId(req),
+      voterListFilters(req),
+      parsePagination(req.query),
+    );
+    sendList(res, 'Elections retrieved', data, meta);
   },
 );
 
 export const voterHistoryController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'History retrieved', await getVoterHistory(voterId(req)));
+    const { data, meta } = await getVoterHistory(
+      voterId(req),
+      voterListFilters(req),
+      parsePagination(req.query),
+    );
+    sendList(res, 'History retrieved', data, meta);
   },
 );
 

@@ -12,9 +12,10 @@ import type { AgentDashboardRow } from "@/types/api";
 import {
   ElectionFilterBar,
   EMPTY_ELECTION_FILTER,
-  matchesElectionFilter,
   type ElectionFilter,
 } from "@/components/console/election-filter-bar";
+import { ListPagination } from "@/components/console/list-pagination";
+import { useDebounce } from "@/hooks/use-debounce";
 import { EntityAvatar } from "@/components/console/entity-avatar";
 import {
   Card,
@@ -201,10 +202,18 @@ function AssignmentCard({ assignment }: { assignment: AgentDashboardRow }) {
 }
 
 export default function AgentDashboardPage() {
-  const { data, isError, isLoading } = useGetAgentDashboardQuery();
   const [filter, setFilter] = useState<ElectionFilter>(EMPTY_ELECTION_FILTER);
-  const all = data?.data ?? [];
-  const assignments = all.filter((a) => matchesElectionFilter(a.election, filter));
+  const [page, setPage] = useState(1);
+  const search = useDebounce(filter.search.trim(), 400);
+  const { data, isError, isLoading } = useGetAgentDashboardQuery({
+    from: filter.from || undefined,
+    limit: 9,
+    page,
+    search: search || undefined,
+    to: filter.to || undefined,
+  });
+  const assignments = data?.data ?? [];
+  const filtered = Boolean(filter.search || filter.from || filter.to);
 
   return (
     <div className="space-y-6">
@@ -213,7 +222,13 @@ export default function AgentDashboardPage() {
         title="My assignments"
       />
 
-      <ElectionFilterBar filter={filter} onChange={setFilter} />
+      <ElectionFilterBar
+        filter={filter}
+        onChange={(next) => {
+          setFilter(next);
+          setPage(1);
+        }}
+      />
 
       {isLoading ? (
         <CardGridSkeleton count={3} />
@@ -222,19 +237,22 @@ export default function AgentDashboardPage() {
       ) : assignments.length === 0 ? (
         <EmptyState
           description={
-            all.length > 0
+            filtered
               ? "No assignment matches your search or period. Clear the filters to see everything."
               : "When an administrator assigns you to an election, it appears here."
           }
           icon={Eye}
-          title={all.length > 0 ? "No matches" : "No assignments yet"}
+          title={filtered ? "No matches" : "No assignments yet"}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {assignments.map((assignment) => (
-            <AssignmentCard assignment={assignment} key={assignment.id} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {assignments.map((assignment) => (
+              <AssignmentCard assignment={assignment} key={assignment.id} />
+            ))}
+          </div>
+          <ListPagination meta={data?.meta} onPageChange={setPage} />
+        </>
       )}
     </div>
   );

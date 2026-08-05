@@ -14,6 +14,7 @@ import type {
 } from "@/types/api";
 
 import { apiSlice } from "./api-slice";
+import { type PersonalListParams } from "./voting-api";
 
 const qs = (params: object): string => {
   const search = new URLSearchParams();
@@ -61,9 +62,19 @@ export const governanceApi = apiSlice.injectEndpoints({
       invalidatesTags: ["StaffUser"],
       query: (id) => ({ method: "DELETE", url: `/users/${id}` }),
     }),
-    getAgentDashboard: build.query<ApiResponse<AgentDashboardRow[]>, void>({
+    getAgentDashboard: build.query<
+      PaginatedResponse<AgentDashboardRow>,
+      PersonalListParams
+    >({
       providesTags: ["Dashboard"],
-      query: () => "/dashboard/agent",
+      query: (params) => {
+        const search = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && value !== "") search.set(key, String(value));
+        }
+        const str = search.toString();
+        return `/dashboard/agent${str ? `?${str}` : ""}`;
+      },
     }),
     confirmUserContact: build.mutation<unknown, { code: string; id: string }>({
       invalidatesTags: ["StaffUser", "Agents"],

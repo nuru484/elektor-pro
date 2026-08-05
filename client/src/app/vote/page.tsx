@@ -24,9 +24,10 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import {
   ElectionFilterBar,
   EMPTY_ELECTION_FILTER,
-  matchesElectionFilter,
   type ElectionFilter,
 } from "@/components/console/election-filter-bar";
+import { ListPagination } from "@/components/console/list-pagination";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -236,20 +237,24 @@ function HistoryCard({ item }: { item: VoterHistoryItem }) {
 }
 
 function VotingHistory({ filter }: { filter: ElectionFilter }) {
-  const { data, isLoading } = useGetVoterHistoryQuery();
-  const all = data?.data ?? [];
-  const history = all.filter((item) => matchesElectionFilter(item.election, filter));
+  const { params, setPage } = usePersonalListParams(filter);
+  const { data, isLoading } = useGetVoterHistoryQuery(params);
+  const history = data?.data ?? [];
   if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
   if (history.length === 0) {
     return (
       <EmptyState
         description={
-          all.length > 0
+          filter.search || filter.from || filter.to
             ? "No vote matches your search or period. Clear the filters to see everything."
             : "Once you cast a ballot, it appears here with your choices and receipt."
         }
         icon={CheckCircle2}
-        title={all.length > 0 ? "No matches" : "You have not voted yet"}
+        title={
+          filter.search || filter.from || filter.to
+            ? "No matches"
+            : "You have not voted yet"
+        }
       />
     );
   }
@@ -258,27 +263,52 @@ function VotingHistory({ filter }: { filter: ElectionFilter }) {
       {history.map((item) => (
         <HistoryCard item={item} key={item.election.id} />
       ))}
+      <ListPagination meta={data?.meta} onPageChange={setPage} />
     </div>
   );
 }
 
+/** Filter + page state → query params. Search is debounced. */
+const usePersonalListParams = (filter: ElectionFilter) => {
+  const [page, setPage] = useState(1);
+  const search = useDebounce(filter.search.trim(), 400);
+  // Any filter change starts back at page 1.
+  const key = `${search}|${filter.from}|${filter.to}`;
+  const [lastKey, setLastKey] = useState(key);
+  if (key !== lastKey) {
+    setLastKey(key);
+    setPage(1);
+  }
+  return {
+    params: {
+      from: filter.from || undefined,
+      limit: 10,
+      page,
+      search: search || undefined,
+      to: filter.to || undefined,
+    },
+    setPage,
+  };
+};
+
 function ElectionPicker({ filter }: { filter: ElectionFilter }) {
-  const { data, isError, isLoading } = useListVoterElectionsQuery();
+  const { params, setPage } = usePersonalListParams(filter);
+  const { data, isError, isLoading } = useListVoterElectionsQuery(params);
   if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
   if (isError) {
     return <EmptyState icon={Vote} title="Could not load your elections" />;
   }
-  const elections = (data?.data ?? []).filter((e) => matchesElectionFilter(e, filter));
+  const elections = data?.data ?? [];
   if (elections.length === 0) {
     return (
       <EmptyState
         description={
-          (data?.data.length ?? 0) > 0
+          filter.search || filter.from || filter.to
             ? "No election matches your search or period. Clear the filters to see everything."
             : "There are no open or upcoming elections for you right now. When one is scheduled, it appears here."
         }
         icon={Vote}
-        title={(data?.data.length ?? 0) > 0 ? "No matches" : "No elections yet"}
+        title={filter.search || filter.from || filter.to ? "No matches" : "No elections yet"}
       />
     );
   }
@@ -287,6 +317,7 @@ function ElectionPicker({ filter }: { filter: ElectionFilter }) {
       {elections.map((election) => (
         <ElectionCard election={election} key={election.id} />
       ))}
+      <ListPagination meta={data?.meta} onPageChange={setPage} />
     </div>
   );
 }

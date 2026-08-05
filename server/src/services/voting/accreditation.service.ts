@@ -15,6 +15,7 @@ import {
   NotFoundError,
 } from '../../middlewares/error-handler.js';
 import { generateReceiptCode, sha256 } from '../../utils/crypto.js';
+import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { appendAudit } from '../audit/audit.service.js';
 import { electionVisibilityFilter } from './eligibility.service.js';
 
@@ -345,12 +346,39 @@ export const verifyVoteCode = async (
 const isHiddenFromVoters = (settings: unknown): boolean =>
   (settings as null | { hiddenFromVoters?: unknown })?.hiddenFromVoters === true;
 
-export const listVoterElections = async (userId: string) => {
+/** Search + period filters shared by the voter's election and history lists. */
+export interface VoterListFilters {
+  from?: Date;
+  search?: string;
+  to?: Date;
+}
+
+const matchesVoterFilters = (
+  election: { endDate: Date; name: string; startDate: Date },
+  filters: VoterListFilters,
+): boolean => {
+  if (
+    filters.search &&
+    !election.name.toLowerCase().includes(filters.search.trim().toLowerCase())
+  ) {
+    return false;
+  }
+  if (filters.from && election.endDate < filters.from) return false;
+  if (filters.to && election.startDate > filters.to) return false;
+  return true;
+};
+
+export const listVoterElections = async (
+  userId: string,
+  filters: VoterListFilters,
+  pagination: PaginationParams,
+) => {
+  const empty = { data: [], meta: buildMeta(0, pagination.page, pagination.limit) };
   const voter = await prisma.voter.findFirst({
     select: { id: true },
     where: { userId },
   });
-  if (!voter) return [];
+  if (!voter) return empty;
   const now = new Date();
   const visibility = await electionVisibilityFilter(voter.id);
   const elections = await prisma.election.findMany({
@@ -378,7 +406,16 @@ export const listVoterElections = async (userId: string) => {
       status: { in: ['IN_PROGRESS', 'SCHEDULED'] },
     },
   });
-  return elections.filter((e) => !isHiddenFromVoters(e.settings));
+  // Hidden + search/period filters run in JS (JSON-null semantics make the
+  // SQL filter unreliable); elections are institutionally few, so the page
+  // is sliced here - the CLIENT still gets true server-side pagination.
+  const visible = elections.filter(
+    (e) => !isHiddenFromVoters(e.settings) && matchesVoterFilters(e, filters),
+  );
+  return {
+    data: visible.slice(pagination.skip, pagination.skip + pagination.limit),
+    meta: buildMeta(visible.length, pagination.page, pagination.limit),
+  };
 };
 
 /**
@@ -386,12 +423,17 @@ export const listVoterElections = async (userId: string) => {
  * excluded), with their receipt code and - via the stored receipt - exactly
  * what they voted, plus the path to public verification.
  */
-export const getVoterHistory = async (userId: string) => {
+export const getVoterHistory = async (
+  userId: string,
+  filters: VoterListFilters,
+  pagination: PaginationParams,
+) => {
+  const empty = { data: [], meta: buildMeta(0, pagination.page, pagination.limit) };
   const voter = await prisma.voter.findFirst({
     select: { id: true },
     where: { userId },
   });
-  if (!voter) return [];
+  if (!voter) return empty;
 
   const entries = await prisma.voterElection.findMany({
     orderBy: { votedAt: 'desc' },
@@ -414,10 +456,15 @@ export const getVoterHistory = async (userId: string) => {
     },
     where: { hasVoted: true, voterId: voter.id },
   });
-  const visible = entries.filter((e) => !isHiddenFromVoters(e.election.settings));
+  const visible = entries.filter(
+    (e) =>
+      !isHiddenFromVoters(e.election.settings) &&
+      matchesVoterFilters(e.election, filters),
+  );
+  const pageRows = visible.slice(pagination.skip, pagination.skip + pagination.limit);
 
-  return Promise.all(
-    visible.map(async (entry) => {
+  const data = await Promise.all(
+    pageRows.map(async (entry) => {
       // Older ballots (cast before receipts were stored) have no replay.
       const ballot = entry.receiptCode
         ? await prisma.ballot.findUnique({
@@ -442,4 +489,5 @@ export const getVoterHistory = async (userId: string) => {
       };
     }),
   );
+  return { data, meta: buildMeta(visible.length, pagination.page, pagination.limit) };
 };

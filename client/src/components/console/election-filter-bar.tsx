@@ -16,28 +16,6 @@ export interface ElectionFilter {
 
 export const EMPTY_ELECTION_FILTER: ElectionFilter = { from: "", search: "", to: "" };
 
-/** Whether an election (by name + window) survives the filter. */
-export const matchesElectionFilter = (
-  election: { endDate: string; name: string; startDate: string },
-  filter: ElectionFilter,
-): boolean => {
-  if (
-    filter.search &&
-    !election.name.toLowerCase().includes(filter.search.trim().toLowerCase())
-  ) {
-    return false;
-  }
-  if (filter.from && new Date(election.endDate) < new Date(filter.from)) {
-    return false;
-  }
-  if (filter.to) {
-    const toEnd = new Date(filter.to);
-    toEnd.setHours(23, 59, 59, 999);
-    if (new Date(election.startDate) > toEnd) return false;
-  }
-  return true;
-};
-
 export function ElectionFilterBar({
   filter,
   onChange,

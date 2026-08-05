@@ -44,7 +44,7 @@ import { clearSessionMarker, setSessionMarker } from "@/lib/session-marker";
 import { cn } from "@/lib/utils";
 import { useGetMeQuery, useLogoutMutation } from "@/redux/auth-api";
 
-import { sectionsForRole } from "./nav-config";
+import { homeForRole, sectionsForRole } from "./nav-config";
 
 const COLLAPSE_KEY = "ep-sidebar-collapsed";
 
@@ -306,7 +306,7 @@ export function ConsoleShell({
           collapsedRail ? "justify-center px-0" : "px-5",
         )}
       >
-        <Logo href="/" showText={!collapsedRail} />
+        <Logo href={role ? homeForRole(role) : "/"} showText={!collapsedRail} />
       </div>
       <NavList collapsed={collapsedRail} onNavigate={() => setDrawerOpen(false)} />
       {!collapsedRail && (

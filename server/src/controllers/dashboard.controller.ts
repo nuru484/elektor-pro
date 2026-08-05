@@ -27,7 +27,16 @@ export const adminDashboardController = asyncHandler(
 
 export const agentDashboardController = asyncHandler(
   async (req: Request, res: Response) => {
-    sendOk(res, 'Dashboard retrieved', await getAgentDashboard(userIdOf(req)));
+    const { data, meta } = await getAgentDashboard(
+      userIdOf(req),
+      {
+        from: dayBoundary(req.query.from),
+        search: str(req.query.search),
+        to: dayBoundary(req.query.to, true),
+      },
+      parsePagination(req.query),
+    );
+    sendList(res, 'Dashboard retrieved', data, meta);
   },
 );
 

@@ -52,7 +52,7 @@ export function VoterChrome({
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
-          <Logo imgSize={28} textClassName="max-[380px]:hidden text-lg" />
+          <Logo href="/vote" imgSize={28} textClassName="max-[380px]:hidden text-lg" />
           {nav ? (
             <nav className="flex shrink-0 items-center gap-0.5">
               <Link className={linkCls("/vote")} href="/vote" title="Your elections">

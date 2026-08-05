@@ -13,9 +13,10 @@ import type { MyCandidacy } from "@/types/api";
 import {
   ElectionFilterBar,
   EMPTY_ELECTION_FILTER,
-  matchesElectionFilter,
   type ElectionFilter,
 } from "@/components/console/election-filter-bar";
+import { ListPagination } from "@/components/console/list-pagination";
+import { useDebounce } from "@/hooks/use-debounce";
 import { EntityAvatar } from "@/components/console/entity-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -224,10 +225,18 @@ function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
 }
 
 export default function CandidateDashboardPage() {
-  const { data, isError, isLoading } = useGetMyCandidaciesQuery();
   const [filter, setFilter] = useState<ElectionFilter>(EMPTY_ELECTION_FILTER);
-  const all = data?.data ?? [];
-  const candidacies = all.filter((c) => matchesElectionFilter(c.election, filter));
+  const [page, setPage] = useState(1);
+  const search = useDebounce(filter.search.trim(), 400);
+  const { data, isError, isLoading } = useGetMyCandidaciesQuery({
+    from: filter.from || undefined,
+    limit: 9,
+    page,
+    search: search || undefined,
+    to: filter.to || undefined,
+  });
+  const candidacies = data?.data ?? [];
+  const filtered = Boolean(filter.search || filter.from || filter.to);
 
   return (
     <div className="space-y-6">
@@ -236,7 +245,13 @@ export default function CandidateDashboardPage() {
         title="My candidacies"
       />
 
-      <ElectionFilterBar filter={filter} onChange={setFilter} />
+      <ElectionFilterBar
+        filter={filter}
+        onChange={(next) => {
+          setFilter(next);
+          setPage(1);
+        }}
+      />
 
       {isLoading ? (
         <CardGridSkeleton count={3} />
@@ -245,19 +260,22 @@ export default function CandidateDashboardPage() {
       ) : candidacies.length === 0 ? (
         <EmptyState
           description={
-            all.length > 0
+            filtered
               ? "No candidacy matches your search or period. Clear the filters to see everything."
               : "When you are nominated for a portfolio, your candidacy appears here with its vetting progress and results."
           }
           icon={Award}
-          title={all.length > 0 ? "No matches" : "No candidacies yet"}
+          title={filtered ? "No matches" : "No candidacies yet"}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {candidacies.map((candidacy) => (
-            <CandidacyCard candidacy={candidacy} key={candidacy.id} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {candidacies.map((candidacy) => (
+              <CandidacyCard candidacy={candidacy} key={candidacy.id} />
+            ))}
+          </div>
+          <ListPagination meta={data?.meta} onPageChange={setPage} />
+        </>
       )}
     </div>
   );

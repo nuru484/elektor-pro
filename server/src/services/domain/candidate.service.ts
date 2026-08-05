@@ -126,8 +126,23 @@ export const getCandidate = async (id: string) => {
  * powering the candidate console. Vetting details come from the redacted
  * per-candidate vetting endpoint.
  */
-export const listMyCandidacies = async (userId: string) =>
-  prisma.candidate.findMany({
+export const listMyCandidacies = async (
+  userId: string,
+  filters: { from?: Date; search?: string; to?: Date },
+  pagination: PaginationParams,
+) => {
+  const where: Prisma.CandidateWhereInput = {
+    accountId: userId,
+    election: {
+      ...(filters.search
+        ? { name: { contains: filters.search, mode: 'insensitive' } }
+        : {}),
+      ...(filters.from ? { endDate: { gte: filters.from } } : {}),
+      ...(filters.to ? { startDate: { lte: filters.to } } : {}),
+    },
+  };
+  const [data, total] = await Promise.all([
+    prisma.candidate.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
       ballotNumber: true,
@@ -174,8 +189,14 @@ export const listMyCandidacies = async (userId: string) =>
       status: true,
       vettingNote: true,
     },
-    where: { accountId: userId },
-  });
+    skip: pagination.skip,
+    take: pagination.limit,
+    where,
+    }),
+    prisma.candidate.count({ where }),
+  ]);
+  return { data, meta: buildMeta(total, pagination.page, pagination.limit) };
+};
 
 /**
  * Allocate EXISTING candidates (people already in the system) to a portfolio

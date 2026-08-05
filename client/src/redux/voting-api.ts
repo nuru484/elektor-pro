@@ -4,9 +4,28 @@ import type {
   ChainVerification,
   ElectionResults,
   MyCandidacy,
+  PaginatedResponse,
   Portfolio,
   ReceiptVerification,
 } from "@/types/api";
+
+/** Search + period + page params for the personal console lists. */
+export interface PersonalListParams {
+  from?: string;
+  limit?: number;
+  page?: number;
+  search?: string;
+  to?: string;
+}
+
+const personalQs = (params: PersonalListParams): string => {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const str = search.toString();
+  return str ? `?${str}` : "";
+};
 
 import { apiSlice } from "./api-slice";
 
@@ -95,8 +114,11 @@ export const votingApi = apiSlice.injectEndpoints({
     getVoterBallot: build.query<ApiResponse<VoterBallot>, string>({
       query: (electionId) => `/voter/elections/${electionId}/ballot`,
     }),
-    listVoterElections: build.query<ApiResponse<VoterElectionItem[]>, void>({
-      query: () => "/voter/elections",
+    listVoterElections: build.query<
+      PaginatedResponse<VoterElectionItem>,
+      PersonalListParams
+    >({
+      query: (params) => `/voter/elections${personalQs(params)}`,
     }),
     requestOtp: build.mutation<
       ApiResponse<{
@@ -132,12 +154,18 @@ export const votingApi = apiSlice.injectEndpoints({
       keepUnusedDataFor: 0,
       query: (idOrSlug) => `/elections/${idOrSlug}/ballots/verify`,
     }),
-    getVoterHistory: build.query<ApiResponse<VoterHistoryItem[]>, void>({
-      query: () => "/voter/history",
+    getVoterHistory: build.query<
+      PaginatedResponse<VoterHistoryItem>,
+      PersonalListParams
+    >({
+      query: (params) => `/voter/history${personalQs(params)}`,
     }),
-    getMyCandidacies: build.query<ApiResponse<MyCandidacy[]>, void>({
+    getMyCandidacies: build.query<
+      PaginatedResponse<MyCandidacy>,
+      PersonalListParams
+    >({
       providesTags: ["Candidate"],
-      query: () => "/my/candidacies",
+      query: (params) => `/my/candidacies${personalQs(params)}`,
     }),
   }),
 });

@@ -1,10 +1,12 @@
 import {
   ChangeStatus,
   ElectionStatus,
+  type Prisma,
   Role,
 } from '../../../generated/prisma/client.js';
 // src/services/dashboard/dashboard.service.ts
 import prisma from '../../lib/prisma.js';
+import { buildMeta, type PaginationParams } from '../../utils/http.js';
 
 /** Aggregate counts + recent activity for the admin dashboard. */
 export const getAdminDashboard = async () => {
@@ -53,8 +55,23 @@ export const getAdminDashboard = async () => {
  * and the election's shape (window, registered voters, candidate and
  * portfolio counts). Live turnout rides the separate polling endpoint.
  */
-export const getAgentDashboard = (userId: string) =>
-  prisma.agentAssignment.findMany({
+export const getAgentDashboard = async (
+  userId: string,
+  filters: { from?: Date; search?: string; to?: Date },
+  pagination: PaginationParams,
+) => {
+  const where: Prisma.AgentAssignmentWhereInput = {
+    election: {
+      ...(filters.search
+        ? { name: { contains: filters.search, mode: 'insensitive' } }
+        : {}),
+      ...(filters.from ? { endDate: { gte: filters.from } } : {}),
+      ...(filters.to ? { startDate: { lte: filters.to } } : {}),
+    },
+    userId,
+  };
+  const [data, total] = await Promise.all([
+    prisma.agentAssignment.findMany({
     include: {
       candidate: {
         select: {
@@ -89,8 +106,14 @@ export const getAgentDashboard = (userId: string) =>
         },
       },
     },
-    where: { userId },
-  });
+    skip: pagination.skip,
+    take: pagination.limit,
+    where,
+    }),
+    prisma.agentAssignment.count({ where }),
+  ]);
+  return { data, meta: buildMeta(total, pagination.page, pagination.limit) };
+};
 
 /** A candidate's own candidacies. */
 export const getCandidateDashboard = (userId: string) =>

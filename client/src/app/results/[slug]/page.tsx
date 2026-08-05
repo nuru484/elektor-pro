@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 
 import { EntityAvatar } from "@/components/console/entity-avatar";
-import { ReturnHomeLink } from "@/components/results/return-home-link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -242,10 +241,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     const status = (error as { status?: number }).status;
     return (
       <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <BackControl />
-        <ReturnHomeLink />
-      </div>
+      <BackControl />
       <EmptyState
         action={
           status === 403 ? (
@@ -277,10 +273,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <BackControl />
-            <ReturnHomeLink />
-          </div>
+          <BackControl />
           <p className="mt-3 font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
             Election results
           </p>
@@ -302,13 +295,6 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
               </Badge>
             )}
           </div>
-          <Link
-            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-            href={`/results/${election.slug}/verify`}
-            title="Re-run the ballot-chain check or verify your own receipt"
-          >
-            <ShieldCheck className="size-3.5" /> Verify this election&apos;s integrity
-          </Link>
         </div>
       </div>
 
@@ -392,6 +378,17 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         {portfolios.map((p) => (
           <PortfolioCard key={p.id} portfolio={p} view={view} />
         ))}
+      </div>
+
+      {/* Below the numbers: the transparency step. */}
+      <div className="flex justify-center rounded-xl border border-border bg-card px-4 py-3">
+        <Link
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
+          href={`/results/${election.slug}/verify`}
+          title="Re-run the ballot-chain check or verify your own receipt"
+        >
+          <ShieldCheck className="size-4" /> Verify this election&apos;s integrity
+        </Link>
       </div>
     </div>
   );
