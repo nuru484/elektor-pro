@@ -118,6 +118,27 @@ function AssignmentCard({ assignment }: { assignment: AgentDashboardRow }) {
                 </p>
               </div>
             </div>
+            {/* Full contact: agents reach their candidate directly. */}
+            {(candidate.account?.email ?? candidate.account?.phone) && (
+              <div className="mt-2 space-y-0.5 border-t border-border pt-2">
+                {candidate.account?.email && (
+                  <p
+                    className="min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+                    title="The candidate's email"
+                  >
+                    {candidate.account.email}
+                  </p>
+                )}
+                {candidate.account?.phone && (
+                  <p
+                    className="min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+                    title="The candidate's phone"
+                  >
+                    {candidate.account.phone}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <StatusBadge status={candidate.status} />
               <span className="text-[11px] text-muted-foreground">
@@ -141,6 +162,20 @@ function AssignmentCard({ assignment }: { assignment: AgentDashboardRow }) {
             {fmt(counts.portfolios)}{" "}
             {counts.portfolios === 1 ? "portfolio" : "portfolios"} ·{" "}
             {fmt(counts.voterElections)} on the roll
+          </p>
+        )}
+        {/* Who may vote: the election's category and groups, plain text. */}
+        {(election.eligibilityGroups?.length ?? 0) > 0 && (
+          <p
+            className="min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+            title="The groups (and their categories) this election is scoped to"
+          >
+            Open to:{" "}
+            {(election.eligibilityGroups ?? [])
+              .map(({ group }) =>
+                group.category ? `${group.name} (${group.category.name})` : group.name,
+              )
+              .join(", ")}
           </p>
         )}
 

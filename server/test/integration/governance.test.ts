@@ -7,6 +7,7 @@ import {
   createElectionFixture,
   createUser,
   loginCookie,
+  postCandidate,
   prisma,
   resetDb,
 } from '../helpers.js';
@@ -20,15 +21,12 @@ describe('maker-checker governance', () => {
     await createUser(Role.SUPER_ADMIN, { email: 'super@test.com' });
 
     const adminCookie = await loginCookie('admin@test.com');
-    const created = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', adminCookie)
-      .send({
-        electionId: election.id,
-        email: 'pending.person@test.com',
-        name: 'Pending Person',
-        portfolioId: portfolio.id,
-      });
+    const created = await postCandidate(adminCookie, {
+      electionId: election.id,
+      email: 'pending.person@test.com',
+      name: 'Pending Person',
+      portfolioId: portfolio.id,
+    });
     // 202 Accepted — staged, not applied
     expect(created.status).toBe(202);
     expect(bodyOf<{ pending: boolean }>(created).pending).toBe(true);
@@ -72,15 +70,12 @@ describe('maker-checker governance', () => {
     await createUser(Role.SUPER_ADMIN, { email: 'super2@test.com' });
     const superCookie = await loginCookie('super2@test.com');
 
-    const res = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', superCookie)
-      .send({
-        electionId: election.id,
-        email: 'direct.person@test.com',
-        name: 'Direct Person',
-        portfolioId: portfolio.id,
-      });
+    const res = await postCandidate(superCookie, {
+      electionId: election.id,
+      email: 'direct.person@test.com',
+      name: 'Direct Person',
+      portfolioId: portfolio.id,
+    });
     expect(res.status).toBe(201);
     expect(await prisma.candidate.count({ where: { name: 'Direct Person' } })).toBe(1);
   });

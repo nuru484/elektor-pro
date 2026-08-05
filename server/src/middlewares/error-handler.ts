@@ -192,6 +192,16 @@ export const errorHandler = (rawError: CustomError | Error, req: Request, res: R
     timestamp: new Date().toISOString(),
   };
 
+  // Expected auth refusals (expired sessions, logged-out clients still
+  // polling) are routine traffic: one compact line, no stack, no payload -
+  // a burst of them at logout must not flood the console.
+  if (status === 401) {
+    logger.info(
+      { code, errorId, method: req.method, path: req.path, requestId: req.requestId },
+      'Auth refused',
+    );
+     
+  } else
   // Log the error with appropriate level based on severity
   switch (severity) {
     case ErrorSeverity.CRITICAL:

@@ -183,20 +183,24 @@ function CandidacyCard({
                   {candidate.ballotNumber ?? "Not assigned"}
                 </dd>
               </div>
-              {candidate.account ? (
-                <div title="The candidate signs in with this email or phone">
-                  <dt className="text-xs text-muted-foreground">Login account</dt>
-                  <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
-                    {candidate.account.firstName} {candidate.account.lastName}
-                    {candidate.account.email ? ` · ${candidate.account.email}` : ""}
-                    {candidate.account.phone ? ` · ${candidate.account.phone}` : ""}
-                  </dd>
-                </div>
-              ) : (
-                <div title="Edit the candidate and add an email or phone to create their account">
+              <div className="min-w-0" title="The candidate signs in with this email">
+                <dt className="text-xs text-muted-foreground">Email</dt>
+                <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                  {candidate.account?.email ?? "Not set"}
+                </dd>
+              </div>
+              <div className="min-w-0" title="The candidate can sign in with this phone number">
+                <dt className="text-xs text-muted-foreground">Phone</dt>
+                <dd className="mt-0.5 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                  {candidate.account?.phone ?? "Not set"}
+                </dd>
+              </div>
+              {!candidate.account && (
+                <div className="min-w-0 sm:col-span-2">
                   <dt className="text-xs text-muted-foreground">Login account</dt>
                   <dd className="mt-0.5 text-sm text-muted-foreground">
-                    None - add a contact to create one
+                    None yet - edit the candidate and add an email or phone to
+                    create one.
                   </dd>
                 </div>
               )}
@@ -287,6 +291,14 @@ function CandidateProfileContent() {
     <div className="space-y-6">
       <PageHeader description="View and manage this candidacy." title="Candidate profile" />
 
+      {/* The ballot shows faces: keep nudging until the photo exists. */}
+      {candidate && !candidate.profilePicture && (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          This candidate has no photo yet. Voters see faces on the ballot -
+          click the avatar below to upload one.
+        </p>
+      )}
+
       {isLoading ? (
         <ProfileSkeleton />
       ) : isError || !candidate ? (
@@ -349,7 +361,8 @@ function CandidateProfileContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className={CARD_PAD_MOBILE}>
-                  <ul className="divide-y divide-border">
+                  {/* Many elections stay tidy: the list scrolls, never crowds. */}
+                  <ul className="max-h-64 divide-y divide-border overflow-y-auto">
                     {candidate.otherCandidacies.map((candidacy) => (
                       <li className="py-2.5 first:pt-0 last:pb-0" key={candidacy.id}>
                         <div className="flex items-center justify-between gap-2">

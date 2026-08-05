@@ -58,8 +58,10 @@ export const getAgentDashboard = (userId: string) =>
     include: {
       candidate: {
         select: {
+          account: { select: { email: true, phone: true } },
           ballotNumber: true,
           id: true,
+          manifesto: true,
           name: true,
           nickname: true,
           portfolio: { select: { id: true, name: true } },
@@ -70,6 +72,14 @@ export const getAgentDashboard = (userId: string) =>
       election: {
         select: {
           _count: { select: { candidates: true, portfolios: true, voterElections: true } },
+          eligibilityGroups: {
+            select: {
+              group: {
+                select: { category: { select: { name: true } }, id: true, name: true },
+              },
+            },
+          },
+          eligibilityMode: true,
           endDate: true,
           id: true,
           name: true,

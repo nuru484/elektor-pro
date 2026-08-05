@@ -149,7 +149,26 @@ export const listMyCandidacies = async (userId: string) =>
       manifesto: true,
       name: true,
       nickname: true,
-      portfolio: { select: { id: true, name: true } },
+      portfolio: {
+        select: {
+          // The field: everyone contesting the same portfolio, so the
+          // candidate console can show who they are up against.
+          candidates: {
+            orderBy: [{ ballotNumber: { nulls: 'last', sort: 'asc' } }, { order: 'asc' }],
+            select: {
+              ballotNumber: true,
+              id: true,
+              name: true,
+              nickname: true,
+              profilePicture: true,
+              status: true,
+            },
+            where: { status: { not: 'WITHDRAWN' } },
+          },
+          id: true,
+          name: true,
+        },
+      },
       profilePicture: true,
       reviewedAt: true,
       status: true,

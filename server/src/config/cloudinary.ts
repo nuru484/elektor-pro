@@ -269,6 +269,15 @@ export class CloudinaryUploadService implements ICloudinaryUploadService {
   }
 
   async uploadImage(image: IUploadedFile | string, options: Partial<ICloudinaryUploadOptions> = {}): Promise<ICloudinaryUploadResult> {
+    // Tests never reach the network: uploads resolve to a stable fake URL so
+    // upload-dependent flows (e.g. the compulsory candidate photo) stay
+    // testable end-to-end.
+    if (ENV.NODE_ENV === 'test') {
+      return {
+        public_id: 'test/mock-upload',
+        secure_url: 'https://res.cloudinary.com/demo/image/upload/v1/test-mock.png',
+      };
+    }
     return uploadToCloudinary(image, options, this.config);
   }
 }

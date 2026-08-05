@@ -209,3 +209,23 @@ export const codeFrom = (text: string | undefined): string => {
   if (!match) throw new Error(`No OTP code found in: ${text ?? '<empty>'}`);
   return match[1];
 };
+
+/** A valid 1x1 transparent PNG for upload-required flows (photo is mocked in
+ * cloudinary during tests, but multer still wants a real image part). */
+export const TEST_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+/** Nominate a single candidate through the real multipart endpoint (photo
+ * attached - it is compulsory on this path). */
+export const postCandidate = (
+  cookie: string,
+  fields: Record<string, string>,
+) => {
+  let request = api().post('/api/v1/candidates').set('Cookie', cookie);
+  for (const [key, value] of Object.entries(fields)) {
+    request = request.field(key, value);
+  }
+  return request.attach('image', TEST_PNG, 'photo.png');
+};

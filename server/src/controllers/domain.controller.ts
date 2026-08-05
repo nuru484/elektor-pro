@@ -202,6 +202,17 @@ export const createCandidateController: RequestHandler[] = [
   ...validationMiddleware.create(createCandidateSchema),
   uploadCandidateAssets,
   asyncHandler(async (req, res) => {
+    // The ballot shows faces: a photo is compulsory when nominating one
+    // candidate. File imports stay photo-less by nature (spreadsheets can't
+    // carry images) - the UI keeps reminding admins to add them after.
+    if (!(req.body as { profilePicture?: string }).profilePicture) {
+      throw new ValidationError('A candidate photo is required', {
+        code: 'VALIDATION_ERROR',
+        context: {
+          errors: [{ field: 'image', message: 'A candidate photo is required' }],
+        },
+      });
+    }
     const outcome = await proposeOrExecute(
       actorOf(req),
       {

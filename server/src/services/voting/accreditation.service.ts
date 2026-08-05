@@ -363,8 +363,8 @@ export const listVoterElections = async (userId: string) => {
       name: true,
       resultsPolicy: true,
       resultsPublishedAt: true,
-      slug: true,
       settings: true,
+      slug: true,
       startDate: true,
       status: true,
       voterElections: {

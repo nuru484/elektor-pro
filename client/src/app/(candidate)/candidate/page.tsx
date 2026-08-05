@@ -4,7 +4,8 @@
 // portfolio, ballot number, nomination status, vetting progress (their own
 // record, panel identities redacted server-side), and the path to results
 // once the election's policy allows.
-import { ArrowUpRight, Award, ClipboardCheck } from "lucide-react";
+import { ArrowUpRight, Award, ClipboardCheck, ShieldCheck, Users } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import type { MyCandidacy } from "@/types/api";
@@ -130,6 +131,40 @@ function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
           )}
         </div>
 
+        {/* The field: everyone contesting the same portfolio. */}
+        {(candidacy.portfolio.candidates?.filter((c) => c.id !== candidacy.id).length ??
+          0) > 0 && (
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Users className="size-3.5" /> Also contesting {candidacy.portfolio.name}
+            </p>
+            <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
+              {(candidacy.portfolio.candidates ?? [])
+                .filter((c) => c.id !== candidacy.id)
+                .map((rival) => (
+                  <li className="flex min-w-0 items-center gap-2" key={rival.id}>
+                    <EntityAvatar
+                      name={rival.name}
+                      size="size-6"
+                      url={rival.profilePicture}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs">
+                      {rival.ballotNumber != null && (
+                        <span className="mr-1 font-mono text-muted-foreground">
+                          {rival.ballotNumber}.
+                        </span>
+                      )}
+                      {rival.name}
+                    </span>
+                    <span className="shrink-0">
+                      <StatusBadge status={rival.status} />
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
         {election.vettingEnabled && (
           <div>
             <Button
@@ -170,6 +205,13 @@ function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
             Results not yet released
           </Button>
         )}
+        <Link
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          href={`/results/${election.slug}/verify`}
+          title="Re-run the ballot-chain check or verify any receipt for this election"
+        >
+          <ShieldCheck className="size-3.5" /> Verify receipts and ballot integrity
+        </Link>
       </CardContent>
     </Card>
   );

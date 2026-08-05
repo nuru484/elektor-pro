@@ -12,6 +12,7 @@ import {
   createElectionFixture,
   createUser,
   loginCookie,
+  postCandidate,
   prisma,
   resetDb,
 } from '../helpers.js';
@@ -119,15 +120,12 @@ describe('candidate sign-in accounts', () => {
       .send({ electionId: election.id, name: 'No Contact', portfolioId: portfolio.id });
     expect(bare.status).toBe(400);
 
-    const res = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'nom.person@test.com',
-        name: 'Nominated Person',
-        portfolioId: portfolio.id,
-      });
+    const res = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'nom.person@test.com',
+      name: 'Nominated Person',
+      portfolioId: portfolio.id,
+    });
     expect(res.status).toBe(201);
     const created = await prisma.candidate.findFirst({
       include: { account: true },
@@ -150,15 +148,12 @@ describe('candidate sign-in accounts', () => {
       },
     });
 
-    const res = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'repeat@test.com',
-        name: 'Repeat Runner',
-        portfolioId: portfolio.id,
-      });
+    const res = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'repeat@test.com',
+      name: 'Repeat Runner',
+      portfolioId: portfolio.id,
+    });
     expect(res.status).toBe(201);
     const linked = await prisma.candidate.findFirst({
       where: { name: 'Repeat Runner' },
@@ -166,15 +161,12 @@ describe('candidate sign-in accounts', () => {
     expect(linked?.accountId).toBe(existing.id);
 
     // super@test.com belongs to the SUPER_ADMIN - refuse the hijack.
-    const clash = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'super@test.com',
-        name: 'Sneaky Person',
-        portfolioId: portfolio.id,
-      });
+    const clash = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'super@test.com',
+      name: 'Sneaky Person',
+      portfolioId: portfolio.id,
+    });
     expect(clash.status).toBe(409);
   });
 
@@ -182,15 +174,12 @@ describe('candidate sign-in accounts', () => {
     const cookie = await superAdminCookie();
     const { election, portfolio } = await createElectionFixture();
 
-    const res = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        name: 'Phone Person',
-        phone: '+233550000091',
-        portfolioId: portfolio.id,
-      });
+    const res = await postCandidate(cookie, {
+      electionId: election.id,
+      name: 'Phone Person',
+      phone: '+233550000091',
+      portfolioId: portfolio.id,
+    });
     expect(res.status).toBe(201);
     const account = await prisma.user.findFirst({
       where: { phone: '+233550000091' },
@@ -252,52 +241,40 @@ describe('contact uniqueness and normalization', () => {
     const cookie = await superAdminCookie();
     const { election, portfolio } = await createElectionFixture();
 
-    const first = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'owner@test.com',
-        name: 'Contact Owner',
-        portfolioId: portfolio.id,
-      });
+    const first = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'owner@test.com',
+      name: 'Contact Owner',
+      portfolioId: portfolio.id,
+    });
     expect(first.status).toBe(201);
 
     // A different person with the same email: refused.
-    const stolen = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'owner@test.com',
-        name: 'Somebody Else',
-        portfolioId: portfolio.id,
-      });
+    const stolen = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'owner@test.com',
+      name: 'Somebody Else',
+      portfolioId: portfolio.id,
+    });
     expect(stolen.status).toBe(409);
 
     // The same person nominated twice in the SAME election: refused.
-    const twice = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'owner@test.com',
-        name: 'Contact Owner',
-        portfolioId: portfolio.id,
-      });
+    const twice = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'owner@test.com',
+      name: 'Contact Owner',
+      portfolioId: portfolio.id,
+    });
     expect(twice.status).toBe(409);
 
     // The same person in a DIFFERENT election: allowed, same account reused.
     const { election: other, portfolio: otherPortfolio } = await createElectionFixture();
-    const returning = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: other.id,
-        email: 'owner@test.com',
-        name: 'Contact Owner',
-        portfolioId: otherPortfolio.id,
-      });
+    const returning = await postCandidate(cookie, {
+      electionId: other.id,
+      email: 'owner@test.com',
+      name: 'Contact Owner',
+      portfolioId: otherPortfolio.id,
+    });
     expect(returning.status).toBe(201);
     const accounts = await prisma.user.count({ where: { email: 'owner@test.com' } });
     expect(accounts).toBe(1);

@@ -192,8 +192,10 @@ export interface AccessGrant {
 /** One assignment row from the agent's own dashboard. */
 export interface AgentDashboardRow {
   candidate: null | {
+    account?: null | { email: null | string; phone: null | string };
     ballotNumber: null | number;
     id: string;
+    manifesto?: null | string;
     name: string;
     nickname: null | string;
     portfolio: { id: string; name: string };
@@ -202,6 +204,10 @@ export interface AgentDashboardRow {
   };
   election: {
     _count?: { candidates: number; portfolios: number; voterElections: number };
+    eligibilityGroups?: {
+      group: { category?: { name: string }; id: string; name: string };
+    }[];
+    eligibilityMode?: EligibilityMode;
     endDate: string;
     id: string;
     name: string;
@@ -349,7 +355,19 @@ export interface MyCandidacy {
   manifesto: null | string;
   name: string;
   nickname: null | string;
-  portfolio: { id: string; name: string };
+  portfolio: {
+    /** Everyone contesting this portfolio (the candidate's rivals). */
+    candidates?: {
+      ballotNumber: null | number;
+      id: string;
+      name: string;
+      nickname: null | string;
+      profilePicture: null | string;
+      status: CandidateStatus;
+    }[];
+    id: string;
+    name: string;
+  };
   profilePicture: null | string;
   reviewedAt: null | string;
   status: CandidateStatus;
@@ -528,6 +546,7 @@ export interface CandidateResult {
   name: string;
   nickname: null | string;
   percentage: number;
+  profilePicture?: null | string;
   /** YES_NO portfolios only. */
   rejectVotes?: number;
   votes: number;

@@ -1,9 +1,19 @@
 "use client";
 
-import { ArrowLeft, Crown, Lock, Radio, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Crown,
+  LayoutGrid,
+  Lock,
+  Radio,
+  Rows3,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use } from "react";
+import { use, useState } from "react";
+
+import { EntityAvatar } from "@/components/console/entity-avatar";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +27,60 @@ import type { PortfolioResult } from "@/types/api";
 
 const fmt = (n: number) => n.toLocaleString();
 
-function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
+/**
+ * Photo-first result tile: face on top, name, votes, and percent below -
+ * tiles flow left to right and wrap early on narrow screens.
+ */
+function CandidateTile({
+  candidate,
+  leading,
+}: {
+  candidate: PortfolioResult["candidates"][number];
+  leading: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col items-center gap-1.5 rounded-lg border p-3 text-center",
+        leading ? "border-brand bg-brand-muted/40" : "border-border",
+      )}
+      title={`${candidate.name}: ${fmt(candidate.votes)} votes (${candidate.percentage}%)`}
+    >
+      <div className="relative">
+        <EntityAvatar
+          name={candidate.name}
+          size="size-16"
+          url={candidate.profilePicture}
+        />
+        {leading && (
+          <Crown className="absolute -top-1.5 -right-1.5 size-4 text-warning" />
+        )}
+      </div>
+      <span className="min-w-0 max-w-full text-sm font-medium whitespace-normal [overflow-wrap:anywhere]">
+        {candidate.ballotNumber != null && (
+          <span className="mr-1 font-mono text-xs text-muted-foreground">
+            {candidate.ballotNumber}.
+          </span>
+        )}
+        {candidate.name}
+      </span>
+      <span className="font-mono text-sm font-semibold tabular-nums">
+        {fmt(candidate.votes)} {candidate.votes === 1 ? "vote" : "votes"}
+      </span>
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+        {candidate.percentage}%
+      </span>
+    </div>
+  );
+}
+
+function PortfolioCard({
+  portfolio,
+  view,
+}: {
+  portfolio: PortfolioResult;
+  view: "grid" | "list";
+}) {
   const max = Math.max(1, ...portfolio.candidates.map((c) => c.votes));
   const isYesNo = portfolio.votingMethod === "YES_NO";
   return (
@@ -33,6 +96,17 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
             {fmt(portfolio.totalVotes)} votes
           </span>
         </div>
+        {view === "grid" && !isYesNo ? (
+          <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-3 sm:grid-cols-4">
+            {portfolio.candidates.map((c) => (
+              <CandidateTile
+                candidate={c}
+                key={c.id}
+                leading={portfolio.winner?.id === c.id && c.votes > 0}
+              />
+            ))}
+          </div>
+        ) : (
         <div className="space-y-3">
           {portfolio.candidates.map((c) => {
             const leading = portfolio.winner?.id === c.id && c.votes > 0;
@@ -41,7 +115,8 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
                 {/* The name wraps freely; the figures are the primary number
                     and never truncate (flex-none). */}
                 <div className="mb-1 flex items-start justify-between gap-3 text-sm">
-                  <span className="flex min-w-0 flex-1 items-start gap-1.5 font-medium">
+                  <span className="flex min-w-0 flex-1 items-start gap-2 font-medium">
+                    <EntityAvatar name={c.name} size="size-8" url={c.profilePicture} />
                     {leading && (
                       <Crown className="mt-0.5 size-3.5 shrink-0 text-warning" />
                     )}
@@ -87,6 +162,7 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioResult }) {
             );
           })}
         </div>
+        )}
         {(portfolio.abstain > 0 || portfolio.skip > 0) && (
           <p className="border-t border-border pt-3 font-mono text-xs tabular-nums text-muted-foreground">
             {portfolio.abstain > 0 ? `Abstained ${fmt(portfolio.abstain)}` : ""}
@@ -123,6 +199,17 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   const { slug } = use(params);
   const { data, error, isLoading, refetch } = useGetResultsQuery(slug);
   const { connected } = useElectionSocket(data?.data.election.id, refetch);
+  // Viewers pick their layout; the choice sticks on this device. Lazy init
+  // reads localStorage once on the client (never during SSR).
+  const [view, setView] = useState<"grid" | "list">(() => {
+    if (typeof window === "undefined") return "list";
+    const saved = window.localStorage.getItem("results-view");
+    return saved === "grid" ? "grid" : "list";
+  });
+  const switchView = (next: "grid" | "list") => {
+    setView(next);
+    window.localStorage.setItem("results-view", next);
+  };
 
   if (isLoading) {
     return (
@@ -241,8 +328,44 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         </CardContent>
       </Card>
 
+      <div className="flex items-center justify-end gap-1">
+        <span className="mr-1 text-xs text-muted-foreground">View</span>
+        <button
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+            view === "list"
+              ? "border-brand bg-brand-muted text-foreground"
+              : "border-border text-muted-foreground hover:text-foreground",
+          )}
+          onClick={() => {
+            switchView("list");
+          }}
+          title="Rows with photos and vote bars"
+          type="button"
+        >
+          <Rows3 className="size-3.5" /> List
+        </button>
+        <button
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+            view === "grid"
+              ? "border-brand bg-brand-muted text-foreground"
+              : "border-border text-muted-foreground hover:text-foreground",
+          )}
+          onClick={() => {
+            switchView("grid");
+          }}
+          title="Photo cards side by side"
+          type="button"
+        >
+          <LayoutGrid className="size-3.5" /> Cards
+        </button>
+      </div>
+
       <div className="grid gap-4">
-        {portfolios.map((p) => <PortfolioCard key={p.id} portfolio={p} />)}
+        {portfolios.map((p) => (
+          <PortfolioCard key={p.id} portfolio={p} view={view} />
+        ))}
       </div>
     </div>
   );

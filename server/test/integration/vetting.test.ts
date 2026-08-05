@@ -14,6 +14,7 @@ import {
   createUser,
   createVoterFixture,
   loginCookie,
+  postCandidate,
   prisma,
   resetDb,
   toCookieHeader,
@@ -45,15 +46,12 @@ describe('nomination vetting', () => {
     });
 
     // New nominations on a vetting-enabled election arrive as DRAFT.
-    const created = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'esi.cudjoe@test.com',
-        name: 'Esi Cudjoe',
-        portfolioId: portfolio.id,
-      });
+    const created = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'esi.cudjoe@test.com',
+      name: 'Esi Cudjoe',
+      portfolioId: portfolio.id,
+    });
     expect(created.status).toBe(201);
     const candidateId = bodyOf<{ data: { id: string } }>(created).data.id;
     const draft = await prisma.candidate.findUnique({ where: { id: candidateId } });
@@ -142,15 +140,12 @@ describe('nomination vetting', () => {
         .set('Cookie', cookie)
         .send({ maxScore: 10, name: 'Interview' }),
     ).data;
-    const created = await api()
-      .post('/api/v1/candidates')
-      .set('Cookie', cookie)
-      .send({
-        electionId: election.id,
-        email: 'auto.nominee@test.com',
-        name: 'Auto Nominee',
-        portfolioId: portfolio.id,
-      });
+    const created = await postCandidate(cookie, {
+      electionId: election.id,
+      email: 'auto.nominee@test.com',
+      name: 'Auto Nominee',
+      portfolioId: portfolio.id,
+    });
     const candidateId = bodyOf<{ data: { id: string } }>(created).data.id;
 
     // One criterion scored: still pending (no partial auto-decision).
