@@ -25,8 +25,14 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    // Two thresholds (hysteresis), not one: the compact header is ~20px
+    // shorter, so with a single cutoff the height change itself moves the
+    // page across the line and the header oscillates. The gap between the
+    // thresholds is larger than the height delta, so a toggle can never
+    // re-trigger itself.
     const onScroll = () => {
-      setScrolled(window.scrollY > 16);
+      const y = window.scrollY;
+      setScrolled((prev) => (prev ? y > 8 : y > 56));
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
