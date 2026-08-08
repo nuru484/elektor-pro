@@ -379,7 +379,7 @@ export const electionApplier: Applier = {
       });
     }
     const election = await tx.election.update({
-      data: rest as Prisma.ElectionUpdateInput,
+      data: rest,
       select: { id: true },
       where: { id },
     });

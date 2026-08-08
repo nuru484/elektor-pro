@@ -33,7 +33,7 @@ export const stableStringify = (value: unknown): string => {
     if (seen.has(input)) return undefined;
     seen.add(input);
     if (Array.isArray(input)) return input.map(normalize);
-    return Object.keys(input as Record<string, unknown>)
+    return Object.keys(input)
       .sort()
       .reduce<Record<string, unknown>>((acc, key) => {
         acc[key] = normalize((input as Record<string, unknown>)[key]);

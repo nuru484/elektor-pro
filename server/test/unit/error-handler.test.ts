@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -43,7 +43,7 @@ const runHandler = (
       return this;
     },
   } as unknown as Response;
-  errorHandler(error, req, res, vi.fn() as unknown as NextFunction);
+  errorHandler(error, req, res, vi.fn());
   return captured;
 };
 

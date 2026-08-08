@@ -44,7 +44,7 @@ export const makeEntityPictureService = (
     const existing = (await (delegate as typeof prisma.voter).findFirst({
       select: { id: true, profilePicture: true },
       where: { id },
-    })) as null | { id: string; profilePicture: null | string };
+    }));
     if (!existing) {
       throw new NotFoundError(entity === 'voter' ? 'Voter not found' : 'Candidate not found');
     }

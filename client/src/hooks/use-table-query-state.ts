@@ -136,9 +136,13 @@ export const useTableQueryState = <
       savedFilters,
       spec,
     ).toString();
+    // One-shot restore; can't be a useState initializer (SSR has no
+    // sessionStorage and it would mismatch hydration).
+    /* eslint-disable react-hooks/set-state-in-effect */
     setPage(savedPage);
     setPageSize(savedPageSize);
     setFilters(savedFilters);
+    /* eslint-enable react-hooks/set-state-in-effect */
     // Mount-only: the bare-URL check and saved state are only meaningful once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

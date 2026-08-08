@@ -1,17 +1,16 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { Provider } from "react-redux";
 import { Toaster } from "sonner";
 
-import { type AppStore, makeStore } from "./store";
+import { makeStore } from "./store";
 
 export function ReduxProvider({ children }: { children: React.ReactNode }) {
-  const storeRef = useRef<AppStore>(undefined);
-  storeRef.current ??= makeStore();
+  const [store] = useState(makeStore);
 
   return (
-    <Provider store={storeRef.current}>
+    <Provider store={store}>
       {children}
       <Toaster position="top-right" richColors closeButton />
     </Provider>

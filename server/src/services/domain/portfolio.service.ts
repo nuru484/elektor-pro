@@ -87,7 +87,7 @@ export const portfolioApplier: Applier = {
     await assertPortfolioUnlocked(tx, id);
     const { electionId: _electionId, groupIds, ...rest } = payload as PortfolioPayload;
     await tx.portfolio.update({
-      data: rest as Prisma.PortfolioUpdateInput,
+      data: rest,
       where: { id },
     });
     if (groupIds) {

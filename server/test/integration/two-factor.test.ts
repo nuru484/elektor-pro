@@ -1,4 +1,4 @@
-import { authenticator } from 'otplib';
+import { generateSync } from 'otplib';
 // Email-OTP 2FA enrollment + login, recovery codes, and OTP hygiene
 // (throttle, attempts, expiry) - service-level with capturing fakes.
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -206,13 +206,13 @@ describe('two-factor hardening', () => {
     const auth = makeAuthService(t.deps);
 
     const { secret } = await auth.setupTwoFactor(user.id);
-    await auth.activateTwoFactor(user.id, authenticator.generate(secret), {});
+    await auth.activateTwoFactor(user.id, generateSync({ secret }), {});
 
     const result = await auth.authenticateStaff('totp@test.com', 'Password123!', {});
     if (result.status !== 'two_factor_required') throw new Error('expected 2FA');
     expect(result.method).toBe('TOTP');
 
-    const code = authenticator.generate(secret);
+    const code = generateSync({ secret });
     const first = await auth.verifyStaffTwoFactor(result.userId, code, {});
     expect(first.userId).toBe(user.id);
 

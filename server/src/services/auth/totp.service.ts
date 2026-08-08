@@ -1,32 +1,36 @@
 // src/services/auth/totp.service.ts
 // TOTP (RFC 6238) helpers for staff two-factor authentication.
-import { authenticator } from 'otplib';
+import { generateSecret, generateURI, verifySync } from 'otplib';
 import qrcode from 'qrcode';
 
-// Allow a small time drift window (±1 step).
-authenticator.options = { window: 1 };
+/** TOTP step length in seconds (RFC 6238 default, and otplib's). */
+const TOTP_STEP_SECONDS = 30;
 
-export const generateTotpSecret = (): string => authenticator.generateSecret();
+/** Allow a small clock-drift window of ±1 step. */
+const EPOCH_TOLERANCE_SECONDS = TOTP_STEP_SECONDS;
+
+export const generateTotpSecret = (): string => generateSecret();
 
 export const buildOtpAuthUrl = (
   secret: string,
   accountLabel: string,
   issuer: string,
-): string => authenticator.keyuri(accountLabel, issuer, secret);
+): string => generateURI({ issuer, label: accountLabel, secret });
 
 export const buildQrDataUrl = (otpAuthUrl: string): Promise<string> =>
   qrcode.toDataURL(otpAuthUrl);
 
 export const verifyTotp = (token: string, secret: string): boolean => {
   try {
-    return authenticator.verify({ secret, token });
+    return verifySync({
+      epochTolerance: EPOCH_TOLERANCE_SECONDS,
+      secret,
+      token,
+    }).valid;
   } catch {
     return false;
   }
 };
-
-/** TOTP step length in seconds (RFC 6238 default, and otplib's). */
-const TOTP_STEP_SECONDS = 30;
 
 /**
  * Verify a TOTP code and return the exact time step it belongs to, so callers
@@ -44,13 +48,17 @@ export const verifyTotpStep = (
   secret: string,
   now: Date,
 ): null | number => {
-  let delta: null | number;
   try {
-    delta = authenticator.checkDelta(token, secret);
+    const result = verifySync({
+      epoch: Math.floor(now.getTime() / 1000),
+      epochTolerance: EPOCH_TOLERANCE_SECONDS,
+      secret,
+      token,
+    });
+    // verifySync's result type is a TOTP/HOTP union and only the TOTP branch
+    // carries timeStep; we always verify TOTP, so the check is for the types.
+    return result.valid && 'timeStep' in result ? result.timeStep : null;
   } catch {
     return null;
   }
-  if (delta === null) return null;
-  const currentStep = Math.floor(now.getTime() / 1000 / TOTP_STEP_SECONDS);
-  return currentStep + delta;
 };

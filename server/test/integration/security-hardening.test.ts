@@ -263,7 +263,7 @@ describe('concurrent casting', () => {
     ).toBe(VOTERS);
     // Receipts are unique, so no two voters were handed the same ballot.
     const receipts = outcomes.flatMap((o) =>
-      o.status === 'fulfilled' ? [(o.value as { receiptCode: string }).receiptCode] : [],
+      o.status === 'fulfilled' ? [(o.value).receiptCode] : [],
     );
     expect(new Set(receipts).size).toBe(VOTERS);
 

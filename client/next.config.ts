@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 /**
  * The API origin the browser talks to. It is a different origin in most
@@ -6,17 +6,17 @@ import type { NextConfig } from "next";
  * app makes - including the websocket the live results page opens.
  */
 const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4040/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4040/api/v1';
 const apiOrigin = (() => {
   try {
     return new URL(apiUrl).origin;
   } catch {
-    return "";
+    return '';
   }
 })();
-const socketOrigin = apiOrigin.replace(/^http/, "ws");
+const socketOrigin = apiOrigin.replace(/^http/, 'ws');
 
-const isDev = process.env.NODE_ENV === "development";
+const isDev = process.env.NODE_ENV === 'development';
 
 /**
  * Content-Security-Policy.
@@ -43,51 +43,59 @@ const isDev = process.env.NODE_ENV === "development";
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   // blob:/data: cover the local preview of a photo being uploaded and the 2FA
-  // QR code, which is generated as a data URL.
-  "img-src 'self' blob: data: https://res.cloudinary.com",
+  // QR code, which is generated as a data URL. randomuser.me hosts the seeded
+  // demo portraits.
+  "img-src 'self' blob: data: https://res.cloudinary.com https://randomuser.me",
   "font-src 'self' data:",
-  `connect-src 'self'${apiOrigin ? ` ${apiOrigin} ${socketOrigin}` : ""}`,
+  `connect-src 'self'${apiOrigin ? ` ${apiOrigin} ${socketOrigin}` : ''}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-].join("; ");
+  'upgrade-insecure-requests',
+].join('; ');
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
+  { key: 'Content-Security-Policy', value: csp },
   // Never leak an admin's URL - which carries election and candidate ids - to
   // a third-party site they navigate to.
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
   // The legacy counterpart of `frame-ancestors 'none'`.
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: 'X-Frame-Options', value: 'DENY' },
   // Nothing here needs these. Denying them stops a compromised dependency
   // from quietly asking a voter for their camera or location.
   {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   },
   // Only meaningful over HTTPS; inert on a local http origin.
   {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
   },
 ];
 
 const nextConfig: NextConfig = {
   headers: () =>
-    Promise.resolve([{ headers: securityHeaders, source: "/:path*" }]),
+    Promise.resolve([{ headers: securityHeaders, source: '/:path*' }]),
   images: {
     // Uploaded media lives on Cloudinary. Declaring it is what lets
     // next/image optimise these (resize, modern formats, lazy loading)
     // instead of shipping full-size originals to phones on mobile data - a
     // ballot page is mostly candidate photographs.
     remotePatterns: [
-      { hostname: "res.cloudinary.com", pathname: "/**", protocol: "https" },
+      { hostname: 'res.cloudinary.com', pathname: '/**', protocol: 'https' },
+      // Seeded demo data fills missing profile photos with randomuser.me
+      // portraits; without this entry next/image throws at runtime.
+      {
+        hostname: 'randomuser.me',
+        pathname: '/api/portraits/**',
+        protocol: 'https',
+      },
     ],
   },
   // The version banner is free reconnaissance for an attacker.
