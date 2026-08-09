@@ -54,9 +54,9 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: production
-    defaults:
-      run:
-        working-directory: server
+    # No job-level working-directory: the configuration check runs BEFORE
+    # checkout, so `server/` does not exist yet and bash cannot start in it.
+    # The three steps that need it set it themselves.
 
     steps:
       # Until the secrets exist this workflow must not fail, or every merge
@@ -120,6 +120,7 @@ jobs:
       # Render builds the code itself.
       - name: Install dependencies
         if: steps.config.outputs.configured == 'true'
+        working-directory: server
         run: npm ci --include=dev
 
       # Shows what is about to be applied in the job log, so a surprising
@@ -128,12 +129,14 @@ jobs:
         if: steps.config.outputs.migrate == 'true'
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        working-directory: server
         run: npx prisma migrate status || true
 
       - name: Apply migrations
         if: steps.config.outputs.migrate == 'true'
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        working-directory: server
         run: npx prisma migrate deploy
 
       # The hook takes no body; Render builds the branch head it is bound to.
