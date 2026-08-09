@@ -51,111 +51,130 @@
 }
 
 :root {
-  /* Light theme. Brand system stays DEEP BLUE + WHITE + NEUTRAL GRAY in
-     both themes: near-white blue-cast page, white surfaces, deep blue-black
-     type, one civic blue accent. `color-scheme` keeps native controls
+  /* Light theme. Brand system is IVORY + FOREST GREEN in both themes: warm
+     ivory paper page, cream surfaces, deep pine-cast ink (never pure black),
+     one forest-green accent. `color-scheme` keeps native controls
      (select popups, date pickers, scrollbars) matching the theme. */
   color-scheme: light;
 
   --radius: 0.625rem;
 
-  --background: oklch(0.985 0.003 258);
-  --foreground: oklch(0.21 0.025 258);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.025 258);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.025 258);
-  --primary: oklch(0.25 0.025 258);
-  --primary-foreground: oklch(0.985 0.003 258);
-  --secondary: oklch(0.955 0.005 258);
-  --secondary-foreground: oklch(0.25 0.025 258);
-  --muted: oklch(0.955 0.005 258);
-  --muted-foreground: oklch(0.5 0.015 258);
-  --accent: oklch(0.93 0.008 258);
-  --accent-foreground: oklch(0.21 0.025 258);
+  --background: oklch(0.977 0.006 95);
+  --foreground: oklch(0.23 0.02 150);
+  --card: oklch(0.99 0.004 95);
+  --card-foreground: oklch(0.23 0.02 150);
+  --popover: oklch(0.99 0.004 95);
+  --popover-foreground: oklch(0.23 0.02 150);
+  --primary: oklch(0.27 0.025 150);
+  --primary-foreground: oklch(0.977 0.006 95);
+  --secondary: oklch(0.945 0.008 95);
+  --secondary-foreground: oklch(0.27 0.025 150);
+  --muted: oklch(0.945 0.008 95);
+  --muted-foreground: oklch(0.49 0.02 135);
+  --accent: oklch(0.92 0.012 110);
+  --accent-foreground: oklch(0.23 0.02 150);
   --destructive: oklch(0.55 0.2 25);
-  --success: oklch(0.55 0.14 155);
+  --success: oklch(0.52 0.13 162);
   --warning: oklch(0.6 0.15 75);
-  --border: oklch(0.9 0.008 258);
-  --input: oklch(0.88 0.008 258);
-  --ring: oklch(0.5 0.17 255);
-  /* Deep blue - the brand accent (darker here for contrast on white). */
-  --brand: oklch(0.5 0.17 255);
-  --brand-foreground: oklch(0.985 0.003 258);
-  --brand-muted: oklch(0.93 0.03 255);
-  --sidebar: oklch(0.97 0.004 258);
-  --sidebar-foreground: oklch(0.21 0.025 258);
-  --sidebar-primary: oklch(0.5 0.17 255);
-  --sidebar-primary-foreground: oklch(0.985 0.003 258);
-  --sidebar-accent: oklch(0.93 0.008 258);
-  --sidebar-accent-foreground: oklch(0.21 0.025 258);
-  --sidebar-border: oklch(0.9 0.008 258);
-  --sidebar-ring: oklch(0.5 0.17 255);
-  --chart-1: oklch(0.5 0.17 255);
-  --chart-2: oklch(0.55 0.14 155);
-  --chart-3: oklch(0.6 0.15 75);
-  --chart-4: oklch(0.55 0.2 25);
-  --chart-5: oklch(0.5 0.015 258);
+  --border: oklch(0.89 0.012 100);
+  --input: oklch(0.87 0.012 100);
+  --ring: oklch(0.45 0.11 152);
+  /* Forest green - the brand accent (darker here for contrast on ivory). */
+  --brand: oklch(0.45 0.11 152);
+  --brand-foreground: oklch(0.985 0.006 95);
+  --brand-muted: oklch(0.93 0.035 152);
+  --sidebar: oklch(0.965 0.007 95);
+  --sidebar-foreground: oklch(0.23 0.02 150);
+  --sidebar-primary: oklch(0.45 0.11 152);
+  --sidebar-primary-foreground: oklch(0.985 0.006 95);
+  --sidebar-accent: oklch(0.92 0.012 110);
+  --sidebar-accent-foreground: oklch(0.23 0.02 150);
+  --sidebar-border: oklch(0.89 0.012 100);
+  --sidebar-ring: oklch(0.45 0.11 152);
+  /* Charts: green, gold, plum, terracotta - validated (CVD + contrast) in
+     this order; assign in order, never shuffled. chart-5 is a reserved
+     neutral for an "Other" bucket, not part of the categorical rotation. */
+  --chart-1: oklch(0.45 0.11 152);
+  --chart-2: oklch(0.65 0.13 85);
+  --chart-3: oklch(0.46 0.13 325);
+  --chart-4: oklch(0.58 0.16 40);
+  --chart-5: oklch(0.5 0.02 135);
 
   /* Ambient background (public pages). */
-  --bg-glow-1: oklch(0.5 0.17 255 / 0.08);
-  --bg-glow-2: oklch(0.5 0.17 255 / 0.05);
-  --bg-fade: oklch(0.93 0.01 258 / 0.5);
+  --bg-glow-1: oklch(0.45 0.11 152 / 0.07);
+  --bg-glow-2: oklch(0.45 0.11 152 / 0.045);
+  --bg-fade: oklch(0.93 0.015 100 / 0.5);
 }
 
 .dark {
   color-scheme: dark;
 
-  /* Dark theme: the page sits on a deep blue-black; surfaces are neutral
-     grays stepping lighter; type is white. */
-  --background: oklch(0.21 0.025 258);
-  --foreground: oklch(0.97 0.002 258);
-  --card: oklch(0.255 0.02 258);
-  --card-foreground: oklch(0.97 0.002 258);
-  --popover: oklch(0.255 0.02 258);
-  --popover-foreground: oklch(0.97 0.002 258);
-  --primary: oklch(0.95 0.002 258);
-  --primary-foreground: oklch(0.21 0.025 258);
-  --secondary: oklch(0.3 0.018 258);
-  --secondary-foreground: oklch(0.97 0.002 258);
-  --muted: oklch(0.3 0.018 258);
-  --muted-foreground: oklch(0.73 0.012 258);
-  --accent: oklch(0.33 0.02 258);
-  --accent-foreground: oklch(0.97 0.002 258);
+  /* Dark theme: the page sits on a deep pine-black (green-cast, never a
+     neutral black); surfaces step lighter; type is warm ivory. */
+  --background: oklch(0.22 0.015 150);
+  --foreground: oklch(0.965 0.008 95);
+  --card: oklch(0.26 0.015 150);
+  --card-foreground: oklch(0.965 0.008 95);
+  --popover: oklch(0.26 0.015 150);
+  --popover-foreground: oklch(0.965 0.008 95);
+  --primary: oklch(0.95 0.008 95);
+  --primary-foreground: oklch(0.22 0.015 150);
+  --secondary: oklch(0.3 0.015 150);
+  --secondary-foreground: oklch(0.965 0.008 95);
+  --muted: oklch(0.3 0.015 150);
+  --muted-foreground: oklch(0.72 0.015 120);
+  --accent: oklch(0.33 0.017 150);
+  --accent-foreground: oklch(0.965 0.008 95);
   --destructive: oklch(0.7 0.19 22);
-  --success: oklch(0.72 0.14 155);
+  --success: oklch(0.74 0.13 162);
   --warning: oklch(0.79 0.16 75);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.62 0.16 255);
-  /* Deep blue - the brand accent (readable on the dark field). */
-  --brand: oklch(0.62 0.16 255);
-  --brand-foreground: oklch(0.98 0.002 258);
-  --brand-muted: oklch(0.32 0.06 255);
-  --sidebar: oklch(0.235 0.022 258);
-  --sidebar-foreground: oklch(0.97 0.002 258);
-  --sidebar-primary: oklch(0.62 0.16 255);
-  --sidebar-primary-foreground: oklch(0.98 0.002 258);
-  --sidebar-accent: oklch(0.3 0.018 258);
-  --sidebar-accent-foreground: oklch(0.97 0.002 258);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.62 0.16 255);
-  --chart-1: oklch(0.62 0.16 255);
-  --chart-2: oklch(0.72 0.14 155);
-  --chart-3: oklch(0.79 0.16 75);
-  --chart-4: oklch(0.7 0.19 22);
-  --chart-5: oklch(0.73 0.012 258);
+  --border: oklch(0.95 0.02 95 / 13%);
+  --input: oklch(0.95 0.02 95 / 17%);
+  --ring: oklch(0.7 0.13 155);
+  /* Emerald - the brand accent (lifted for legibility on the dark field);
+     dark ink on it, so brand pills read like a stamped seal. */
+  --brand: oklch(0.7 0.13 155);
+  --brand-foreground: oklch(0.2 0.02 150);
+  --brand-muted: oklch(0.33 0.05 152);
+  --sidebar: oklch(0.245 0.015 150);
+  --sidebar-foreground: oklch(0.965 0.008 95);
+  --sidebar-primary: oklch(0.7 0.13 155);
+  --sidebar-primary-foreground: oklch(0.2 0.02 150);
+  --sidebar-accent: oklch(0.3 0.015 150);
+  --sidebar-accent-foreground: oklch(0.965 0.008 95);
+  --sidebar-border: oklch(0.95 0.02 95 / 13%);
+  --sidebar-ring: oklch(0.7 0.13 155);
+  /* Same chart entities as light (green, gold, plum, terracotta), re-stepped
+     and re-validated against the dark surface - not an automatic flip.
+     chart-5 stays the reserved "Other" neutral. */
+  --chart-1: oklch(0.535 0.12 155);
+  --chart-2: oklch(0.665 0.13 92);
+  --chart-3: oklch(0.55 0.12 325);
+  --chart-4: oklch(0.64 0.15 40);
+  --chart-5: oklch(0.72 0.015 120);
 
   /* Ambient background (depth) - soft brand aurora glows plus a fine film
      grain, no geometric pattern. */
-  --bg-glow-1: oklch(0.62 0.16 255 / 0.14);
-  --bg-glow-2: oklch(0.62 0.16 255 / 0.07);
-  --bg-fade: oklch(0.16 0.02 258 / 0.5);
+  --bg-glow-1: oklch(0.7 0.13 155 / 0.12);
+  --bg-glow-2: oklch(0.7 0.13 155 / 0.06);
+  --bg-fade: oklch(0.17 0.012 150 / 0.5);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /*
+   * Reserve the scrollbar's width at all times.
+   *
+   * Without this, a short page has no scrollbar and a tall one does, so the
+   * viewport width changes by ~15px between them and every centered layout
+   * jumps sideways on navigation - the "shake" when moving between pages.
+   * Reserving the gutter makes the width constant, so there is nothing to
+   * animate away: the shift stops happening rather than being smoothed over.
+   */
+  html {
+    scrollbar-gutter: stable;
   }
   body {
     /* No opaque background here: the fixed .site-background layer paints it,
@@ -190,6 +209,38 @@
     @apply tracking-tight;
     text-wrap: balance;
   }
+}
+
+/*
+ * Page transition: new route content fades and settles in rather than
+ * appearing hard. Paired with the stable scrollbar gutter above, moving
+ * between a short page and a long one reads as one smooth change instead of
+ * a snap plus a sideways jump. Cut entirely by the reduced-motion rule.
+ */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: page-enter 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Scroll without a visible scrollbar. For rails where the content itself
+   (a half-visible next card) signals that there is more to scroll to, so the
+   bar is only chrome. Keyboard and wheel scrolling are unaffected. */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Respect users who prefer reduced motion: cut animations/transitions. */

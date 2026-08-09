@@ -35,9 +35,9 @@ export const siteConfig = {
   },
   tagline: "Run elections everyone trusts",
   /** Dark ink page field - used for the PWA manifest background. */
-  backgroundColor: "#171c28",
+  backgroundColor: "#161d17",
   /** Deep blue brand - used for theme-color and the OG card accent. */
-  themeColor: "#2f5fd0",
+  themeColor: "#126635",
   /** Full home-page title (the layout template's `default`). */
   title: "Elektor Pro · Run elections everyone trusts",
 } as const;

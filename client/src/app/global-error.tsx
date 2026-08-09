@@ -14,8 +14,8 @@ export default function GlobalError({
       <body
         style={{
           alignItems: "center",
-          background: "#171c28",
-          color: "#f5f6f9",
+          background: "#161d17",
+          color: "#f5f3ee",
           display: "flex",
           fontFamily: "system-ui, sans-serif",
           justifyContent: "center",
@@ -29,16 +29,16 @@ export default function GlobalError({
           <h1 style={{ fontSize: 28, fontWeight: 600, margin: 0 }}>
             Something went wrong.
           </h1>
-          <p style={{ color: "#9aa3b4", marginTop: 12 }}>
+          <p style={{ color: "#a3a69c", marginTop: 12 }}>
             An unexpected error occurred. Please try again.
           </p>
           <button
             onClick={reset}
             style={{
-              background: "#2f5fd0",
+              background: "#51b67a",
               border: "none",
               borderRadius: 9999,
-              color: "#fff",
+              color: "#161d17",
               cursor: "pointer",
               fontSize: 16,
               fontWeight: 500,

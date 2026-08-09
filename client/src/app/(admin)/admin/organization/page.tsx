@@ -303,7 +303,7 @@ function ColorEditor({
           aria-label={`${label} hex`}
           className="w-28 font-mono"
           onChange={(e) => setHex(e.target.value)}
-          placeholder="#2563eb"
+          placeholder="#126635"
           value={value}
         />
         <Input
