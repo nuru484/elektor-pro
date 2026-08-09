@@ -22,6 +22,12 @@ const envNumber = (name: string, fallback: number): number => {
   return parsed;
 };
 
+const envBool = (name: string, fallback = false): boolean => {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  return ["1", "true", "yes"].includes(raw.toLowerCase());
+};
+
 const envEnum = <T extends string>(
   name: string,
   allowed: readonly T[],
@@ -72,6 +78,16 @@ interface IENV {
   DATABASE_URL: string;
   /** Max connections in the shared pg pool (API + in-process workers). */
   DB_POOL_MAX: number;
+  /** Demo (portfolio) sign-in: the seeded account behind each role button. */
+  DEMO_ACCREDITOR_EMAIL: string;
+  DEMO_ADMIN_EMAIL: string;
+  DEMO_AGENT_EMAIL: string;
+  DEMO_CANDIDATE_EMAIL: string;
+  /** Off by default: a live deployment opts in explicitly. */
+  DEMO_LOGIN_ENABLED: boolean;
+  DEMO_SUPER_ADMIN_EMAIL: string;
+  /** Voters sign in by voter ID, not email. */
+  DEMO_VOTER_ID: string;
   /**
    * Key for data encrypted at rest (TOTP secrets). Separate from the JWT
    * secrets on purpose: deriving it from ACCESS_TOKEN_SECRET meant rotating
@@ -86,8 +102,8 @@ interface IENV {
   FROG_USERNAME: string;
   /** Client origin used in emailed links (password reset, invitations). */
   FRONTEND_URL: string;
-  GMAIL_PASSWORD: string;
-  GMAIL_USER: string;
+  /** Sender for outgoing mail; must be on a Resend-verified domain. */
+  MAIL_FROM: string;
   NODE_ENV: string;
   OTP_LENGTH: number;
   OTP_MODE: "live" | "mock";
@@ -106,12 +122,10 @@ interface IENV {
   REDIS_URL: string;
   REFRESH_TOKEN_EXPIRY: string;
   REFRESH_TOKEN_SECRET: string;
+  /** Resend API key; empty switches email to mock mode (dev, CI, tests). */
+  RESEND_API_KEY: string;
   /** Error-tracker DSN; empty disables reporting (dev, CI, tests). */
   SENTRY_DSN: string;
-  SMTP_HOST: string;
-  SMTP_MAIL: string;
-  SMTP_PORT: number;
-  SMTP_SECURE: string;
 }
 
 const ENV: IENV = {
@@ -129,6 +143,22 @@ const ENV: IENV = {
   CORS_ACCESS: envOptional("CORS_ACCESS", "http://localhost:3000"),
   DATABASE_URL: envRequired("DATABASE_URL"),
   DB_POOL_MAX: envNumber("DB_POOL_MAX", 20),
+  DEMO_ACCREDITOR_EMAIL: envOptional(
+    "DEMO_ACCREDITOR_EMAIL",
+    "demo.accreditor@elektorpro.app",
+  ),
+  DEMO_ADMIN_EMAIL: envOptional("DEMO_ADMIN_EMAIL", "demo.admin@elektorpro.app"),
+  DEMO_AGENT_EMAIL: envOptional("DEMO_AGENT_EMAIL", "demo.agent@elektorpro.app"),
+  DEMO_CANDIDATE_EMAIL: envOptional(
+    "DEMO_CANDIDATE_EMAIL",
+    "demo.candidate@elektorpro.app",
+  ),
+  DEMO_LOGIN_ENABLED: envBool("DEMO_LOGIN_ENABLED"),
+  DEMO_SUPER_ADMIN_EMAIL: envOptional(
+    "DEMO_SUPER_ADMIN_EMAIL",
+    "demo.superadmin@elektorpro.app",
+  ),
+  DEMO_VOTER_ID: envOptional("DEMO_VOTER_ID", "DEMO-VOTER-001"),
   ENCRYPTION_KEY: isProduction
     ? envSecret("ENCRYPTION_KEY")
     : envOptional("ENCRYPTION_KEY") || envRequired("ACCESS_TOKEN_SECRET"),
@@ -136,8 +166,7 @@ const ENV: IENV = {
   FROG_SENDER_ID: envOptional("FROG_SENDER_ID"),
   FROG_USERNAME: envOptional("FROG_USERNAME"),
   FRONTEND_URL: envOptional("FRONTEND_URL", "http://localhost:3000"),
-  GMAIL_PASSWORD: envOptional("GMAIL_PASSWORD"),
-  GMAIL_USER: envOptional("GMAIL_USER"),
+  MAIL_FROM: envOptional("MAIL_FROM", "Elektor Pro <no-reply@manuru.dev>"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
   OTP_LENGTH: envNumber("OTP_LENGTH", 6),
   OTP_MODE: envEnum(
@@ -153,11 +182,8 @@ const ENV: IENV = {
   REDIS_URL: envOptional("REDIS_URL"),
   REFRESH_TOKEN_EXPIRY: envOptional("REFRESH_TOKEN_EXPIRY", "7d"),
   REFRESH_TOKEN_SECRET: envSecret("REFRESH_TOKEN_SECRET"),
+  RESEND_API_KEY: envOptional("RESEND_API_KEY"),
   SENTRY_DSN: envOptional("SENTRY_DSN"),
-  SMTP_HOST: envOptional("SMTP_HOST"),
-  SMTP_MAIL: envOptional("SMTP_MAIL"),
-  SMTP_PORT: envNumber("SMTP_PORT", 587),
-  SMTP_SECURE: envOptional("SMTP_SECURE", "false"),
 };
 
 if (ENV.OTP_MODE === "live" && !ENV.FROG_API_KEY) {
