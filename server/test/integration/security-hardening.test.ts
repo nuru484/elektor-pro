@@ -125,7 +125,10 @@ describe('open ballot option', () => {
       .get(`/api/v1/voter/elections/${electionId}/ballot`)
       .set('Cookie', cookie);
     const view = bodyOf<{
-      data: { portfolios: { candidates: { id: string }[]; id: string }[]; voteVisibleToVoter: boolean };
+      data: {
+        portfolios: { candidates: { id: string; name: string }[]; id: string }[];
+        voteVisibleToVoter: boolean;
+      };
     }>(ballot).data;
     const cast = await api()
       .post(`/api/v1/voter/elections/${electionId}/ballot`)
@@ -137,7 +140,14 @@ describe('open ballot option', () => {
         })),
       });
     expect(cast.status).toBe(201);
-    return { cookie, told: view.voteVisibleToVoter };
+    // Report who was actually voted for rather than assuming a position in
+    // the ballot: the replay assertion must compare against the real choice,
+    // or it tests the ballot's ordering instead of the replay.
+    return {
+      cookie,
+      told: view.voteVisibleToVoter,
+      votedFor: view.portfolios[0].candidates[0].name,
+    };
   };
 
   it('replays choices for an open ballot, and says so before the vote', async () => {
@@ -147,16 +157,25 @@ describe('open ballot option', () => {
       where: { id: election.id },
     });
 
-    const { cookie, told } = await castIn(election.id, 'OPEN1', '+233550000401');
+    const { cookie, told, votedFor } = await castIn(
+      election.id,
+      'OPEN1',
+      '+233550000401',
+    );
     // The voter was told, on the ballot, that this is not secret.
     expect(told).toBe(true);
+
+    // The fixture's candidates carry no ballot number and share the default
+    // order, so the ballot's tiebreakers decide who comes first - assert the
+    // replay against whoever that actually was.
+    expect(votedFor).toBe('Alice');
 
     const history = await api().get('/api/v1/voter/history').set('Cookie', cookie);
     const row = bodyOf<{
       data: { choices: null | { candidate: null | { name: string } }[]; receiptCode: null | string }[];
     }>(history).data[0];
     expect(row.receiptCode).toBeTruthy();
-    expect(row.choices?.[0].candidate?.name).toBe('Alice');
+    expect(row.choices?.[0].candidate?.name).toBe(votedFor);
   });
 
   it('keeps a secret ballot secret, and says so before the vote', async () => {

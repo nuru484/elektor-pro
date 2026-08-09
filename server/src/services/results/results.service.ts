@@ -116,7 +116,14 @@ export const computeResults = async (electionId: string) => {
       prisma.portfolio.findMany({
         include: {
           candidates: {
-            orderBy: [{ ballotNumber: { nulls: 'last', sort: 'asc' } }, { order: 'asc' }],
+            // Name and id break the tie when no ballot numbers are
+            // assigned; without them results rows reshuffle per request.
+            orderBy: [
+              { ballotNumber: { nulls: 'last', sort: 'asc' } },
+              { order: 'asc' },
+              { name: 'asc' },
+              { id: 'asc' },
+            ],
             select: {
               ballotNumber: true,
               id: true,

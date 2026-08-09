@@ -169,7 +169,14 @@ export const listMyCandidacies = async (
           // The field: everyone contesting the same portfolio, so the
           // candidate console can show who they are up against.
           candidates: {
-            orderBy: [{ ballotNumber: { nulls: 'last', sort: 'asc' } }, { order: 'asc' }],
+            // Name and id break the tie when no ballot numbers are
+            // assigned; without them the listing reshuffles per request.
+            orderBy: [
+              { ballotNumber: { nulls: 'last', sort: 'asc' } },
+              { order: 'asc' },
+              { name: 'asc' },
+              { id: 'asc' },
+            ],
             select: {
               ballotNumber: true,
               id: true,

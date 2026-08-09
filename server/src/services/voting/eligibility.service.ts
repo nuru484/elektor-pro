@@ -109,8 +109,20 @@ export const resolveEligiblePortfolios = async (
     prisma.portfolio.findMany({
       include: {
         candidates: {
-          // Ballot order: assigned number first, then the manual order.
-          orderBy: [{ ballotNumber: { nulls: 'last', sort: 'asc' } }, { order: 'asc' }],
+          // Ballot order: assigned number first, then the manual order,
+          // then name and id as tiebreakers. The last two are not cosmetic:
+          // before an election assigns ballot numbers every candidate has a
+          // null number and the default order 0, so the first two keys tie
+          // and Postgres is free to return them in a different sequence on
+          // every request. A ballot whose candidate order changes between
+          // page loads is both confusing and, since position influences
+          // votes, unfair.
+          orderBy: [
+            { ballotNumber: { nulls: 'last', sort: 'asc' } },
+            { order: 'asc' },
+            { name: 'asc' },
+            { id: 'asc' },
+          ],
           select: {
             ballotNumber: true,
             id: true,
