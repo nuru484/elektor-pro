@@ -97,6 +97,12 @@ interface IENV {
    * databases keep working.
    */
   ENCRYPTION_KEY: string;
+  /**
+   * Where background-generated exports are written. Must be a path this
+   * process can write and, on a host with more than one instance, one they
+   * share - a file written by one instance is not readable by another.
+   */
+  EXPORT_DIR: string;
   FROG_API_KEY: string;
   FROG_SENDER_ID: string;
   FROG_USERNAME: string;
@@ -166,6 +172,7 @@ const ENV: IENV = {
   ENCRYPTION_KEY: isProduction
     ? envSecret("ENCRYPTION_KEY")
     : envOptional("ENCRYPTION_KEY") || envRequired("ACCESS_TOKEN_SECRET"),
+  EXPORT_DIR: envOptional("EXPORT_DIR", "./storage/exports"),
   FROG_API_KEY: envOptional("FROG_API_KEY"),
   FROG_SENDER_ID: envOptional("FROG_SENDER_ID"),
   FROG_USERNAME: envOptional("FROG_USERNAME"),

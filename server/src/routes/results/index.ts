@@ -4,11 +4,14 @@ import { Router } from 'express';
 import { Capability } from '../../../generated/prisma/client.js';
 import {
   certifyResultsController,
+  downloadExportController,
+  exportJobStatusController,
   exportResultsController,
   getCertificationController,
   getElectionReportController,
   getResultsController,
   publishResultsController,
+  requestResultsExportController,
   unpublishResultsController,
 } from '../../controllers/results.controller.js';
 import authenticateJWT from '../../middlewares/authenticate-jwt.js';
@@ -24,6 +27,22 @@ resultsRoutes.get(
   optionalAuth,
   exportResultsController,
 );
+// Background export: ask, poll, then collect. The synchronous endpoint above
+// stays for small elections and for deployments without a queue.
+resultsRoutes.post(
+  '/elections/:electionId/results/export',
+  optionalAuth,
+  requestResultsExportController,
+);
+resultsRoutes.get(
+  '/elections/:electionId/results/export/:jobId',
+  optionalAuth,
+  exportJobStatusController,
+);
+// Collected by token, not by session: the link has to survive being handed to
+// a browser download. The token is unguessable, expiring, and revocable.
+resultsRoutes.get('/exports/:token', downloadExportController);
+
 resultsRoutes.get(
   '/elections/:electionId/certification',
   optionalAuth,

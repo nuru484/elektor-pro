@@ -10,6 +10,7 @@ import { createRedisConnection, queuesEnabled } from '../jobs/connection.js';
 import { registerQueue, registerWorker } from '../jobs/lifecycle.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
 import { sweepExpiredAuthRecords } from '../services/auth/auth-maintenance.service.js';
+import { sweepExpiredExports } from '../services/results/export-job.service.js';
 import logger from '../utils/logger.js';
 
 if (queuesEnabled()) {
@@ -40,10 +41,23 @@ if (queuesEnabled()) {
         QUEUE_NAMES.AUTH_MAINTENANCE,
         async () => {
           const result = await sweepExpiredAuthRecords();
-          if (result.otps > 0 || result.resetTokens > 0 || result.sessions > 0) {
-            logger.info(result, 'Auth maintenance sweep purged expired records');
+          // Generated exports ride the same hourly sweep rather than earning
+          // their own schedule: results are the most sensitive artefact this
+          // system writes to disk, and leaving them there indefinitely is the
+          // risk worth closing.
+          const exports = await sweepExpiredExports();
+          if (
+            result.otps > 0 ||
+            result.resetTokens > 0 ||
+            result.sessions > 0 ||
+            exports.removed > 0
+          ) {
+            logger.info(
+              { ...result, exportsRemoved: exports.removed },
+              'Maintenance sweep purged expired records',
+            );
           }
-          return result;
+          return { ...result, exportsRemoved: exports.removed };
         },
         { connection: workerConnection },
       ),

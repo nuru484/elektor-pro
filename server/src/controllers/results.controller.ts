@@ -2,6 +2,8 @@
 import type { Request, Response } from 'express';
 
 import { Capability, Role } from '../../generated/prisma/client.js';
+import { ExportFormat } from '../../generated/prisma/client.js';
+import { HTTP_STATUS_CODES } from '../config/constants.js';
 import prisma from '../lib/prisma.js';
 import {
   asyncHandler,
@@ -10,6 +12,11 @@ import {
   UnauthorizedError,
 } from '../middlewares/error-handler.js';
 import { hasCapability } from '../services/authorization/capability.service.js';
+import {
+  createExportJob,
+  getExportJob,
+  resolveExportDownload,
+} from '../services/results/export-job.service.js';
 import {
   exportResultsCsv,
   exportResultsPdf,
@@ -29,6 +36,7 @@ import { getTurnout } from '../services/voting/accreditation.service.js';
 import { verifyBallotChain } from '../services/voting/voting.service.js';
 import { requestContextOf } from '../utils/auth-session.js';
 import { sendOk } from '../utils/http.js';
+import { runExportJob } from '../workers/export.worker.js';
 import { actorOf } from './proposal-response.js';
 
 const viewerOf = (req: Request): null | ResultsViewer =>
@@ -74,6 +82,73 @@ export const exportResultsController = asyncHandler(
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="results.csv"');
     res.send(csv);
+  },
+);
+
+/**
+ * Ask for an export to be generated in the background.
+ *
+ * The synchronous endpoint above stays: it is the right shape for a small
+ * election, and it is what runs when there is no queue. This one is for the
+ * elections whose PDF takes long enough that holding the request open risks
+ * a proxy timeout.
+ */
+export const requestResultsExportController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const election = await loadElectionForResults(req.params.electionId);
+    await assertCanViewResults(viewerOf(req), election);
+    const format =
+      req.query.format === 'pdf' ? ExportFormat.PDF : ExportFormat.CSV;
+
+    const job = await createExportJob({
+      electionId: election.id,
+      format,
+      requestedById: req.user?.id,
+    });
+    const queued = await runExportJob(job.id);
+    res.status(HTTP_STATUS_CODES.ACCEPTED).json({
+      data: { ...job, queued },
+      message: queued ? 'Export is being generated' : 'Export ready',
+      success: true,
+    });
+  },
+);
+
+/** Poll an export until it is ready. */
+export const exportJobStatusController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const election = await loadElectionForResults(req.params.electionId);
+    await assertCanViewResults(viewerOf(req), election);
+    sendOk(res, 'Export status retrieved', await getExportJob(req.params.jobId));
+  },
+);
+
+/**
+ * Collect a finished export.
+ *
+ * Authorized by the unguessable token in the URL rather than a session: the
+ * link has to survive being handed to a browser download, and the token is
+ * single-purpose, expiring, and revocable by deleting the row - which a
+ * session cookie is not.
+ */
+export const downloadExportController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const file = await resolveExportDownload(req.params.token);
+    res.type(file.format === ExportFormat.PDF ? 'application/pdf' : 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.fileName}"`,
+    );
+    // A file written by a previous instance (or already swept) is a 404, not
+    // a 500 - the row can outlive the disk it was written to.
+    res.sendFile(file.filePath, (error: unknown) => {
+      if (error && !res.headersSent) {
+        res.status(HTTP_STATUS_CODES.NOT_FOUND).json({
+          message: 'This export is no longer available; generate a new one',
+          status: 'error',
+        });
+      }
+    });
   },
 );
 

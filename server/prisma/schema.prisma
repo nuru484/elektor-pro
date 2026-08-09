@@ -221,6 +221,7 @@ model User {
   agentLinks      AgentAssignment[]
   accreditorLinks AccreditorAssignment[]
   importBatches   ImportBatch[]          @relation("ImportBatchCreator")
+  exportJobs      ExportJob[]            @relation("ExportRequester")
 
   // Governance / authored records
   electionsCreated   Election[]              @relation("ElectionCreator")
@@ -469,6 +470,7 @@ model Election {
   agentLinks        AgentAssignment[]
   accreditorLinks   AccreditorAssignment[]
   importBatches     ImportBatch[]
+  exportJobs        ExportJob[]
   accessGrants      AccessGrant[]
   resultSnapshots   ResultSnapshot[]
   eligibilityGroups ElectionEligibility[]
@@ -666,6 +668,60 @@ model AgentAssignment {
 /// How far a queued import has got. Progress lives in the database rather
 /// than only in the job, so a worker restart resumes instead of restarting,
 /// and the admin's progress bar survives a deploy.
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum ExportFormat {
+  CSV
+  PDF
+}
+
+/// A results export generated in the background and collected afterwards.
+///
+/// Small exports still stream straight back in the response. A large
+/// election's PDF takes long enough to render that holding the request open
+/// risks a proxy timeout and blocks a worker thread, so it becomes a job: the
+/// file is written to disk, and this row is the handle - what it is, whether
+/// it is ready, who may collect it, and when it expires.
+///
+/// `downloadToken` (not the id) is what the download URL carries: the id
+/// appears in logs and admin UIs, so making it the credential would leak
+/// results to anyone who read a log line.
+model ExportJob {
+  id     String       @id @default(cuid())
+  status ExportStatus @default(PENDING)
+  format ExportFormat
+
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+
+  /// Absolute path on the instance that generated it. Null until ready.
+  filePath      String?
+  /// What the browser should save it as.
+  fileName      String?
+  byteSize      Int?
+  /// Single-use-ish secret in the download URL; unique so it can be looked up.
+  downloadToken String  @unique
+  error         String?
+
+  requestedBy   User?   @relation("ExportRequester", fields: [requestedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  requestedById String?
+
+  /// Swept after this; results should not sit on disk indefinitely.
+  expiresAt   DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([electionId])
+  @@index([expiresAt])
+}
+
 enum ImportStatus {
   PENDING
   PROCESSING

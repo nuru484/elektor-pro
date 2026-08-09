@@ -19,3 +19,6 @@
 
 # Build output
 /build
+
+# Background-generated exports (EXPORT_DIR). Runtime artefacts, never committed.
+storage/

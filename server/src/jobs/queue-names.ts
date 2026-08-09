@@ -6,6 +6,7 @@
 export const QUEUE_NAMES = {
   AUTH_MAINTENANCE: 'auth-maintenance',
   ELECTION_STATUS: 'election-status',
+  EXPORTS: 'exports',
   IMPORTS: 'imports',
   NOTIFICATIONS: 'notifications',
 } as const;
