@@ -1,3 +1,9 @@
+// prisma/seed.ts
+// Idempotent seed: organization, a super-admin + one of each role, optional
+// voter groups, and a live demo election with portfolios, candidates, voters,
+// and a batch of cast ballots so dashboards/results look alive.
+import { randomBytes } from 'node:crypto';
+
 import {
   BallotEntryType,
   ElectionStatus,
@@ -7,10 +13,6 @@ import {
   Role,
   VotingMethod,
 } from '../generated/prisma/client.js';
-// prisma/seed.ts
-// Idempotent seed: organization, a super-admin + one of each role, optional
-// voter groups, and a live demo election with portfolios, candidates, voters,
-// and a batch of cast ballots so dashboards/results look alive.
 import { DEFAULT_ROLE_CAPABILITIES, EDITABLE_ROLES } from '../src/config/capabilities.js';
 import { GENESIS_HASH } from '../src/config/constants.js';
 import ENV from '../src/config/env.js';
@@ -235,6 +237,8 @@ async function main() {
   await seedVettingDemo(superAdmin.id);
   await seedScaleNumbers(superAdmin.id);
   await ensureFullContactDetails();
+  await seedRichModules(superAdmin.id);
+  await seedDemoLoginAccounts();
 
   console.log('\nSeed complete.');
   console.log(`  Super admin: ${ENV.ADMIN_EMAIL} / ${SEED_PASSWORD}`);
@@ -643,6 +647,123 @@ async function seedDemoElection(superAdminId: string, agentId: string, scienceGr
   console.log('✓ demo election seeded (portfolios, candidates, voters, ballots)');
 }
 
+async function seedDemoLoginAccounts() {
+  const randomPassword = () =>
+    `demo-${randomBytes(24).toString('hex')}-${String(Date.now())}`;
+
+  const staff: [string, string, string, Role, string][] = [
+    [ENV.DEMO_SUPER_ADMIN_EMAIL, 'Demo', 'Superadmin', Role.SUPER_ADMIN, '+233209000001'],
+    [ENV.DEMO_ADMIN_EMAIL, 'Demo', 'Admin', Role.ADMIN, '+233209000002'],
+    [ENV.DEMO_ACCREDITOR_EMAIL, 'Demo', 'Accreditor', Role.ACCREDITOR, '+233209000003'],
+    [ENV.DEMO_AGENT_EMAIL, 'Demo', 'Agent', Role.AGENT, '+233209000004'],
+    [ENV.DEMO_CANDIDATE_EMAIL, 'Demo', 'Candidate', Role.CANDIDATE, '+233209000005'],
+  ];
+  const accounts = new Map<Role, string>();
+  for (const [email, firstName, lastName, role, phone] of staff) {
+    const user = await upsertUser(email, firstName, lastName, role, randomPassword(), phone);
+    accounts.set(role, user.id);
+  }
+
+  // The demo agent watches a candidate, and the demo candidate stands in a
+  // race - otherwise both consoles open on an empty state.
+  const candidacy = await prisma.candidate.findFirst({
+    orderBy: { createdAt: 'asc' },
+    select: { electionId: true, id: true },
+    where: { election: { status: { in: ['IN_PROGRESS', 'ENDED'] } } },
+  });
+  const agentId = accounts.get(Role.AGENT);
+  const candidateAccountId = accounts.get(Role.CANDIDATE);
+  if (candidacy && agentId) {
+    await prisma.agentAssignment.upsert({
+      create: { candidateId: candidacy.id, electionId: candidacy.electionId, userId: agentId },
+      update: {},
+      where: {
+        userId_electionId_candidateId: {
+          candidateId: candidacy.id,
+          electionId: candidacy.electionId,
+          userId: agentId,
+        },
+      },
+    });
+  }
+  if (candidacy && candidateAccountId) {
+    const unlinked = await prisma.candidate.findFirst({
+      select: { id: true },
+      where: { accountId: null, electionId: candidacy.electionId },
+    });
+    if (unlinked) {
+      await prisma.candidate.update({
+        data: { accountId: candidateAccountId },
+        where: { id: unlinked.id },
+      });
+    }
+  }
+
+  // The demo accreditor is assigned to the live elections - without an
+  // assignment their desk is (correctly) empty.
+  const accreditorId = accounts.get(Role.ACCREDITOR);
+  if (accreditorId) {
+    const deskElections = await prisma.election.findMany({
+      select: { id: true },
+      where: { status: { in: ['IN_PROGRESS', 'SCHEDULED', 'PAUSED'] } },
+    });
+    for (const election of deskElections) {
+      await prisma.accreditorAssignment.upsert({
+        create: { electionId: election.id, userId: accreditorId },
+        update: { deletedAt: null },
+        where: {
+          userId_electionId: { electionId: election.id, userId: accreditorId },
+        },
+      });
+    }
+  }
+
+  // The demo voter: a Voter row on a live election's roll, with a login
+  // account attached so a session can be issued for it.
+  const voterAccount = await prisma.user.upsert({
+    create: {
+      email: 'demo.voter@elektorpro.app',
+      firstName: 'Demo',
+      lastName: 'Voter',
+      password: await hashPassword(randomPassword()),
+      phone: '+233209000006',
+      role: Role.VOTER,
+      status: 'ACTIVE',
+    },
+    select: { id: true },
+    update: { role: Role.VOTER },
+    where: { email: 'demo.voter@elektorpro.app' },
+  });
+  const voter = await prisma.voter.upsert({
+    create: {
+      email: 'demo.voter@elektorpro.app',
+      name: 'Demo Voter',
+      phoneNumber: '+233209000006',
+      userId: voterAccount.id,
+      voterId: ENV.DEMO_VOTER_ID,
+    },
+    select: { id: true },
+    update: { userId: voterAccount.id },
+    where: { voterId: ENV.DEMO_VOTER_ID },
+  });
+  // Put them on every open election's roll so the portal has something in it.
+  const openElections = await prisma.election.findMany({
+    select: { id: true },
+    where: { status: { in: ['IN_PROGRESS', 'SCHEDULED', 'ENDED'] } },
+  });
+  for (const election of openElections) {
+    await prisma.voterElection.upsert({
+      create: { electionId: election.id, isEligible: true, voterId: voter.id },
+      update: { isEligible: true },
+      where: { voterId_electionId: { electionId: election.id, voterId: voter.id } },
+    });
+  }
+
+  console.log(
+    `✓ demo sign-in accounts seeded (${String(staff.length)} staff roles + voter ${ENV.DEMO_VOTER_ID}); set DEMO_LOGIN_ENABLED=true to expose them`,
+  );
+}
+
 /**
  * Rich demo data across every module - staff in each role and status, more
  * categories/groups, elections in several lifecycle states, assignments,
@@ -900,6 +1021,315 @@ async function seedRichExtras(superAdminId: string, agentId: string) {
 }
 
 /**
+ * The accounts behind the one-click demo sign-in buttons (POST
+ * /auth/demo-login). One per role, resolved by the DEMO_*_EMAIL settings.
+ *
+ * Each gets a RANDOM password nobody knows - not the shared seed password -
+ * so the only way into them is the demo endpoint, which a deployment must
+ * opt into with DEMO_LOGIN_ENABLED. Re-running the seed rotates it.
+ *
+ * The demo voter needs its own login account: voters authenticate as their
+ * linked User, which OTP sign-in creates lazily, and the demo path never
+ * goes through OTP.
+ */
+/**
+ * Fills out every module so the consoles have something real to show:
+ * eligible rolls at full size, ballots spread across the dashboard's
+ * two-week window, vetting panels with actual scores, and assignment
+ * histories for agents and accreditors.
+ *
+ * Idempotent and additive: it only creates what is missing, and it never
+ * touches an election that already has the data it would add, so re-running
+ * the seed does not inflate the numbers.
+ */
+async function seedRichModules(superAdminId: string) {
+  const day = 86_400_000;
+  const now = Date.now();
+
+  // --- 1. Full eligible rolls -------------------------------------------
+  // A 2,800-voter register with 300 roll entries makes every turnout figure
+  // meaningless. Put a real cohort on each live/ended election.
+  const rollTargets = await prisma.election.findMany({
+    select: { id: true, status: true },
+    where: { status: { in: ['IN_PROGRESS', 'PAUSED', 'ENDED', 'SCHEDULED'] } },
+  });
+  const voterPool = await prisma.voter.findMany({
+    orderBy: { voterId: 'asc' },
+    select: { id: true },
+    take: 600,
+  });
+  for (const election of rollTargets) {
+    const existing = await prisma.voterElection.count({
+      where: { electionId: election.id },
+    });
+    if (existing >= 200) continue;
+    const slice = voterPool.slice(0, 250);
+    await prisma.voterElection.createMany({
+      data: slice.map((voter) => ({
+        electionId: election.id,
+        isEligible: true,
+        voterId: voter.id,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  // --- 2. Ballots across the dashboard window ---------------------------
+  // Every live election should read like a real one in progress: a turnout
+  // in the 40-70% band, with the ballots spread across the dashboard's
+  // 14-day chart rather than stacked on one timestamp. The live casting path
+  // refuses back-dating, so these are written directly with the same chained
+  // hash payload voting.service produces.
+  // Ended elections are included: one that closed with a zero count reads
+  // as broken data, and their results pages are the ones people open.
+  const liveElections = await prisma.election.findMany({
+    orderBy: { startDate: 'desc' },
+    select: {
+      endDate: true,
+      id: true,
+      portfolios: {
+        select: { candidates: { select: { id: true } }, id: true },
+      },
+      startDate: true,
+      status: true,
+    },
+    where: {
+      // A certified election is sealed and its snapshot is the record of
+      // what was counted - adding ballots to it would contradict that.
+      certifiedAt: null,
+      isLocked: false,
+      status: { in: ['IN_PROGRESS', 'PAUSED', 'ENDED', 'ARCHIVED'] },
+    },
+  });
+
+  for (const [electionIndex, election] of liveElections.entries()) {
+    const portfolios = election.portfolios.filter(
+      (portfolio) => portfolio.candidates.length > 0,
+    );
+    if (portfolios.length === 0) continue;
+
+    const [eligible, voted] = await Promise.all([
+      prisma.voterElection.count({
+        where: { electionId: election.id, isEligible: true },
+      }),
+      prisma.voterElection.count({
+        where: { electionId: election.id, hasVoted: true },
+      }),
+    ]);
+    // A different (but stable) target per election so the turnout board is
+    // not a row of identical bars.
+    const targetTurnout = 0.42 + ((electionIndex * 7) % 25) / 100;
+    const wanted = Math.floor(eligible * targetTurnout) - voted;
+    if (wanted <= 0) continue;
+
+    const pending = await prisma.voterElection.findMany({
+      select: { id: true },
+      take: wanted,
+      where: { electionId: election.id, hasVoted: false, isEligible: true },
+    });
+    if (pending.length === 0) continue;
+
+    const last = await prisma.ballot.findFirst({
+      orderBy: { sequence: 'desc' },
+      select: { hash: true, sequence: true },
+      where: { electionId: election.id },
+    });
+    let prevHash = last?.hash ?? GENESIS_HASH;
+    let sequence = last?.sequence ?? 0;
+
+    for (const [i, entry] of pending.entries()) {
+      // A finished election's ballots belong inside its own window; a
+      // running one's are weighted towards recent days, so the dashboard
+      // chart has a shape rather than a flat bar across the fortnight.
+      const castAt =
+        election.status === 'IN_PROGRESS' || election.status === 'PAUSED'
+          ? new Date(
+              now -
+                Math.floor(13 * (1 - Math.sqrt((i + 1) / pending.length))) * day -
+                ((i * 37) % 20) * 3_600_000,
+            )
+          : new Date(
+              election.startDate.getTime() +
+                ((election.endDate.getTime() - election.startDate.getTime()) *
+                  (i + 1)) /
+                  (pending.length + 1),
+            );
+      // One entry per portfolio: a real ballot fills the whole card.
+      const selections = portfolios.map((portfolio) => ({
+        candidateId: pick(portfolio.candidates).id,
+        portfolioId: portfolio.id,
+      }));
+      sequence += 1;
+      // The hash payload must match voting.service's `hashEntries` exactly,
+      // sort included - the integrity endpoint recomputes it this way, and
+      // an unsorted payload would make every seeded ballot read as tampered.
+      const hashedEntries = selections
+        .map((selection) => ({
+          a: null,
+          c: selection.candidateId,
+          p: selection.portfolioId,
+          t: BallotEntryType.VOTE,
+        }))
+        .sort((a, b) => `${a.p}:${a.c}`.localeCompare(`${b.p}:${b.c}`));
+      const hash = chainHash(prevHash, {
+        castAt: castAt.toISOString(),
+        electionId: election.id,
+        entries: hashedEntries,
+        sequence,
+      });
+      await prisma.ballot.create({
+        data: {
+          castAt,
+          electionId: election.id,
+          entries: {
+            create: selections.map((selection) => ({
+              approve: null,
+              candidateId: selection.candidateId,
+              portfolioId: selection.portfolioId,
+              type: BallotEntryType.VOTE,
+            })),
+          },
+          hash,
+          prevHash,
+          receiptCode: generateReceiptCode(),
+          sequence,
+        },
+      });
+      prevHash = hash;
+      await prisma.voterElection.update({
+        data: { accreditedAt: castAt, hasVoted: true, votedAt: castAt },
+        where: { id: entry.id },
+      });
+    }
+  }
+
+  // --- 3. Accreditation in progress -------------------------------------
+  // Half-accredited, not-yet-voted rolls give the desk and its progress
+  // meters something to show.
+  for (const election of rollTargets.filter((e) => e.status === 'IN_PROGRESS')) {
+    const pending = await prisma.voterElection.findMany({
+      select: { id: true },
+      take: 60,
+      where: { accreditedAt: null, electionId: election.id, hasVoted: false },
+    });
+    if (pending.length === 0) continue;
+    await prisma.voterElection.updateMany({
+      data: { accreditedAt: new Date(now - 2 * 3_600_000), accreditedById: superAdminId },
+      where: { id: { in: pending.slice(0, 40).map((row) => row.id) } },
+    });
+  }
+
+  // --- 4. Vetting panels with real scores -------------------------------
+  const vettingElections = await prisma.election.findMany({
+    select: { candidates: { select: { id: true } }, id: true },
+    take: 3,
+    where: { vettingEnabled: true },
+  });
+  const CRITERIA = [
+    { max: 10, name: 'Eligibility and documents' },
+    { max: 10, name: 'Manifesto quality' },
+    { max: 5, name: 'Conduct record' },
+    { max: 5, name: 'Interview' },
+  ];
+  for (const election of vettingElections) {
+    for (const [order, criterion] of CRITERIA.entries()) {
+      const row = await prisma.vettingCriterion.upsert({
+        create: {
+          electionId: election.id,
+          maxScore: criterion.max,
+          name: criterion.name,
+          order,
+        },
+        select: { id: true, maxScore: true },
+        update: {},
+        where: {
+          electionId_name: { electionId: election.id, name: criterion.name },
+        },
+      });
+      for (const candidate of election.candidates) {
+        const existing = await prisma.vettingScore.findFirst({
+          select: { id: true },
+          where: { candidateId: candidate.id, criterionId: row.id },
+        });
+        if (existing) continue;
+        await prisma.vettingScore.create({
+          data: {
+            candidateId: candidate.id,
+            criterionId: row.id,
+            // Deliberately spread: some candidates clear the pass mark,
+            // some do not, so the console shows both outcomes.
+            score: Math.max(1, Math.round(row.maxScore * (0.45 + Math.random() * 0.55))),
+            scoredById: superAdminId,
+          },
+        });
+      }
+    }
+  }
+
+  // --- 5. Assignment history for agents and accreditors -----------------
+  // One live posting each (the rule), plus finished elections behind them so
+  // the History tabs are not empty.
+  const finished = await prisma.election.findMany({
+    orderBy: { startDate: 'desc' },
+    select: { id: true },
+    take: 3,
+    where: { status: { in: ['ENDED', 'ARCHIVED', 'CANCELLED'] } },
+  });
+  const agents = await prisma.user.findMany({
+    select: { id: true },
+    where: { role: Role.AGENT },
+  });
+  const accreditors = await prisma.user.findMany({
+    select: { id: true },
+    where: { role: Role.ACCREDITOR },
+  });
+  for (const election of finished) {
+    const candidate = await prisma.candidate.findFirst({
+      select: { id: true },
+      where: { electionId: election.id },
+    });
+    if (candidate) {
+      for (const agent of agents) {
+        await prisma.agentAssignment.upsert({
+          create: {
+            candidateId: candidate.id,
+            electionId: election.id,
+            userId: agent.id,
+          },
+          update: {},
+          where: {
+            userId_electionId_candidateId: {
+              candidateId: candidate.id,
+              electionId: election.id,
+              userId: agent.id,
+            },
+          },
+        });
+      }
+    }
+    for (const accreditor of accreditors) {
+      await prisma.accreditorAssignment.upsert({
+        create: { electionId: election.id, userId: accreditor.id },
+        update: { deletedAt: null },
+        where: {
+          userId_electionId: { electionId: election.id, userId: accreditor.id },
+        },
+      });
+    }
+  }
+
+  const [rolls, ballots, scores] = await Promise.all([
+    prisma.voterElection.count(),
+    prisma.ballot.count(),
+    prisma.vettingScore.count(),
+  ]);
+  console.log(
+    `✓ rich module data seeded (${String(rolls)} roll entries, ${String(ballots)} ballots, ${String(scores)} vetting scores)`,
+  );
+}
+
+
+/**
  * Numbers at scale, with ordinary content: thousands of voters (all with
  * phones, many with emails), a live election carrying hundreds of real
  * chained ballots, extra elections and candidates, and a stack of pending
@@ -1101,7 +1531,6 @@ async function seedScaleNumbers(superAdminId: string) {
     '✓ scale numbers seeded (2,500 voters w/ phones, 220 live ballots, 6 extra elections, 8 pending approvals, audit volume)',
   );
 }
-
 
 /**
  * Build 6 vetting demo on the Science election: vetting on, two criteria,
