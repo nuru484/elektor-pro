@@ -119,7 +119,14 @@ export const exportJobStatusController = asyncHandler(
   async (req: Request, res: Response) => {
     const election = await loadElectionForResults(req.params.electionId);
     await assertCanViewResults(viewerOf(req), election);
-    sendOk(res, 'Export status retrieved', await getExportJob(req.params.jobId));
+    // Scoped to the election the caller was just authorized against: the
+    // response carries the download token, so an unscoped lookup would let a
+    // caller authorized on one election collect another's results.
+    sendOk(
+      res,
+      'Export status retrieved',
+      await getExportJob(req.params.jobId, election.id),
+    );
   },
 );
 

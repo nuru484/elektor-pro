@@ -119,9 +119,18 @@ export const failExportJob = async (
   });
 };
 
-/** Status for polling. The token is included so the client can build the link. */
-export const getExportJob = async (id: string) => {
-  const job = await prisma.exportJob.findUnique({
+/**
+ * Status for polling. The token is included so the client can build the
+ * download link - which is exactly why the lookup is scoped to the election
+ * the caller was authorized against.
+ *
+ * Without that scope this endpoint trades a job id for a download token: a
+ * caller authorized on some public election could pass a job id belonging to
+ * a private one and be handed its credential. Ids are not secrets (they
+ * appear in logs and admin screens); the token is.
+ */
+export const getExportJob = async (id: string, electionId: string) => {
+  const job = await prisma.exportJob.findFirst({
     select: {
       byteSize: true,
       completedAt: true,
@@ -133,7 +142,7 @@ export const getExportJob = async (id: string) => {
       id: true,
       status: true,
     },
-    where: { id },
+    where: { electionId, id },
   });
   if (!job) throw new NotFoundError('Export job not found');
   return job;

@@ -125,13 +125,34 @@ describe('background results exports', () => {
     expect(second.completedAt?.getTime()).toBe(first.completedAt?.getTime());
   });
 
+  it('will not surface a job through another election', async () => {
+    // The status response carries the download token, and the caller is
+    // authorized against the election in the URL - not against the job. An
+    // unscoped lookup would let anyone who can read one election's results
+    // trade a job id for a private election's download credential.
+    const mine = await createElectionFixture();
+    const theirs = await createElectionFixture();
+    const job = await createExportJob({
+      electionId: theirs.election.id,
+      format: ExportFormat.CSV,
+    });
+
+    await expect(getExportJob(job.id, mine.election.id)).rejects.toThrow(
+      /not found/i,
+    );
+    // ...and is still reachable through its own election.
+    await expect(
+      getExportJob(job.id, theirs.election.id),
+    ).resolves.toMatchObject({ id: job.id });
+  });
+
   it('exposes status for polling without the file path', async () => {
     const { election } = await createElectionFixture();
     const job = await createExportJob({
       electionId: election.id,
       format: ExportFormat.PDF,
     });
-    const status = await getExportJob(job.id);
+    const status = await getExportJob(job.id, election.id);
 
     expect(status.status).toBe(ExportStatus.PENDING);
     expect(status.format).toBe(ExportFormat.PDF);
