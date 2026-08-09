@@ -7,7 +7,6 @@
 import {
   Award,
   BarChart3,
-  Download,
   ExternalLink,
   EyeOff,
   Megaphone,
@@ -17,12 +16,12 @@ import Link from "next/link";
 import { use, useState } from "react";
 import { toast } from "sonner";
 
+import { ResultsExportButton } from "@/components/results/export-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { useAuthRole } from "@/hooks/use-auth-role";
-import { env } from "@/lib/env";
 import {
   useCertifyResultsMutation,
   useGetCertificationQuery,
@@ -177,32 +176,11 @@ export default function ElectionResultsTab({
           </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
-          <Button
-            onClick={() => {
-              window.open(
-                `${env.apiUrl}/elections/${id}/results/export?format=csv`,
-                "_blank",
-              );
-            }}
-            size="sm"
-            title="Download the tally as a CSV spreadsheet"
-            variant="outline"
-          >
-            <Download className="size-4" /> CSV
-          </Button>
-          <Button
-            onClick={() => {
-              window.open(
-                `${env.apiUrl}/elections/${id}/results/export?format=pdf`,
-                "_blank",
-              );
-            }}
-            size="sm"
-            title="Download the tally as a PDF document"
-            variant="outline"
-          >
-            <Download className="size-4" /> PDF
-          </Button>
+          {/* Asks the server to generate the file and collects it when
+              ready. A large election's PDF takes long enough that a direct
+              download would risk the request timing out. */}
+          <ResultsExportButton electionId={id} format="csv" />
+          <ResultsExportButton electionId={id} format="pdf" />
           {election && (
             <Link
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

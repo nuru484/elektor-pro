@@ -180,6 +180,33 @@ export interface AgentAssignment {
   };
 }
 
+/** A background results export (POST /elections/:id/results/export). */
+export interface ExportJobStatus {
+  byteSize: null | number;
+  completedAt: null | string;
+  downloadToken: string;
+  error: null | string;
+  expiresAt: string;
+  fileName: null | string;
+  format: "CSV" | "PDF";
+  id: string;
+  status: "FAILED" | "PENDING" | "PROCESSING" | "READY";
+}
+
+/**
+ * The 202 that starts an export. `queued` is false when the server has no
+ * queue configured, in which case it rendered inline and the file is already
+ * collectable.
+ */
+export interface ExportJobCreated {
+  downloadToken: string;
+  expiresAt: string;
+  format: "CSV" | "PDF";
+  id: string;
+  queued: boolean;
+  status: string;
+}
+
 /** Progress of a queued import (GET /import-batches/:id). */
 export interface ImportBatchStatus {
   completedAt: null | string;

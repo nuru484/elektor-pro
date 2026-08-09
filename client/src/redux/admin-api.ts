@@ -2,6 +2,8 @@
 // voters, change requests, dashboard, audit).
 import type {
   BulkImportResponse,
+  ExportJobCreated,
+  ExportJobStatus,
   ImportBatchStatus,
   AccreditationSearchRow,
   ApiResponse,
@@ -369,6 +371,22 @@ export const adminApi = apiSlice.injectEndpoints({
     getImportBatch: build.query<ApiResponse<ImportBatchStatus>, string>({
       query: (id) => `/import-batches/${id}`,
     }),
+    requestResultsExport: build.mutation<
+      ApiResponse<ExportJobCreated>,
+      { electionId: string; format: "csv" | "pdf" }
+    >({
+      query: ({ electionId, format }) => ({
+        method: "POST",
+        url: `/elections/${electionId}/results/export?format=${format}`,
+      }),
+    }),
+    getExportJob: build.query<
+      ApiResponse<ExportJobStatus>,
+      { electionId: string; jobId: string }
+    >({
+      query: ({ electionId, jobId }) =>
+        `/elections/${electionId}/results/export/${jobId}`,
+    }),
     previewCandidateImport: build.mutation<
       ApiResponse<CandidateImportPreview>,
       { electionId: string; file: File }
@@ -585,8 +603,10 @@ export const {
   useGetTurnoutQuery,
   usePublishResultsMutation,
   useUnpublishResultsMutation,
+  useGetExportJobQuery,
   useGetImportBatchQuery,
   useListAuditLogsQuery,
+  useRequestResultsExportMutation,
   useListCandidatesQuery,
   useListChangeRequestsQuery,
   useListCriteriaQuery,
