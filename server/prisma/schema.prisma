@@ -216,9 +216,10 @@ model User {
   createdUsers User[]  @relation("UserCreator")
 
   // Linked domain profiles
-  voter      Voter?
-  candidates Candidate[]       @relation("CandidateAccount")
-  agentLinks AgentAssignment[]
+  voter           Voter?
+  candidates      Candidate[]            @relation("CandidateAccount")
+  agentLinks      AgentAssignment[]
+  accreditorLinks AccreditorAssignment[]
 
   // Governance / authored records
   electionsCreated   Election[]              @relation("ElectionCreator")
@@ -465,6 +466,7 @@ model Election {
   voterElections    VoterElection[]
   ballots           Ballot[]
   agentLinks        AgentAssignment[]
+  accreditorLinks   AccreditorAssignment[]
   accessGrants      AccessGrant[]
   resultSnapshots   ResultSnapshot[]
   eligibilityGroups ElectionEligibility[]
@@ -649,6 +651,29 @@ model AgentAssignment {
   updatedAt DateTime  @updatedAt
 
   @@unique([userId, electionId, candidateId])
+  @@index([electionId])
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+/// Which elections an accreditor may work. An ACCREDITOR holds the
+/// ACCREDIT_VOTERS capability, but capability alone would let them work every
+/// election in the organization - including ones they have no business
+/// touching. Assignment is the scope: the desk only lists, and the server
+/// only accepts, elections the accreditor has been put on.
+model AccreditorAssignment {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  electionId String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, electionId])
   @@index([electionId])
   @@index([userId])
   @@index([deletedAt])

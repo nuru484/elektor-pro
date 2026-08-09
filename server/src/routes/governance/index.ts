@@ -3,12 +3,16 @@ import { Router } from 'express';
 
 import { Capability, Role } from '../../../generated/prisma/client.js';
 import {
+  assignAccreditorController,
   assignAgentController,
   createStaffUserController,
   grantController,
+  listAccreditorAssignmentsController,
   listAgentAssignmentsController,
   listGrantsController,
   listStaffUsersController,
+  myAccreditationElectionsController,
+  removeAccreditorAssignmentController,
   removeAgentAssignmentController,
   revokeGrantController,
 } from '../../controllers/governance.controller.js';
@@ -50,6 +54,33 @@ governanceRoutes.delete(
   authenticateJWT,
   authorizeRole([Role.SUPER_ADMIN]),
   removeAgentAssignmentController,
+);
+
+// Accreditor assignments: which elections each accreditor may work.
+governanceRoutes.get(
+  '/accreditors',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_AGENTS),
+  listAccreditorAssignmentsController,
+);
+governanceRoutes.post(
+  '/accreditors',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_AGENTS),
+  ...assignAccreditorController,
+);
+governanceRoutes.delete(
+  '/accreditors/:id',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_AGENTS),
+  removeAccreditorAssignmentController,
+);
+// The signed-in accreditor's own desks (staff see every open election).
+governanceRoutes.get(
+  '/my-accreditation-elections',
+  authenticateJWT,
+  requireCapability(Capability.ACCREDIT_VOTERS),
+  myAccreditationElectionsController,
 );
 
 // Capability grants (super-admin)

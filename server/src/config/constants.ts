@@ -33,3 +33,16 @@ export const MAX_PAGE_SIZE = 100;
 
 // Audit-chain / ballot-chain genesis hash
 export const GENESIS_HASH = '0'.repeat(64);
+
+/**
+ * Elections that are still running or about to. An accreditor or agent may
+ * hold only ONE assignment among these at a time: one person cannot staff two
+ * desks, or watch two candidates, at the same event. Everything outside this
+ * set (ended, cancelled, archived) is history and never blocks a new posting.
+ */
+export const LIVE_ELECTION_STATUSES = [
+  'DRAFT',
+  'SCHEDULED',
+  'IN_PROGRESS',
+  'PAUSED',
+] as const;

@@ -1,19 +1,24 @@
 // src/controllers/governance.controller.ts
 import type { Request, RequestHandler, Response } from 'express';
 
-import { type Capability, type Role, type Status } from '../../generated/prisma/client.js';
+import { type Capability, Role, type Status } from '../../generated/prisma/client.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import multerUpload from '../config/multer.js';
-import { asyncHandler } from '../middlewares/error-handler.js';
+import { asyncHandler, UnauthorizedError } from '../middlewares/error-handler.js';
 import { handleCloudinaryUpload } from '../middlewares/handle-cloudinary-upload.js';
 import validationMiddleware from '../middlewares/validation.js';
 import {
+  assignAccreditor,
   assignAgent,
   createStaffUser,
   grantCapability,
+  listAccreditorAssignments,
   listAgentAssignments,
   listGrants,
+  listMyAccreditationElections,
+  listOpenElectionsForDesk,
   listStaffUsers,
+  removeAccreditorAssignment,
   removeAgentAssignment,
   revokeGrant,
   type StaffUserInput,
@@ -22,6 +27,7 @@ import { requestContextOf } from '../utils/auth-session.js';
 import { dayBoundary } from '../utils/date-window.js';
 import { parsePagination, sendCreated, sendList, sendOk } from '../utils/http.js';
 import {
+  assignAccreditorSchema,
   assignAgentSchema,
   createStaffUserSchema,
   grantSchema,
@@ -94,6 +100,57 @@ export const removeAgentAssignmentController = asyncHandler(
   async (req: Request, res: Response) => {
     await removeAgentAssignment(actorOf(req), req.params.id);
     sendOk(res, 'Assignment removed', { id: req.params.id });
+  },
+);
+
+export const assignAccreditorController: RequestHandler[] = [
+  ...validationMiddleware.create(assignAccreditorSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await assignAccreditor(
+      actorOf(req),
+      req.body as { electionId: string; userId: string },
+      requestContextOf(req),
+    );
+    res
+      .status(HTTP_STATUS_CODES.CREATED)
+      .json({ data, message: 'Accreditor assigned', success: true });
+  }),
+];
+
+export const listAccreditorAssignmentsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await listAccreditorAssignments(
+      {
+        electionId: str(req.query.electionId),
+        search: str(req.query.search),
+        userId: str(req.query.userId),
+      },
+      parsePagination(req.query),
+    );
+    sendList(res, 'Assignments retrieved', result.data, result.meta);
+  },
+);
+
+export const removeAccreditorAssignmentController = asyncHandler(
+  async (req: Request, res: Response) => {
+    await removeAccreditorAssignment(
+      actorOf(req),
+      req.params.id,
+      requestContextOf(req),
+    );
+    sendOk(res, 'Assignment removed', { id: req.params.id });
+  },
+);
+
+/** The signed-in accreditor's own desks. */
+export const myAccreditationElectionsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError('Authentication required');
+    const data =
+      req.user.role === Role.SUPER_ADMIN || req.user.role === Role.ADMIN
+        ? await listOpenElectionsForDesk()
+        : await listMyAccreditationElections(req.user.id);
+    sendOk(res, 'Elections retrieved', data);
   },
 );
 

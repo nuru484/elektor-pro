@@ -16,6 +16,7 @@ const adapter = new PrismaPg({ connectionString: ENV.DATABASE_URL, max: ENV.DB_P
  * `deletedAt` fields in schema.prisma.
  */
 const SOFT_DELETE_MODELS = new Set<string>([
+  'accreditorAssignment',
   'agentAssignment',
   'candidate',
   'election',

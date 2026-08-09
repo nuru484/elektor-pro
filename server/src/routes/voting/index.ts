@@ -30,6 +30,7 @@ import {
   integrityVerifyLimiter,
   votingLimiter,
 } from '../../middlewares/rateLimit.js';
+import { requireAccreditationDesk } from '../../middlewares/require-accreditation-desk.js';
 import { requireCapability } from '../../middlewares/require-capability.js';
 
 const votingRoutes = Router();
@@ -81,12 +82,14 @@ votingRoutes.get(
   '/elections/:electionId/accreditation/search',
   authenticateJWT,
   requireCapability(Capability.ACCREDIT_VOTERS),
+  requireAccreditationDesk,
   searchAccreditationController,
 );
 votingRoutes.post(
   '/elections/:electionId/voters/:voterId/accredit',
   authenticateJWT,
   requireCapability(Capability.ACCREDIT_VOTERS),
+  requireAccreditationDesk,
   accreditVoterController,
 );
 votingRoutes.delete(

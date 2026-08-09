@@ -17,6 +17,11 @@ export const assignAgentSchema = z.object({
   userId: z.string().min(1),
 });
 
+export const assignAccreditorSchema = z.object({
+  electionId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
 export const grantSchema = z.object({
   capability: z.enum(Capability),
   electionId: z.string().optional(),

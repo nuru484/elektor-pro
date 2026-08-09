@@ -9,6 +9,7 @@ import { asyncHandler, UnauthorizedError } from '../middlewares/error-handler.js
 import { ForbiddenError } from '../middlewares/error-handler.js';
 import validationMiddleware from '../middlewares/validation.js';
 import { hasCapability } from '../services/authorization/capability.service.js';
+import { canAccreditElection } from '../services/governance/governance.service.js';
 import {
   accreditVoter,
   getTurnout,
@@ -183,10 +184,16 @@ export const getTurnoutController = asyncHandler(
         select: { id: true },
         where: { electionId, userId: user.id },
       })) !== null;
+    // An accreditor's ACCREDIT_VOTERS only counts for elections they are
+    // actually assigned to - otherwise turnout would leak the whole
+    // organization's numbers to any desk operator.
+    const isAssignedAccreditor =
+      (await hasCapability(user, Capability.ACCREDIT_VOTERS, electionId)) &&
+      (await canAccreditElection(user, electionId));
     const allowed =
       isStaff ||
       isAssignedAgent ||
-      (await hasCapability(user, Capability.ACCREDIT_VOTERS, electionId)) ||
+      isAssignedAccreditor ||
       (await hasCapability(user, Capability.VIEW_RESULTS, electionId));
     if (!allowed) {
       throw new ForbiddenError('Turnout is not available to you');

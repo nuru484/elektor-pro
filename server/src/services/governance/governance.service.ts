@@ -1,8 +1,10 @@
 import {
   type Capability,
+  ElectionStatus,
   Role,
   type Status as UserStatus,
 } from '../../../generated/prisma/client.js';
+import { LIVE_ELECTION_STATUSES } from '../../config/constants.js';
 // src/services/governance/governance.service.ts
 // Staff/agent/candidate account creation, agent assignments, and capability
 // grants. These account-level actions are super-admin / capability gated and
@@ -11,6 +13,7 @@ import { afterCommit } from '../../lib/outbox.js';
 import prisma from '../../lib/prisma.js';
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
 } from '../../middlewares/error-handler.js';
@@ -172,6 +175,24 @@ export const assignAgent = async (
   if (user?.role !== Role.AGENT) {
     throw new BadRequestError('User is not an agent');
   }
+  // One live posting at a time, for the same reason as accreditors: an agent
+  // observes one candidate at one election, and a second live assignment
+  // would mean they are expected in two rooms at once.
+  const conflict = await prisma.agentAssignment.findFirst({
+    select: { election: { select: { name: true } } },
+    where: {
+      election: { status: { in: [...LIVE_ELECTION_STATUSES] } },
+      electionId: { not: input.electionId },
+      userId: input.userId,
+    },
+  });
+  if (conflict) {
+    throw new ConflictError(
+      `This agent is already assigned to ${conflict.election.name}. Remove that assignment first - an agent can only observe one live election at a time.`,
+      { code: 'AGENT_ALREADY_ASSIGNED' },
+    );
+  }
+
   const assignment = await prisma.agentAssignment.create({
     data: {
       candidateId: input.candidateId ?? null,
@@ -245,6 +266,208 @@ export const removeAgentAssignment = async (
   const found = await prisma.agentAssignment.findUnique({ select: { id: true }, where: { id } });
   if (!found) throw new NotFoundError('Assignment not found');
   await prisma.agentAssignment.delete({ where: { id } });
+};
+
+// --- Accreditor assignments ---
+
+/**
+ * Put an accreditor on an election's desk.
+ *
+ * Holding ACCREDIT_VOTERS is not enough on its own: without an assignment an
+ * accreditor would see - and could work - every election in the
+ * organization. The assignment is what scopes them to one.
+ */
+export const assignAccreditor = async (
+  actor: Actor,
+  input: { electionId: string; userId: string },
+  ctx: Ctx = {},
+): Promise<{ id: string }> => {
+  const user = await prisma.user.findUnique({
+    select: { role: true },
+    where: { id: input.userId },
+  });
+  if (user?.role !== Role.ACCREDITOR) {
+    throw new BadRequestError('User is not an accreditor');
+  }
+  const election = await prisma.election.findUnique({
+    select: { id: true },
+    where: { id: input.electionId },
+  });
+  if (!election) throw new NotFoundError('Election not found');
+
+  // One live desk at a time: an accreditor physically staffs one election,
+  // so a second live posting is a mistake worth refusing rather than a
+  // capability to model. Finished elections are history and never block.
+  const conflict = await prisma.accreditorAssignment.findFirst({
+    select: { election: { select: { name: true } } },
+    where: {
+      election: { status: { in: [...LIVE_ELECTION_STATUSES] } },
+      electionId: { not: input.electionId },
+      userId: input.userId,
+    },
+  });
+  if (conflict) {
+    throw new ConflictError(
+      `This accreditor is already assigned to ${conflict.election.name}. Remove that assignment first - an accreditor can only staff one live election at a time.`,
+      { code: 'ACCREDITOR_ALREADY_ASSIGNED' },
+    );
+  }
+
+  // Re-assigning is a no-op rather than a duplicate-key error: the admin's
+  // intent ("this person works this election") is already satisfied, and a
+  // previously removed assignment is restored by clearing deletedAt.
+  const assignment = await prisma.accreditorAssignment.upsert({
+    create: { electionId: input.electionId, userId: input.userId },
+    select: { id: true },
+    update: { deletedAt: null },
+    where: {
+      userId_electionId: { electionId: input.electionId, userId: input.userId },
+    },
+  });
+  await appendAudit(prisma, {
+    action: 'accreditor.assigned',
+    actorId: actor.id,
+    actorRole: actor.role,
+    entity: 'AccreditorAssignment',
+    entityId: assignment.id,
+    ipAddress: ctx.ipAddress,
+    metadata: { electionId: input.electionId, userId: input.userId },
+    userAgent: ctx.userAgent,
+  });
+  return assignment;
+};
+
+export const listAccreditorAssignments = async (
+  filters: { electionId?: string; search?: string; userId?: string },
+  pagination: PaginationParams,
+) => {
+  const where = {
+    ...(filters.electionId ? { electionId: filters.electionId } : {}),
+    ...(filters.userId ? { userId: filters.userId } : {}),
+    ...(filters.search
+      ? {
+          OR: [
+            { user: { firstName: { contains: filters.search, mode: 'insensitive' as const } } },
+            { user: { lastName: { contains: filters.search, mode: 'insensitive' as const } } },
+            { election: { name: { contains: filters.search, mode: 'insensitive' as const } } },
+          ],
+        }
+      : {}),
+  };
+  const [data, total] = await Promise.all([
+    prisma.accreditorAssignment.findMany({
+      include: {
+        election: { select: { endDate: true, id: true, name: true, startDate: true, status: true } },
+        user: { select: { email: true, firstName: true, id: true, lastName: true, phone: true, profilePicture: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: pagination.skip,
+      take: pagination.limit,
+      where,
+    }),
+    prisma.accreditorAssignment.count({ where }),
+  ]);
+  return { data, meta: buildMeta(total, pagination.page, pagination.limit) };
+};
+
+export const removeAccreditorAssignment = async (
+  actor: Actor,
+  id: string,
+  ctx: Ctx = {},
+): Promise<void> => {
+  const found = await prisma.accreditorAssignment.findFirst({
+    select: { electionId: true, id: true, userId: true },
+    where: { id },
+  });
+  if (!found) throw new NotFoundError('Assignment not found');
+  await prisma.accreditorAssignment.delete({ where: { id } });
+  await appendAudit(prisma, {
+    action: 'accreditor.unassigned',
+    actorId: actor.id,
+    actorRole: actor.role,
+    entity: 'AccreditorAssignment',
+    entityId: id,
+    ipAddress: ctx.ipAddress,
+    metadata: { electionId: found.electionId, userId: found.userId },
+    userAgent: ctx.userAgent,
+  });
+};
+
+const DESK_ELECTION_SELECT = {
+  accreditationRequired: true,
+  endDate: true,
+  id: true,
+  name: true,
+  resultsPolicy: true,
+  resultsPublishedAt: true,
+  slug: true,
+  startDate: true,
+  status: true,
+  voteCodeEnabled: true,
+} as const;
+
+/**
+ * An accreditor's own console: the one election they are currently posted to,
+ * plus every election they have worked before. The split is what the console
+ * renders - a desk to work, and a record to look back on - and it is derived
+ * from election status rather than stored, so an election ending moves itself
+ * into history with no extra write.
+ */
+export const listMyAccreditationElections = async (userId: string) => {
+  const rows = await prisma.accreditorAssignment.findMany({
+    orderBy: { election: { startDate: 'desc' } },
+    select: { createdAt: true, election: { select: DESK_ELECTION_SELECT } },
+    where: { userId },
+  });
+  const live = new Set<string>(LIVE_ELECTION_STATUSES);
+  const current = rows.find((row) => live.has(row.election.status)) ?? null;
+  return {
+    current: current
+      ? { ...current.election, assignedAt: current.createdAt }
+      : null,
+    history: rows
+      .filter((row) => !live.has(row.election.status))
+      .map((row) => ({ ...row.election, assignedAt: row.createdAt })),
+  };
+};
+
+/**
+ * Every election a staff member can run a desk for. Admins are not assigned
+ * to elections, so their console lists the ones accreditation applies to.
+ */
+export const listOpenElectionsForDesk = async () => {
+  const elections = await prisma.election.findMany({
+    orderBy: { startDate: 'desc' },
+    select: DESK_ELECTION_SELECT,
+    where: {
+      status: {
+        in: [
+          ElectionStatus.SCHEDULED,
+          ElectionStatus.IN_PROGRESS,
+          ElectionStatus.PAUSED,
+        ],
+      },
+    },
+  });
+  // Staff are not posted to a single desk; their console lists them all, so
+  // every open election is "current" and there is no personal history.
+  return { current: null, history: [], staffElections: elections };
+};
+
+/**
+ * Is this user allowed to work `electionId`'s desk? Staff run every desk;
+ * an accreditor needs an assignment. Used by every accreditation endpoint.
+ */
+export const canAccreditElection = async (
+  user: { id: string; role: Role },
+  electionId: string,
+): Promise<boolean> => {
+  if (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN) return true;
+  const assignment = await prisma.accreditorAssignment.findFirst({
+    select: { id: true },
+    where: { electionId, userId: user.id },
+  });
+  return assignment !== null;
 };
 
 // --- Capability grants ---
