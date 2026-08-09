@@ -208,3 +208,15 @@ export const uploadLimiter = createRateLimiter(
   10, // 10 uploads per hour
   "Upload limit exceeded",
 );
+
+/**
+ * Demo sign-in. Every hit mints a session, so a `skipSuccessfulRequests`
+ * limiter would never actually limit it - all attempts are counted. The cap
+ * is generous enough for a visitor trying each role in turn, low enough that
+ * the open endpoint cannot be farmed for sessions.
+ */
+export const demoLoginLimiter = createRateLimiter(
+  15 * 60 * 1000,
+  30,
+  "Too many demo sign-ins. Please try again in a few minutes.",
+);

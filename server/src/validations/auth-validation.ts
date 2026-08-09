@@ -1,6 +1,8 @@
 // src/validations/auth-validation.ts
 import { z } from 'zod';
 
+import { DEMO_ROLES } from '../services/auth/demo-login.service.js';
+
 export const loginSchema = z.object({
   emailOrPhone: z.string().min(1, { message: 'Email or phone number is required' }),
   password: z
@@ -65,4 +67,10 @@ export const requestPhoneChangeSchema = z.object({
 
 export const confirmCodeSchema = z.object({
   code: z.string().min(4).max(10),
+});
+
+// --- Demo sign-in (portfolio) ---
+
+export const demoLoginSchema = z.object({
+  role: z.enum(DEMO_ROLES),
 });

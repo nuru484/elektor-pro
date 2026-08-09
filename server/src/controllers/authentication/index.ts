@@ -1,4 +1,5 @@
 export * from './account.js';
+export * from './demo-login.js';
 export * from './login.js';
 export * from './logout.js';
 export * from './password.js';

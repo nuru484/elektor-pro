@@ -8,6 +8,7 @@ import {
   changePasswordController,
   confirmEmailChangeController,
   confirmPhoneChangeController,
+  demoLogin,
   disableTwoFactorController,
   forgotPasswordController,
   listSessionsController,
@@ -32,6 +33,7 @@ import authenticateJWT from '../../middlewares/authenticate-jwt.js';
 import { authorizeRole } from '../../middlewares/authorize-roles.js';
 import {
   authRateLimiter,
+  demoLoginLimiter,
   passwordResetLimiter,
 } from '../../middlewares/rateLimit.js';
 
@@ -40,6 +42,8 @@ const authRoutes = Router();
 // Public
 authRoutes.post('/login', authRateLimiter, ...login);
 authRoutes.post('/2fa/verify', authRateLimiter, ...verifyTwoFactorLogin);
+// Portfolio demo sign-in: no credentials, the server picks the seeded account.
+authRoutes.post('/demo-login', demoLoginLimiter, ...demoLogin);
 authRoutes.post('/refresh', refreshToken);
 authRoutes.post('/logout', logout);
 authRoutes.post(
