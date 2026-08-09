@@ -18,6 +18,7 @@ const PAGE_LINKS = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#security", label: "Security" },
   { href: "/#faq", label: "FAQ" },
+  { href: "/demo", label: "Live demo" },
 ];
 
 export function SiteHeader() {

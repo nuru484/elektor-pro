@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  BarChart3,
   Crown,
   LayoutGrid,
   Lock,
@@ -393,8 +394,15 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         ))}
       </div>
 
-      {/* Below the numbers: the transparency step. */}
-      <div className="flex justify-center rounded-xl border border-border bg-card px-4 py-3">
+      {/* Below the numbers: the visual view, then the transparency step. */}
+      <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 rounded-xl border border-border bg-card px-4 py-3">
+        <Link
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
+          href={`/results/${election.slug}/charts`}
+          title="The same results as charts and graphs"
+        >
+          <BarChart3 className="size-4" /> See these results in charts
+        </Link>
         <Link
           className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
           href={`/results/${election.slug}/verify`}

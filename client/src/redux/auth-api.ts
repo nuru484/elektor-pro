@@ -11,10 +11,31 @@ interface LoginResult {
   success: true;
 }
 
+/** Roles a visitor can try from the demo page. */
+export type DemoRole =
+  | "ACCREDITOR"
+  | "ADMIN"
+  | "AGENT"
+  | "CANDIDATE"
+  | "SUPER_ADMIN"
+  | "VOTER";
+
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
     activateTwoFactor: build.mutation<ApiResponse<{ recoveryCodes: string[] }>, { code: string }>({
       query: (body) => ({ body, method: "POST", url: "/auth/2fa/activate" }),
+    }),
+    demoLogin: build.mutation<ApiResponse<CurrentUser>, { role: DemoRole }>({
+      invalidatesTags: ["CurrentUser"],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const result = await queryFulfilled;
+          dispatch(userLoggedIn({ user: result.data.data }));
+        } catch {
+          // The demo page surfaces the error; auth state is untouched.
+        }
+      },
+      query: (body) => ({ body, method: "POST", url: "/auth/demo-login" }),
     }),
     getMe: build.query<ApiResponse<CurrentUser>, void>({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
@@ -81,6 +102,7 @@ export const authApi = apiSlice.injectEndpoints({
 
 export const {
   useActivateTwoFactorMutation,
+  useDemoLoginMutation,
   useGetMeQuery,
   useLoginMutation,
   useLogoutMutation,

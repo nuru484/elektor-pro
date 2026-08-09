@@ -2,9 +2,11 @@
 // grants, groups/categories, and the organization settings.
 import type {
   AccessGrant,
+  AccreditorAssignment,
   AgentAssignment,
-  AgentDashboardRow,
+  AgentDashboardData,
   ApiResponse,
+  DeskAssignments,
   Group,
   GroupCategory,
   ListQuery,
@@ -14,7 +16,6 @@ import type {
 } from "@/types/api";
 
 import { apiSlice } from "./api-slice";
-import { type PersonalListParams } from "./voting-api";
 
 const qs = (params: object): string => {
   const search = new URLSearchParams();
@@ -31,6 +32,13 @@ type DateWindow = { from?: string; to?: string };
 
 export const governanceApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
+    assignAccreditor: build.mutation<
+      unknown,
+      { electionId: string; userId: string }
+    >({
+      invalidatesTags: ["Accreditors"],
+      query: (body) => ({ body, method: "POST", url: "/accreditors" }),
+    }),
     assignAgent: build.mutation<
       unknown,
       { candidateId?: string; electionId: string; userId: string }
@@ -62,19 +70,9 @@ export const governanceApi = apiSlice.injectEndpoints({
       invalidatesTags: ["StaffUser"],
       query: (id) => ({ method: "DELETE", url: `/users/${id}` }),
     }),
-    getAgentDashboard: build.query<
-      PaginatedResponse<AgentDashboardRow>,
-      PersonalListParams
-    >({
+    getAgentDashboard: build.query<ApiResponse<AgentDashboardData>, void>({
       providesTags: ["Dashboard"],
-      query: (params) => {
-        const search = new URLSearchParams();
-        for (const [key, value] of Object.entries(params)) {
-          if (value !== undefined && value !== "") search.set(key, String(value));
-        }
-        const str = search.toString();
-        return `/dashboard/agent${str ? `?${str}` : ""}`;
-      },
+      query: () => "/dashboard/agent",
     }),
     confirmUserContact: build.mutation<unknown, { code: string; id: string }>({
       invalidatesTags: ["StaffUser", "Agents"],
@@ -110,6 +108,17 @@ export const governanceApi = apiSlice.injectEndpoints({
     >({
       invalidatesTags: ["Grants", "CurrentUser"],
       query: (body) => ({ body, method: "POST", url: "/grants" }),
+    }),
+    listAccreditors: build.query<
+      PaginatedResponse<AccreditorAssignment>,
+      ListQuery & { electionId?: string; userId?: string }
+    >({
+      providesTags: ["Accreditors"],
+      query: (params) => `/accreditors${qs(params)}`,
+    }),
+    listMyDeskElections: build.query<ApiResponse<DeskAssignments>, void>({
+      providesTags: ["Accreditors"],
+      query: () => "/my-accreditation-elections",
     }),
     listAgents: build.query<
       PaginatedResponse<AgentAssignment>,
@@ -160,6 +169,10 @@ export const governanceApi = apiSlice.injectEndpoints({
         method: "POST",
         url: `/users/${id}/contact/request`,
       }),
+    }),
+    removeAccreditor: build.mutation<unknown, string>({
+      invalidatesTags: ["Accreditors"],
+      query: (id) => ({ method: "DELETE", url: `/accreditors/${id}` }),
     }),
     removeAgent: build.mutation<unknown, string>({
       invalidatesTags: ["Agents"],
@@ -233,6 +246,7 @@ export const governanceApi = apiSlice.injectEndpoints({
 });
 
 export const {
+  useAssignAccreditorMutation,
   useAssignAgentMutation,
   useConfirmUserContactMutation,
   useCreateGroupCategoryMutation,
@@ -248,11 +262,14 @@ export const {
   useGetStaffUserQuery,
   useLockUserMutation,
   useGrantCapabilityMutation,
+  useListAccreditorsQuery,
   useListAgentsQuery,
+  useListMyDeskElectionsQuery,
   useListGrantsQuery,
   useListGroupCategoriesQuery,
   useListGroupsQuery,
   useListStaffUsersQuery,
+  useRemoveAccreditorMutation,
   useRemoveAgentMutation,
   useRequestUserContactMutation,
   useRevokeGrantMutation,

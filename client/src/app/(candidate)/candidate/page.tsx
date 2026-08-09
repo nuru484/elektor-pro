@@ -16,18 +16,17 @@ import {
   type ElectionFilter,
 } from "@/components/console/election-filter-bar";
 import { ListPagination } from "@/components/console/list-pagination";
+import { ResultsAccessTab } from "@/components/console/results-access";
 import { useDebounce } from "@/hooks/use-debounce";
+import { CardTitleRow } from "@/components/console/card-title-row";
 import { EntityAvatar } from "@/components/console/entity-avatar";
+import { PhotoViewerTrigger } from "@/components/console/photo-viewer";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/link-button";
 import { CardGridSkeleton, Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useGetCandidateVettingQuery } from "@/redux/admin-api";
 import { useGetMyCandidaciesQuery } from "@/redux/voting-api";
@@ -76,6 +75,30 @@ function VettingDetails({ candidacy }: { candidacy: MyCandidacy }) {
               {vetting.total} / {vetting.maxTotal} ({percent}%)
             </span>
           </div>
+          {/* Score meter, with the pass mark as a tick so "how close am I"
+              is readable at a glance. */}
+          <div className="relative">
+            <div
+              aria-label={`Vetting score ${percent}%`}
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={Math.round(percent)}
+              className="h-1.5 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+            >
+              <div
+                className="h-full rounded-full bg-chart-1"
+                style={{ width: `${Math.min(percent, 100)}%` }}
+              />
+            </div>
+            {candidacy.election.vettingPassPercent != null && (
+              <span
+                aria-hidden
+                className="absolute -top-0.5 h-2.5 w-0.5 rounded-full bg-foreground/60"
+                style={{ left: `${Math.min(candidacy.election.vettingPassPercent, 100)}%` }}
+              />
+            )}
+          </div>
           {candidacy.election.vettingPassPercent != null && (
             <p className="text-[11px] text-muted-foreground">
               Pass mark: {candidacy.election.vettingPassPercent}%
@@ -99,19 +122,16 @@ function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle
-            className="min-w-0 text-base [overflow-wrap:anywhere]"
-            title={election.name}
-          >
-            {election.name}
-          </CardTitle>
-          <StatusBadge status={election.status} />
-        </div>
+        <CardTitleRow
+          tag={<StatusBadge status={election.status} />}
+          title={election.name}
+        />
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <EntityAvatar name={candidacy.name} url={candidacy.profilePicture} />
+          <PhotoViewerTrigger name={candidacy.name} url={candidacy.profilePicture}>
+            <EntityAvatar name={candidacy.name} size="size-10" url={candidacy.profilePicture} />
+          </PhotoViewerTrigger>
           <div className="min-w-0">
             {/* Portfolio and nickname are user text: plain wrapped lines. */}
             <p className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
@@ -150,11 +170,13 @@ function CandidacyCard({ candidacy }: { candidacy: MyCandidacy }) {
                 .filter((c) => c.id !== candidacy.id)
                 .map((rival) => (
                   <li className="flex min-w-0 items-center gap-2" key={rival.id}>
-                    <EntityAvatar
-                      name={rival.name}
-                      size="size-6"
-                      url={rival.profilePicture}
-                    />
+                    <PhotoViewerTrigger name={rival.name} url={rival.profilePicture}>
+                      <EntityAvatar
+                        name={rival.name}
+                        size="size-6"
+                        url={rival.profilePicture}
+                      />
+                    </PhotoViewerTrigger>
                     <span className="min-w-0 flex-1 truncate text-xs">
                       {rival.ballotNumber != null && (
                         <span className="mr-1 font-mono text-muted-foreground">
@@ -237,6 +259,9 @@ export default function CandidateDashboardPage() {
   });
   const candidacies = data?.data ?? [];
   const filtered = Boolean(filter.search || filter.from || filter.to);
+  // The filter bar is only meaningful once there is something to filter. On
+  // an unfiltered empty console it is pure noise, so it is not rendered.
+  const showFilters = candidacies.length > 0 || filtered;
 
   return (
     <div className="space-y-6">
@@ -245,38 +270,55 @@ export default function CandidateDashboardPage() {
         title="My candidacies"
       />
 
-      <ElectionFilterBar
-        filter={filter}
-        onChange={(next) => {
-          setFilter(next);
-          setPage(1);
-        }}
-      />
+      <Tabs className="gap-4" defaultValue="candidacies">
+        <TabsList>
+          <TabsTrigger value="candidacies">Candidacies</TabsTrigger>
+          <TabsTrigger value="results">Results</TabsTrigger>
+        </TabsList>
 
-      {isLoading ? (
-        <CardGridSkeleton count={3} />
-      ) : isError ? (
-        <ErrorState />
-      ) : candidacies.length === 0 ? (
-        <EmptyState
-          description={
-            filtered
-              ? "No candidacy matches your search or period. Clear the filters to see everything."
-              : "When you are nominated for a portfolio, your candidacy appears here with its vetting progress and results."
-          }
-          icon={Award}
-          title={filtered ? "No matches" : "No candidacies yet"}
-        />
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {candidacies.map((candidacy) => (
-              <CandidacyCard candidacy={candidacy} key={candidacy.id} />
-            ))}
-          </div>
-          <ListPagination meta={data?.meta} onPageChange={setPage} />
-        </>
-      )}
+        <TabsContent className="space-y-4" value="candidacies">
+          {showFilters && (
+            <ElectionFilterBar
+              filter={filter}
+              onChange={(next) => {
+                setFilter(next);
+                setPage(1);
+              }}
+            />
+          )}
+
+          {isLoading ? (
+            <CardGridSkeleton count={3} />
+          ) : isError ? (
+            <ErrorState />
+          ) : candidacies.length === 0 ? (
+            <EmptyState
+              description={
+                filtered
+                  ? "No candidacy matches your search or period. Clear the filters to see everything."
+                  : "When you are nominated for a portfolio, your candidacy appears here with its vetting progress and results."
+              }
+              icon={Award}
+              title={filtered ? "No matches" : "No candidacies yet"}
+            />
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {candidacies.map((candidacy) => (
+                  <CandidacyCard candidacy={candidacy} key={candidacy.id} />
+                ))}
+              </div>
+              <ListPagination meta={data?.meta} onPageChange={setPage} />
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="results">
+          <ResultsAccessTab
+            elections={candidacies.map((candidacy) => candidacy.election)}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

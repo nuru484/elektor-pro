@@ -123,6 +123,7 @@ export const apiSlice = createApi({
   endpoints: () => ({}),
   reducerPath: "api",
   tagTypes: [
+    "Accreditors",
     "Agents",
     "AuditLog",
     "Candidate",

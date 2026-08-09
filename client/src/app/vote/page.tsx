@@ -246,6 +246,75 @@ function HistoryCard({ item }: { item: VoterHistoryItem }) {
   );
 }
 
+/**
+ * The voter's own numbers: elections open to them, ballots they have cast,
+ * and the participation rate the two imply. Totals come from the list
+ * endpoints' meta, so a `limit: 1` probe per list is enough.
+ */
+function ParticipationSummary() {
+  const { data: electionsData } = useListVoterElectionsQuery({ limit: 1, page: 1 });
+  const { data: historyData } = useGetVoterHistoryQuery({ limit: 1, page: 1 });
+  const eligible = electionsData?.meta?.total;
+  const voted = historyData?.meta?.total;
+  if (eligible === undefined || voted === undefined) return null;
+  const pct = eligible === 0 ? 0 : Math.min((voted / eligible) * 100, 100);
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {[
+        { label: "Your elections", value: String(eligible) },
+        { label: "Ballots cast", value: String(voted) },
+        { label: "Participation", value: `${pct.toFixed(0)}%` },
+      ].map((tile) => (
+        <div
+          className="rounded-xl border border-border bg-card px-3 py-2.5"
+          key={tile.label}
+        >
+          <p className="text-[11px] font-medium text-muted-foreground">
+            {tile.label}
+          </p>
+          <p className="font-mono text-lg font-semibold tabular-nums">
+            {tile.value}
+          </p>
+        </div>
+      ))}
+      <div
+        aria-label={`Participation ${pct.toFixed(0)}%`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={Math.round(pct)}
+        className="col-span-3 h-1.5 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+      >
+        <div
+          className="h-full rounded-full bg-chart-1"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The filter bar, shown only once the voter actually has elections or votes
+ * to narrow down. The totals come from the list endpoints' meta, so a
+ * `limit: 1` probe answers it without fetching a page of rows.
+ */
+function VoterFilters({
+  filter,
+  onChange,
+}: {
+  filter: ElectionFilter;
+  onChange: (next: ElectionFilter) => void;
+}) {
+  const { data: electionsData } = useListVoterElectionsQuery({ limit: 1, page: 1 });
+  const { data: historyData } = useGetVoterHistoryQuery({ limit: 1, page: 1 });
+  const total =
+    (electionsData?.meta?.total ?? 0) + (historyData?.meta?.total ?? 0);
+  const active = filter.search !== "" || filter.from !== "" || filter.to !== "";
+  if (total === 0 && !active) return null;
+  return <ElectionFilterBar filter={filter} onChange={onChange} />;
+}
+
 function VotingHistory({ filter }: { filter: ElectionFilter }) {
   const { params, setPage } = usePersonalListParams(filter);
   const { data, isLoading } = useGetVoterHistoryQuery(params);
@@ -427,12 +496,15 @@ export default function VotePage() {
               Everything you can vote in - and everything you already voted.
             </p>
           </div>
+          <ParticipationSummary />
           <Tabs className="gap-4" defaultValue="elections">
             <TabsList>
               <TabsTrigger value="elections">Elections</TabsTrigger>
               <TabsTrigger value="votes">My votes</TabsTrigger>
             </TabsList>
-            <ElectionFilterBar filter={filter} onChange={setFilter} />
+            {/* Filters only once there is something to filter: on an empty
+                portal they are noise above an empty state. */}
+            <VoterFilters filter={filter} onChange={setFilter} />
             <TabsContent value="elections">
               <ElectionPicker filter={filter} />
             </TabsContent>

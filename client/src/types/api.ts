@@ -180,6 +180,41 @@ export interface AgentAssignment {
   };
 }
 
+/** An accreditor's permission to work one election's desk. */
+export interface AccreditorAssignment {
+  createdAt: string;
+  election: {
+    endDate: string;
+    id: string;
+    name: string;
+    startDate: string;
+    status: string;
+  };
+  id: string;
+  user: {
+    email: null | string;
+    firstName: string;
+    id: string;
+    lastName: string;
+    phone?: null | string;
+    profilePicture?: null | string;
+  };
+}
+
+/** An election an accreditor may run the desk for. */
+export interface DeskElection {
+  accreditationRequired: boolean;
+  endDate: string;
+  id: string;
+  name: string;
+  resultsPolicy?: string;
+  resultsPublishedAt?: null | string;
+  slug: string;
+  startDate: string;
+  status: string;
+  voteCodeEnabled: boolean;
+}
+
 export interface AccessGrant {
   capability: Capability;
   createdAt: string;
@@ -211,11 +246,31 @@ export interface AgentDashboardRow {
     endDate: string;
     id: string;
     name: string;
+    resultsPolicy?: string;
+    resultsPublishedAt?: null | string;
     slug: string;
     startDate: string;
     status: ElectionStatus;
   };
   id: string;
+}
+
+/**
+ * An agent's console payload. One live posting at a time (the server refuses
+ * a second), so `current` is a single row rather than a list; everything
+ * whose election has finished is history.
+ */
+export interface AgentDashboardData {
+  current: AgentDashboardRow | null;
+  history: AgentDashboardRow[];
+}
+
+/** An accreditor's console payload: the desk they staff now, plus past ones. */
+export interface DeskAssignments {
+  current: (DeskElection & { assignedAt: string }) | null;
+  history: (DeskElection & { assignedAt: string })[];
+  /** Staff are not posted to one desk: they get every open election here. */
+  staffElections?: DeskElection[];
 }
 
 /** A signed-in device from GET /auth/sessions. */

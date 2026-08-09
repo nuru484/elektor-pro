@@ -179,6 +179,12 @@ export default function LoginPage() {
             Voter portal
           </Link>
         </p>
+        <p className="text-center text-sm text-muted-foreground">
+          Just looking around?{" "}
+          <Link className="font-medium text-brand hover:underline" href="/demo">
+            Try a demo account
+          </Link>
+        </p>
       </form>
     </AuthShell>
   );

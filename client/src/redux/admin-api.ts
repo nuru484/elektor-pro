@@ -49,7 +49,32 @@ export interface AuditLogRow {
   userAgent: null | string;
 }
 
+export interface TrendData {
+  direction: "downward" | "neutral" | "upward";
+  percentage: number;
+}
+
+export interface TurnoutBoardRow {
+  eligible: number;
+  endDate: string;
+  id: string;
+  name: string;
+  percentage: number;
+  slug: string;
+  startDate: string;
+  status: string;
+  voted: number;
+}
+
 interface DashboardData {
+  electionsByStatus: { count: number; status: string }[];
+  needsAttention: {
+    candidatesUnderReview: number;
+    electionsEndingSoon: number;
+    electionsStartingSoon: number;
+    pendingChanges: number;
+    unpublishedEndedElections: number;
+  };
   recentActivity: { action: string; createdAt: string; entity: string; id: string }[];
   recentElections: Election[];
   stats: {
@@ -59,6 +84,13 @@ interface DashboardData {
     totalElections: number;
     totalVoters: number;
   };
+  trends: {
+    ballotsCast: { current: number; trend: TrendData };
+    votersRegistered: { current: number; trend: TrendData };
+    windowDays: number;
+  };
+  turnoutByElection: TurnoutBoardRow[];
+  votesSeries: { count: number; day: string }[];
 }
 
 export const adminApi = apiSlice.injectEndpoints({
