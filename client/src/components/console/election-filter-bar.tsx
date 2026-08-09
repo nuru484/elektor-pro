@@ -1,9 +1,16 @@
 "use client";
 
-// Compact search + period filter for the personal consoles (voter, agent,
+// Compact search + period filter for the personal consoles (voter,
 // candidate): their election cards are client-side lists, so filtering is
 // instant. "From" and "To" match any election whose voting window OVERLAPS
 // the chosen period - "what ran (or runs) during this time".
+//
+// Layout: there are only three controls, so from lg they share one row with
+// the search taking the slack. Below that the search keeps its own row and
+// the two dates split one - a date input is unusable squeezed into a third
+// of a phone screen. No card wrapper: the consoles that mount this already
+// sit inside a padded shell, and nesting a second padded box just eats
+// horizontal space on phones.
 import { X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -25,8 +32,9 @@ export function ElectionFilterBar({
 }) {
   const active = filter.search !== "" || filter.from !== "" || filter.to !== "";
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-      <div className="relative">
+    <div className="space-y-2">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+      <div className="relative lg:flex-1">
         <Input
           className="pr-9"
           onChange={(e) => {
@@ -50,8 +58,8 @@ export function ElectionFilterBar({
           </button>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="min-w-0">
+      <div className="grid grid-cols-2 gap-2 lg:w-auto lg:flex-none">
+        <label className="min-w-0 lg:w-40">
           <span className="text-[11px] font-medium text-muted-foreground">From</span>
           <Input
             onChange={(e) => {
@@ -62,7 +70,7 @@ export function ElectionFilterBar({
             value={filter.from}
           />
         </label>
-        <label className="min-w-0">
+        <label className="min-w-0 lg:w-40">
           <span className="text-[11px] font-medium text-muted-foreground">To</span>
           <Input
             onChange={(e) => {
@@ -73,6 +81,7 @@ export function ElectionFilterBar({
             value={filter.to}
           />
         </label>
+      </div>
       </div>
       {active && (
         <button

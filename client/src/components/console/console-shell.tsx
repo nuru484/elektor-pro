@@ -20,6 +20,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import type { Role } from "@/types/api";
 
+import type { NavItem } from "./nav-config";
+
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -216,6 +218,26 @@ function UserMenu() {
   );
 }
 
+/** One link in the top-bar console nav. */
+function TopNavLink({ item }: { item: NavItem }) {
+  const pathname = usePathname();
+  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+  return (
+    <Link
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+      )}
+      href={item.href}
+    >
+      <item.icon className="size-4" />
+      {item.label}
+    </Link>
+  );
+}
+
 function ConsoleFooter() {
   return (
     <footer className="border-t border-border bg-background/95">
@@ -250,12 +272,25 @@ function ConsoleFooter() {
 export function ConsoleShell({
   allowedRoles,
   children,
+  nav,
 }: {
   /** Roles allowed into this area; anyone else is sent to their home. */
   allowedRoles?: Role[];
   children: React.ReactNode;
+  /**
+   * "sidebar" is the staff console: many sections, so they need a rail.
+   * "topbar" is for the personal consoles (agent, candidate, accreditor),
+   * whose whole navigation is two or three links - a 264px sidebar holding
+   * three items is mostly empty space, and it costs a phone its drawer.
+   *
+   * Left unset it follows the ROLE, which is what shared areas want: an
+   * agent opening /profile should stay in the chrome they were already in,
+   * not have the console reshape itself under them mid-navigation.
+   */
+  nav?: "sidebar" | "topbar";
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isError, isLoading } = useGetMeQuery();
   const { initialized, role, user } = useAuthRole();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -330,6 +365,55 @@ export function ConsoleShell({
     </TooltipProvider>
   );
 
+  const chrome =
+    nav ?? (role === "SUPER_ADMIN" || role === "ADMIN" ? "sidebar" : "topbar");
+
+  if (chrome === "topbar" && role) {
+    const links = sectionsForRole(role, user.capabilities ?? []).flatMap(
+      (section) => section.items,
+    );
+    return (
+      <div className="flex min-h-dvh flex-col bg-background">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 py-3">
+              <Logo href={homeForRole(role)} imgSize={30} textClassName="max-[380px]:hidden text-lg" />
+              <div className="flex min-w-0 items-center gap-1.5">
+                <ThemeToggle />
+                {/* Which console you are in, immediately beside the account
+                    menu: it describes who you are signed in as, so it belongs
+                    against the avatar rather than the wordmark. */}
+                <span className="hidden shrink-0 rounded-full border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
+                  {ROLE_LABELS[role]}
+                </span>
+                <UserMenu />
+              </div>
+            </div>
+          </div>
+          {/* The links get their own row so long labels never collide with
+              the account menu, and can scroll sideways on a narrow phone
+              rather than wrapping into a second stack. */}
+          <div className="px-4 pb-2 sm:px-6 lg:px-8">
+            <nav className="no-scrollbar mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto">
+              {links.map((item) => (
+                <TopNavLink item={item} key={item.href} />
+              ))}
+            </nav>
+          </div>
+        </header>
+
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {/* Keyed by route so the enter animation replays on navigation. */}
+          <div className="page-enter mx-auto w-full max-w-6xl" key={pathname}>
+            {children}
+          </div>
+        </main>
+
+        <ConsoleFooter />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -377,7 +461,9 @@ export function ConsoleShell({
         </header>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
+          <div className="page-enter mx-auto w-full max-w-6xl" key={pathname}>
+            {children}
+          </div>
         </main>
 
         <ConsoleFooter />

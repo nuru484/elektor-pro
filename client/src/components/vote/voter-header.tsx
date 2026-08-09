@@ -7,16 +7,24 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { clearSessionMarker } from "@/lib/session-marker";
 import { useLogoutMutation } from "@/redux/auth-api";
 
 /**
- * The voter portal's chrome: wordmark plus a slim top navbar (elections,
- * profile, logout) so every voter page keeps the same light layout - no
- * sidebar console. `nav` is off only for the signed-out state.
+ * The voter portal's chrome: wordmark plus a slim top navbar - the
+ * elections link, then profile and sign-out behind an account menu - so
+ * every voter page keeps the same light layout, no sidebar console. `nav`
+ * is off only for the signed-out state.
  */
 export function VoterChrome({
   children,
@@ -59,25 +67,45 @@ export function VoterChrome({
                 <Vote className="size-4" />
                 <span className="max-[430px]:hidden">My elections</span>
               </Link>
-              <Link
-                className={linkCls("/vote/profile")}
-                href="/vote/profile"
-                title="Your profile and security settings"
-              >
-                <UserCircle className="size-4" />
-                <span className="max-[430px]:hidden">Profile</span>
-              </Link>
-              <Button
-                onClick={() => {
-                  setConfirmingLogout(true);
-                }}
-                size="sm"
-                title="Sign out of the voter portal"
-                variant="ghost"
-              >
-                <LogOut className="size-4" />
-                <span className="max-[430px]:hidden">Log out</span>
-              </Button>
+              {/* Profile and sign-out live together behind the avatar, the
+                  way an account menu is expected to work - and it keeps the
+                  navbar to one visible action on a narrow phone. */}
+              {/* Which console this is, immediately beside the account
+                  menu: it describes who you are signed in as. */}
+              <span className="mx-1 hidden shrink-0 rounded-full border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
+                Voter
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    aria-label="Account menu"
+                    className="ml-1 flex size-8 items-center justify-center rounded-full bg-brand text-xs font-semibold text-brand-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    type="button"
+                  >
+                    <UserCircle className="size-4.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    Voter portal
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/vote/profile">
+                      <UserCircle className="size-4" /> My profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setConfirmingLogout(true);
+                    }}
+                    variant="destructive"
+                  >
+                    <LogOut className="size-4" /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
           ) : (
             <span className="text-sm font-medium text-muted-foreground">
@@ -87,7 +115,10 @@ export function VoterChrome({
         </div>
       </header>
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
-        {children}
+        {/* Keyed by route so the enter animation replays on navigation. */}
+        <div className="page-enter" key={pathname}>
+          {children}
+        </div>
       </main>
       <ConfirmationDialog
         confirmText="Sign out"
