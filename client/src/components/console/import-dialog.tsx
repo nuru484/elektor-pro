@@ -21,6 +21,7 @@ import {
   buildTemplateCsv,
   isAcceptedImportFile,
 } from "@/components/voters/import-logic";
+import { ImportProgress } from "@/components/console/import-progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -190,6 +191,9 @@ export function VoterImportDialog({
   const [fileName, setFileName] = useState<null | string>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // Set when the server takes the import in the background; the dialog then
+  // shows progress instead of the preview.
+  const [batchId, setBatchId] = useState<null | string>(null);
   const [previewImport, { isLoading: parsing }] = usePreviewVoterImportMutation();
   const [bulkCreate, { isLoading: registering }] = useBulkCreateVotersMutation();
 
@@ -215,8 +219,18 @@ export function VoterImportDialog({
     setConfirming(false);
     try {
       const res = await bulkCreate({ voters: preview.rows }).unwrap();
+
+      // A large register is written in the background, so the response is a
+      // batch to watch rather than a result. Claiming success here would tell
+      // the admin the rows are in while they are still being written - and
+      // would hide any that fail.
+      if (res.data?.queued) {
+        setBatchId(res.data.id);
+        return;
+      }
+
       toast.success(
-        (res as { pending?: boolean }).pending
+        res.pending
           ? "Import submitted for super-admin approval"
           : `${String(preview.rows.length)} voters registered`,
       );
@@ -225,6 +239,20 @@ export function VoterImportDialog({
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Import failed"));
     }
+  };
+
+  /** Close once the background import has finished, reporting the outcome. */
+  const onImportFinished = (status: string) => {
+    if (status === "FAILED") {
+      toast.error("The import failed. See the details above.");
+      return;
+    }
+    toast.success(
+      status === "PARTIAL"
+        ? "Import finished with some rows skipped"
+        : "Import finished",
+    );
+    onDone?.();
   };
 
   return (
@@ -236,8 +264,13 @@ export function VoterImportDialog({
         title="Import voters"
       >
         <div className="space-y-4">
-          <ImportBody
-            columnsHint='Needs a name and a voter ID column; phone and email are optional. Headings like "Full Name" or "Index Number" are recognized automatically. Up to 5000 rows.'
+          {/* Once the server takes the import in the background, the preview
+              is history - what matters is how far it has got. */}
+          {batchId ? (
+            <ImportProgress batchId={batchId} onFinished={onImportFinished} />
+          ) : (
+            <ImportBody
+            columnsHint='Needs a name and a voter ID column; phone and email are optional. Headings like "Full Name" or "Index Number" are recognized automatically. Large files are imported in the background.'
             fileName={fileName}
             onPickFile={(file) => void onPickFile(file)}
             onTemplate={() => {
@@ -261,8 +294,9 @@ export function VoterImportDialog({
                 </ReadyRows>
               )
             }
-          />
-          {preview && (
+            />
+          )}
+          {preview && !batchId && (
             <Button
               className="w-full"
               disabled={preview.rows.length === 0}

@@ -180,6 +180,31 @@ export interface AgentAssignment {
   };
 }
 
+/** Progress of a queued import (GET /import-batches/:id). */
+export interface ImportBatchStatus {
+  completedAt: null | string;
+  createdRows: number;
+  error: null | string;
+  errors: null | { message: string; row: number }[];
+  failedRows: number;
+  id: string;
+  kind: string;
+  processedRows: number;
+  status: "COMPLETED" | "FAILED" | "PARTIAL" | "PENDING" | "PROCESSING";
+  totalRows: number;
+}
+
+/**
+ * A bulk import response. Large imports come back 202 with a batch to poll;
+ * small ones keep the maker-checker shape (`pending` when staged for
+ * approval), so callers must handle both.
+ */
+export interface BulkImportResponse {
+  data?: { id: string; queued: boolean; totalRows: number };
+  message?: string;
+  pending?: boolean;
+}
+
 /** An accreditor's permission to work one election's desk. */
 export interface AccreditorAssignment {
   createdAt: string;

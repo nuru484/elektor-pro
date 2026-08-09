@@ -1,6 +1,8 @@
 // src/redux/admin-api.ts — admin domain endpoints (elections, candidates,
 // voters, change requests, dashboard, audit).
 import type {
+  BulkImportResponse,
+  ImportBatchStatus,
   AccreditationSearchRow,
   ApiResponse,
   Candidate,
@@ -360,9 +362,12 @@ export const adminApi = apiSlice.injectEndpoints({
         return { body, method: "POST", url: "/voters/import/preview" };
       },
     }),
-    bulkCreateVoters: build.mutation<unknown, { voters: ImportVoterRow[] }>({
+    bulkCreateVoters: build.mutation<BulkImportResponse, { voters: ImportVoterRow[] }>({
       invalidatesTags: ["Voter", "ChangeRequest", "Dashboard"],
       query: (body) => ({ body, method: "POST", url: "/voters/bulk" }),
+    }),
+    getImportBatch: build.query<ApiResponse<ImportBatchStatus>, string>({
+      query: (id) => `/import-batches/${id}`,
     }),
     previewCandidateImport: build.mutation<
       ApiResponse<CandidateImportPreview>,
@@ -580,6 +585,7 @@ export const {
   useGetTurnoutQuery,
   usePublishResultsMutation,
   useUnpublishResultsMutation,
+  useGetImportBatchQuery,
   useListAuditLogsQuery,
   useListCandidatesQuery,
   useListChangeRequestsQuery,
