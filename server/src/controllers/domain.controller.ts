@@ -8,6 +8,7 @@ import {
   type ChangeStatus,
   type ElectionStatus,
 } from '../../generated/prisma/client.js';
+import { ImportKind } from '../../generated/prisma/client.js';
 import { cloudinaryService } from '../config/cloudinary.js';
 import { HTTP_STATUS_CODES } from '../config/constants.js';
 import multerUpload from '../config/multer.js';
@@ -48,6 +49,10 @@ import {
   listGroups,
 } from '../services/domain/group.service.js';
 import {
+  createImportBatch,
+  getImportBatch,
+} from '../services/domain/import-batch.service.js';
+import {
   type BrandingField,
   updateBrandingImage,
 } from '../services/domain/organization-branding.service.js';
@@ -84,6 +89,7 @@ import {
   updatePortfolioSchema,
   updateVoterSchema,
 } from '../validations/domain-validation.js';
+import { runImportBatch } from '../workers/import.worker.js';
 import { makeCrud } from './crud-factory.js';
 import { actorOf, ctxOf, respondToProposal } from './proposal-response.js';
 
@@ -359,10 +365,39 @@ export const previewVoterImportController: RequestHandler[] = [
   }),
 ];
 
+/**
+ * Rows above this go through the chunked, resumable import path instead of a
+ * single transaction. Below it the direct write is faster and keeps the
+ * simpler maker-checker story, so small imports are unchanged.
+ */
+const ASYNC_IMPORT_THRESHOLD = 500;
+
 export const bulkUploadVotersController: RequestHandler[] = [
   ...validationMiddleware.create(bulkVoterSchema),
   asyncHandler(async (req, res) => {
     const voters = (req.body as { voters: unknown[] }).voters;
+
+    // A large register cannot be written in one transaction - it would be
+    // held open for minutes and time out. Persist the rows as a batch and let
+    // the worker commit them in chunks, so the admin gets an id to watch
+    // rather than a request that hangs and then fails.
+    if (voters.length > ASYNC_IMPORT_THRESHOLD) {
+      const batch = await createImportBatch({
+        actorId: actorOf(req).id,
+        kind: ImportKind.VOTER,
+        rows: voters,
+      });
+      const queued = await runImportBatch(batch.id);
+      res.status(HTTP_STATUS_CODES.ACCEPTED).json({
+        data: { ...batch, queued },
+        message: queued
+          ? `Importing ${String(voters.length)} voters in the background`
+          : `Imported ${String(voters.length)} voters`,
+        success: true,
+      });
+      return;
+    }
+
     const outcome = await proposeOrExecute(
       actorOf(req),
       {
@@ -376,6 +411,11 @@ export const bulkUploadVotersController: RequestHandler[] = [
     respondToProposal(res, outcome, 'Voters', HTTP_STATUS_CODES.CREATED);
   }),
 ];
+
+/** Progress for a queued import, for the admin's progress view. */
+export const importBatchController = asyncHandler(async (req, res) => {
+  sendOk(res, 'Import status retrieved', await getImportBatch(req.params.id));
+});
 
 /** Standalone photo updates (binary can't ride maker-checker JSON). */
 const requireImage = (req: Request): { buffer: Buffer; mimetype?: string } => {

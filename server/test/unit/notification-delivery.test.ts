@@ -6,12 +6,14 @@ import { deliverNotification } from '#workers/notification.worker.js';
 // outcome that cannot change).
 import { describe, expect, it, vi } from 'vitest';
 
-const deps = (overrides: Partial<{ mail: unknown; sms: unknown }> = {}) =>
-  ({
-    mail: { send: vi.fn().mockResolvedValue(undefined) },
-    sms: { send: vi.fn().mockResolvedValue(undefined) },
-    ...overrides,
-  }) as unknown as Parameters<typeof deliverNotification>[1];
+const deps = (overrides: { mail?: { send: ReturnType<typeof vi.fn> }; sms?: { send: ReturnType<typeof vi.fn> } } = {}) => ({
+  mail: overrides.mail ?? { send: vi.fn().mockResolvedValue(undefined) },
+  sms: overrides.sms ?? { send: vi.fn().mockResolvedValue(undefined) },
+});
+
+/** The worker takes the real deps shape; the fakes only implement what it uses. */
+const asDeps = (d: ReturnType<typeof deps>) =>
+  d as unknown as Parameters<typeof deliverNotification>[1];
 
 const job = (over: Partial<Parameters<typeof deliverNotification>[0]> = {}) => ({
   email: null,
@@ -27,7 +29,7 @@ describe('deliverNotification', () => {
     const d = deps();
     const channel = await deliverNotification(
       job({ email: 'ama@example.com', phoneNumber: '+233550000001' }),
-      d,
+      asDeps(d),
     );
     expect(channel).toBe('sms');
     expect(d.sms.send).toHaveBeenCalledWith('+233550000001', 'Cast your ballot.');
@@ -36,7 +38,10 @@ describe('deliverNotification', () => {
 
   it('falls back to email when there is no phone', async () => {
     const d = deps();
-    const channel = await deliverNotification(job({ email: 'ama@example.com' }), d);
+    const channel = await deliverNotification(
+      job({ email: 'ama@example.com' }),
+      asDeps(d),
+    );
     expect(channel).toBe('email');
     expect(d.mail.send).toHaveBeenCalledWith({
       email: 'ama@example.com',
@@ -48,7 +53,7 @@ describe('deliverNotification', () => {
   it('reports "none" - not an error - when the voter has no channel', async () => {
     // Retrying this forever would waste every attempt on a voter who simply
     // has no contact details, so it must not throw.
-    await expect(deliverNotification(job(), deps())).resolves.toBe('none');
+    await expect(deliverNotification(job(), asDeps(deps()))).resolves.toBe('none');
   });
 
   it('propagates a provider failure so the job is retried', async () => {
@@ -56,7 +61,7 @@ describe('deliverNotification', () => {
       sms: { send: vi.fn().mockRejectedValue(new Error('gateway rate limit')) },
     });
     await expect(
-      deliverNotification(job({ phoneNumber: '+233550000002' }), d),
+      deliverNotification(job({ phoneNumber: '+233550000002' }), asDeps(d)),
     ).rejects.toThrow('gateway rate limit');
   });
 });

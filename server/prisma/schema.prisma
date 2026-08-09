@@ -220,6 +220,7 @@ model User {
   candidates      Candidate[]            @relation("CandidateAccount")
   agentLinks      AgentAssignment[]
   accreditorLinks AccreditorAssignment[]
+  importBatches   ImportBatch[]          @relation("ImportBatchCreator")
 
   // Governance / authored records
   electionsCreated   Election[]              @relation("ElectionCreator")
@@ -467,6 +468,7 @@ model Election {
   ballots           Ballot[]
   agentLinks        AgentAssignment[]
   accreditorLinks   AccreditorAssignment[]
+  importBatches     ImportBatch[]
   accessGrants      AccessGrant[]
   resultSnapshots   ResultSnapshot[]
   eligibilityGroups ElectionEligibility[]
@@ -661,6 +663,68 @@ model AgentAssignment {
 /// election in the organization - including ones they have no business
 /// touching. Assignment is the scope: the desk only lists, and the server
 /// only accepts, elections the accreditor has been put on.
+/// How far a queued import has got. Progress lives in the database rather
+/// than only in the job, so a worker restart resumes instead of restarting,
+/// and the admin's progress bar survives a deploy.
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  /// Finished, but some rows could not be written - see `errors`.
+  PARTIAL
+  FAILED
+}
+
+enum ImportKind {
+  VOTER
+  CANDIDATE
+}
+
+/// A large import, held as validated rows and written in chunks.
+///
+/// The direct bulk path writes every row in ONE transaction, which is correct
+/// but caps the import: tens of thousands of rows would hold a transaction
+/// open for minutes and time out. This model lets the write be split into
+/// chunks that each commit on their own, with `processedRows` as the cursor -
+/// so a crash mid-import resumes from where it stopped rather than starting
+/// over or, worse, duplicating what it already wrote.
+model ImportBatch {
+  id     String       @id @default(cuid())
+  kind   ImportKind
+  status ImportStatus @default(PENDING)
+
+  /// The validated rows, exactly as the preview approved them.
+  rows Json
+
+  totalRows     Int
+  /// Advanced in the SAME transaction that writes its chunk, which is what
+  /// makes a resumed import exactly-once per chunk.
+  processedRows Int @default(0)
+  createdRows   Int @default(0)
+  failedRows    Int @default(0)
+
+  /// Per-row failures: [{ row, message }]. Kept so an admin can fix and
+  /// re-import only what did not land.
+  errors Json?
+  /// Set when the whole batch failed rather than individual rows.
+  error  String?
+
+  election   Election? @relation(fields: [electionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  electionId String?
+
+  createdBy   User?   @relation("ImportBatchCreator", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdById String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdById])
+  @@index([electionId])
+}
+
 model AccreditorAssignment {
   id     String @id @default(cuid())
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)

@@ -27,6 +27,7 @@ initErrorReporting();
 await import('./src/workers/election-status.worker.js');
 await import('./src/workers/auth-maintenance.worker.js');
 await import('./src/workers/notification.worker.js');
+await import('./src/workers/import.worker.js');
 
 // Background job failures have no HTTP error handler to report them; forward
 // every registered worker's `failed` events to the tracker.

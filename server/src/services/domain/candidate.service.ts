@@ -447,7 +447,7 @@ const ensureCandidateAccount = async (
   return user.id;
 };
 
-const createCandidateInTx = async (
+export const createCandidateInTx = async (
   tx: TxClient,
   payload: CandidatePayload,
 ): Promise<{ id: string }> => {

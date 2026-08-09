@@ -189,7 +189,7 @@ const registerVoterElections = async (
   });
 };
 
-const createVoterInTx = async (
+export const createVoterInTx = async (
   tx: TxClient,
   input: VoterInput,
 ): Promise<{ id: string }> => {

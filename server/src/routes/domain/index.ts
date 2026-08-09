@@ -16,6 +16,7 @@ import {
   getOrganizationController,
   groupCategoryControllers,
   groupControllers,
+  importBatchController,
   listChangeRequestsController,
   myCandidaciesController,
   portfolioControllers,
@@ -188,6 +189,15 @@ electionsRouter.post(
   ...cloneElectionController,
 );
 domainRoutes.use('/elections', electionsRouter);
+
+// Progress for a queued import. Same capability as creating one: whoever may
+// import voters may watch the import they started.
+domainRoutes.get(
+  '/import-batches/:id',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_VOTERS),
+  importBatchController,
+);
 
 // Portfolios & candidates
 domainRoutes.use(

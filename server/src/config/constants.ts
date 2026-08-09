@@ -2,6 +2,8 @@
 import type { ICloudinaryUploadOptions } from '../types/cloudinary.types.js';
 
 export const HTTP_STATUS_CODES = {
+  /** Work accepted and running in the background; poll for the outcome. */
+  ACCEPTED: 202,
   BAD_REQUEST: 400,
   CONFLICT: 409,
   CREATED: 201,
