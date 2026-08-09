@@ -105,6 +105,10 @@ interface IENV {
   /** Sender for outgoing mail; must be on a Resend-verified domain. */
   MAIL_FROM: string;
   NODE_ENV: string;
+  /** Notification worker: messages in flight at once. */
+  NOTIFICATION_CONCURRENCY: number;
+  /** Notification worker: ceiling per second, to respect provider limits. */
+  NOTIFICATION_PER_SECOND: number;
   OTP_LENGTH: number;
   OTP_MODE: "live" | "mock";
   OTP_TTL_MINUTES: number;
@@ -168,6 +172,8 @@ const ENV: IENV = {
   FRONTEND_URL: envOptional("FRONTEND_URL", "http://localhost:3000"),
   MAIL_FROM: envOptional("MAIL_FROM", "Elektor Pro <no-reply@manuru.dev>"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
+  NOTIFICATION_CONCURRENCY: envNumber("NOTIFICATION_CONCURRENCY", 5),
+  NOTIFICATION_PER_SECOND: envNumber("NOTIFICATION_PER_SECOND", 10),
   OTP_LENGTH: envNumber("OTP_LENGTH", 6),
   OTP_MODE: envEnum(
     "OTP_MODE",

@@ -6,10 +6,14 @@
 // always summarized in the audit trail. Callers fire these AFTER their
 // transaction commits - a failed batch never rolls back a status change.
 import { EligibilityMode } from '../../../generated/prisma/client.js';
+import {
+  notificationJobId,
+  notificationQueue,
+} from '../../jobs/notifications.queue.js';
 import prisma from '../../lib/prisma.js';
 import logger from '../../utils/logger.js';
+import { deliverNotification } from '../../workers/notification.worker.js';
 import { appendAudit } from '../audit/audit.service.js';
-import { defaultDeps } from '../deps.js';
 
 const BATCH_SIZE = 25;
 
@@ -39,30 +43,66 @@ const eligibleVotersWithContact = async (election: {
   });
 };
 
+/**
+ * Hand every recipient to the notification queue - one job each, so each
+ * message retries on its own schedule and a provider rate limit slows
+ * delivery instead of losing it.
+ *
+ * When Redis is not configured the queue does not exist, and delivery falls
+ * back to the previous inline loop. That keeps the system working without
+ * Redis (development, CI, and this deployment until it moves) at the cost of
+ * the retries - which is the honest trade, and is logged so an operator can
+ * see which mode a blast ran in.
+ */
 const deliverToAll = async (
-  voters: { email: null | string; name: string; phoneNumber: null | string }[],
+  kind: string,
+  electionId: string,
+  voters: { email: null | string; id: string; name: string; phoneNumber: null | string }[],
   subject: string,
   message: string,
-): Promise<{ attempted: number; failed: number }> => {
+): Promise<{ attempted: number; failed: number; queued: boolean }> => {
+  const queue = notificationQueue();
+
+  if (queue) {
+    // A stable job id per recipient makes a repeated announcement a no-op
+    // rather than a second text to the entire roll.
+    await queue.addBulk(
+      voters.map((voter) => ({
+        data: {
+          electionId,
+          email: voter.email,
+          name: voter.name,
+          phoneNumber: voter.phoneNumber,
+          subject,
+          text: message,
+        },
+        name: kind,
+        opts: { jobId: notificationJobId(kind, electionId, voter.id) },
+      })),
+    );
+    // Queued, not delivered: failures surface on the queue's failed set and
+    // through the worker's error reporting, not in this return value.
+    return { attempted: voters.length, failed: 0, queued: true };
+  }
+
   let failed = 0;
   for (let start = 0; start < voters.length; start += BATCH_SIZE) {
     const batch = voters.slice(start, start + BATCH_SIZE);
     const outcomes = await Promise.allSettled(
       batch.map(async (voter) => {
-        if (voter.phoneNumber) {
-          await defaultDeps.sms.send(voter.phoneNumber, message);
-        } else if (voter.email) {
-          await defaultDeps.mail.send({
-            email: voter.email,
-            subject,
-            text: `Hello ${voter.name},\n\n${message}`,
-          });
-        }
+        await deliverNotification({
+          electionId,
+          email: voter.email,
+          name: voter.name,
+          phoneNumber: voter.phoneNumber,
+          subject,
+          text: message,
+        });
       }),
     );
     failed += outcomes.filter((o) => o.status === 'rejected').length;
   }
-  return { attempted: voters.length, failed };
+  return { attempted: voters.length, failed, queued: false };
 };
 
 /** Announce that voting has opened. Safe to call repeatedly (audited each time). */
@@ -79,6 +119,8 @@ export const announceElectionOpened = async (electionId: string): Promise<void> 
       timeStyle: 'short',
     });
     const summary = await deliverToAll(
+      'election.opened',
+      electionId,
       voters,
       `Voting is open: ${election.name}`,
       `Voting is now open for "${election.name}". Cast your ballot before ${closes}.`,
@@ -104,6 +146,8 @@ export const announceResultsPublished = async (electionId: string): Promise<void
     if (!election) return;
     const voters = await eligibleVotersWithContact(election);
     const summary = await deliverToAll(
+      'results.published',
+      electionId,
       voters,
       `Results are out: ${election.name}`,
       `The results of "${election.name}" have been published. See them at /results/${election.slug}.`,

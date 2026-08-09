@@ -6,6 +6,7 @@
 export const QUEUE_NAMES = {
   AUTH_MAINTENANCE: 'auth-maintenance',
   ELECTION_STATUS: 'election-status',
+  NOTIFICATIONS: 'notifications',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
