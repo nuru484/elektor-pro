@@ -35,7 +35,7 @@ const bootstrapOrganization = async (): Promise<void> => {
   await prisma.organization.create({
     data: { name, slug: slugify(name) },
   });
-  console.log(`✓ organization created (${name})`);
+  console.log(`organization created (${name})`);
 };
 
 const bootstrapRoleCapabilities = async (): Promise<void> => {
@@ -48,7 +48,7 @@ const bootstrapRoleCapabilities = async (): Promise<void> => {
       DEFAULT_ROLE_CAPABILITIES[role].map((capability) => ({ capability, role })),
     ),
   });
-  console.log('✓ role capability defaults seeded');
+  console.log('role capability defaults seeded');
 };
 
 const bootstrapSuperAdmin = async (): Promise<void> => {
@@ -87,7 +87,7 @@ const bootstrapSuperAdmin = async (): Promise<void> => {
     metadata: { bootstrap: true, role: Role.SUPER_ADMIN },
   });
 
-  console.log('\n✓ super admin created');
+  console.log('\nsuper admin created');
   console.log(`  email:    ${email}`);
   console.log(`  password: ${temporaryPassword}`);
   console.log('  This password is shown ONCE and must be changed at first sign-in.\n');

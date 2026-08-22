@@ -163,7 +163,7 @@ async function ensureFullContactDetails() {
   ]);
 
   console.log(
-    `✓ contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts, ${String(passwordless.length)} accounts given the shared password, faces: ${String(voterFaces)} voters / ${String(userFaces)} users / ${String(candidateFaces)} candidates)`,
+    `contact details completed (${String(bareVoters.length)} voters phoned, ${String(bare.length)} candidacies linked to ${String(n)} accounts, ${String(passwordless.length)} accounts given the shared password, faces: ${String(voterFaces)} voters / ${String(userFaces)} users / ${String(candidateFaces)} candidates)`,
   );
 }
 
@@ -181,7 +181,7 @@ async function main() {
         supportEmail: 'support@elektorpro.com',
       },
     });
-    console.log('✓ organization created');
+    console.log('organization created');
   }
 
   // --- Role capability matrix. Seeded ONLY while the table is empty: once a
@@ -194,7 +194,7 @@ async function main() {
         DEFAULT_ROLE_CAPABILITIES[role].map((capability) => ({ capability, role })),
       ),
     });
-    console.log('✓ role capability defaults seeded');
+    console.log('role capability defaults seeded');
   }
 
   // --- Accounts. One password for every seeded account (dev data only). ---
@@ -209,7 +209,7 @@ async function main() {
   await upsertUser('commission@elektorpro.com', 'Ada', 'Mensah', Role.ADMIN, SEED_PASSWORD, '+233200000002');
   const agent = await upsertUser('agent@elektorpro.com', 'Kojo', 'Asare', Role.AGENT, SEED_PASSWORD, '+233200000003');
   await upsertUser('candidate@elektorpro.com', 'Ama', 'Owusu', Role.CANDIDATE, SEED_PASSWORD, '+233200000004');
-  console.log('✓ accounts ready (super-admin, admin, agent, candidate)');
+  console.log('accounts ready (super-admin, admin, agent, candidate)');
 
   // --- Optional voter groups ---
   const college = await prisma.groupCategory.upsert({
@@ -256,7 +256,7 @@ async function main() {
  */
 async function seedBuild5Extras(superAdminId: string) {
   if (await prisma.election.findUnique({ where: { slug: 'science-departmental-2026' } })) {
-    console.log('✓ build 5 demo data already seeded — skipping');
+    console.log('build 5 demo data already seeded — skipping');
     return;
   }
   const day = 86_400_000;
@@ -308,7 +308,7 @@ async function seedBuild5Extras(superAdminId: string) {
       { candidateIds: [pick(sciCandidates).id], portfolioId: sciPresident.id },
     ]);
   }
-  console.log('✓ group-scoped election seeded (Science-only, agent early results)');
+  console.log('group-scoped election seeded (Science-only, agent early results)');
 
   // --- Managed-roll election: every roll-entry state (eligible, excluded,
   // accredited, voted) so the Voters tab shows the full range. ---
@@ -399,7 +399,7 @@ async function seedBuild5Extras(superAdminId: string) {
     entityId: congress.id,
     metadata: { added: delegates.length + 2, groupId: null },
   });
-  console.log('✓ managed-roll election seeded (eligible, excluded, accredited, voted)');
+  console.log('managed-roll election seeded (eligible, excluded, accredited, voted)');
 
   // --- Certify the ended Staff Council election: chained ballots, an
   // immutable snapshot, and the lock - the full post-election story. ---
@@ -489,7 +489,7 @@ async function seedBuild5Extras(superAdminId: string) {
       entityId: staff.id,
       metadata: { hash: snapshotHash },
     });
-    console.log('✓ Staff Council 2025 certified (chained ballots + snapshot + lock)');
+    console.log('Staff Council 2025 certified (chained ballots + snapshot + lock)');
   }
 
 }
@@ -499,7 +499,7 @@ async function seedBuild5Extras(superAdminId: string) {
 async function seedDemoElection(superAdminId: string, agentId: string, scienceGroupId: string) {
   const slug = 'src-general-election';
   if (await prisma.election.findUnique({ where: { slug } })) {
-    console.log('✓ demo election already seeded — skipping');
+    console.log('demo election already seeded — skipping');
     return;
   }
 
@@ -587,7 +587,7 @@ async function seedDemoElection(superAdminId: string, agentId: string, scienceGr
   await mkCandidates(council.id, ['Member A', 'Member B', 'Member C', 'Member D', 'Member E']);
   await mkCandidates(referendum.id, ['Motion']);
 
-  console.log('✓ election, portfolios, candidates created');
+  console.log('election, portfolios, candidates created');
 
   // --- Voters (some in Science) + linked accounts ---
   const voterCount = 50;
@@ -615,7 +615,7 @@ async function seedDemoElection(superAdminId: string, agentId: string, scienceGr
     });
     voters.push({ id: voter.id, userId: user.id });
   }
-  console.log(`✓ ${voterCount} voters created`);
+  console.log(`${voterCount} voters created`);
 
   // --- Cast ballots for ~70% of voters via the real voting path ---
   let cast = 0;
@@ -637,14 +637,14 @@ async function seedDemoElection(superAdminId: string, agentId: string, scienceGr
     await castBallot(voter.userId, election.id, selections);
     cast += 1;
   }
-  console.log(`✓ ${cast} ballots cast`);
+  console.log(`${cast} ballots cast`);
 
   // --- Assign the agent to observe this election ---
   await prisma.agentAssignment.create({
     data: { electionId: election.id, userId: agent.id },
   });
 
-  console.log('✓ demo election seeded (portfolios, candidates, voters, ballots)');
+  console.log('demo election seeded (portfolios, candidates, voters, ballots)');
 }
 
 async function seedDemoLoginAccounts() {
@@ -760,7 +760,7 @@ async function seedDemoLoginAccounts() {
   }
 
   console.log(
-    `✓ demo sign-in accounts seeded (${String(staff.length)} staff roles + voter ${ENV.DEMO_VOTER_ID}); set DEMO_LOGIN_ENABLED=true to expose them`,
+    `demo sign-in accounts seeded (${String(staff.length)} staff roles + voter ${ENV.DEMO_VOTER_ID}); set DEMO_LOGIN_ENABLED=true to expose them`,
   );
 }
 
@@ -772,7 +772,7 @@ async function seedDemoLoginAccounts() {
  */
 async function seedRichExtras(superAdminId: string, agentId: string) {
   if (await prisma.election.findUnique({ where: { slug: 'departmental-election-2026' } })) {
-    console.log('✓ rich demo data already seeded — skipping');
+    console.log('rich demo data already seeded — skipping');
     return;
   }
 
@@ -1017,7 +1017,7 @@ async function seedRichExtras(superAdminId: string, agentId: string) {
   // The soft-delete extension rewrites this into deletedAt.
   await prisma.agentAssignment.delete({ where: { id: removedAssignment.id } });
 
-  console.log('✓ rich demo data seeded (staff, groups, elections, agents, grants, change requests, deleted rows)');
+  console.log('rich demo data seeded (staff, groups, elections, agents, grants, change requests, deleted rows)');
 }
 
 /**
@@ -1324,7 +1324,7 @@ async function seedRichModules(superAdminId: string) {
     prisma.vettingScore.count(),
   ]);
   console.log(
-    `✓ rich module data seeded (${String(rolls)} roll entries, ${String(ballots)} ballots, ${String(scores)} vetting scores)`,
+    `rich module data seeded (${String(rolls)} roll entries, ${String(ballots)} ballots, ${String(scores)} vetting scores)`,
   );
 }
 
@@ -1339,7 +1339,7 @@ async function seedRichModules(superAdminId: string) {
  */
 async function seedScaleNumbers(superAdminId: string) {
   if (await prisma.election.findUnique({ where: { slug: 'convention-2026' } })) {
-    console.log('✓ scale numbers already seeded — skipping');
+    console.log('scale numbers already seeded — skipping');
     return;
   }
   const day = 86_400_000;
@@ -1448,7 +1448,7 @@ async function seedScaleNumbers(superAdminId: string) {
     await castBallot(user.id, live.id, selections);
     cast += 1;
   }
-  console.log(`✓ convention: ${String(cast)} chained ballots cast`);
+  console.log(`convention: ${String(cast)} chained ballots cast`);
 
   // --- Extra elections in every status so lists and filters carry volume. ---
   const statuses: [string, ElectionStatus, number, number][] = [
@@ -1528,7 +1528,7 @@ async function seedScaleNumbers(superAdminId: string) {
   }
 
   console.log(
-    '✓ scale numbers seeded (2,500 voters w/ phones, 220 live ballots, 6 extra elections, 8 pending approvals, audit volume)',
+    'scale numbers seeded (2,500 voters w/ phones, 220 live ballots, 6 extra elections, 8 pending approvals, audit volume)',
   );
 }
 
@@ -1540,7 +1540,7 @@ async function seedScaleNumbers(superAdminId: string) {
  */
 async function seedVettingDemo(superAdminId: string) {
   if ((await prisma.vettingCriterion.count()) > 0) {
-    console.log('✓ vetting demo already seeded — skipping');
+    console.log('vetting demo already seeded — skipping');
     return;
   }
   const scopedElection = await prisma.election.findUnique({
@@ -1548,7 +1548,7 @@ async function seedVettingDemo(superAdminId: string) {
     where: { slug: 'science-departmental-2026' },
   });
   if (!scopedElection) {
-    console.log('✓ vetting demo skipped (science election missing)');
+    console.log('vetting demo skipped (science election missing)');
     return;
   }
   const electionId = scopedElection.id;
@@ -1621,7 +1621,7 @@ async function seedVettingDemo(superAdminId: string) {
       where: { id: candidate.id },
     });
   }
-  console.log('✓ vetting demo seeded (criteria, nominees in every state, ballot numbers)');
+  console.log('vetting demo seeded (criteria, nominees in every state, ballot numbers)');
 }
 
 async function upsertUser(
