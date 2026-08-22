@@ -1,7 +1,7 @@
 // src/services/change-request/registry.ts
 // Maps each governed entity to its create/update/remove appliers. Domain
 // services register here; the engine looks an applier up to apply a staged or
-// direct change. Entries are added as each domain module lands.
+// direct change.
 //
 // AGENT and USER are DELIBERATELY absent: agent assignments and user accounts
 // are managed directly by privileged roles (governance.service /

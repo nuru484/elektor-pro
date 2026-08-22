@@ -1,5 +1,5 @@
 // src/config/env.ts
-// Typed, fail-fast environment configuration. The app reads ENV — never process.env.
+// Typed, fail-fast environment configuration. The app reads ENV, never process.env.
 
 const envRequired = (name: string): string => {
   const value = process.env[name];
@@ -78,7 +78,7 @@ interface IENV {
   DATABASE_URL: string;
   /** Max connections in the shared pg pool (API + in-process workers). */
   DB_POOL_MAX: number;
-  /** Demo (portfolio) sign-in: the seeded account behind each role button. */
+  /** Demo sign-in: the seeded account behind each role button. */
   DEMO_ACCREDITOR_EMAIL: string;
   DEMO_ADMIN_EMAIL: string;
   DEMO_AGENT_EMAIL: string;
@@ -90,9 +90,9 @@ interface IENV {
   DEMO_VOTER_ID: string;
   /**
    * Key for data encrypted at rest (TOTP secrets). Separate from the JWT
-   * secrets on purpose: deriving it from ACCESS_TOKEN_SECRET meant rotating
-   * that token secret - a routine operation - silently made every stored TOTP
-   * secret undecryptable and locked out every 2FA user. Required in
+   * secrets on purpose: were it derived from ACCESS_TOKEN_SECRET, rotating
+   * that token secret - a routine operation - would silently make every
+   * stored TOTP secret undecryptable and lock out every 2FA user. Required in
    * production; outside it, falls back to the access secret so existing dev
    * databases keep working.
    */

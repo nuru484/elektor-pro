@@ -1,6 +1,6 @@
 "use client";
 
-// DMS-style guest gate for auth pages: a signed-in visitor never sees the
+// Guest gate for auth pages: a signed-in visitor never sees the
 // login/forgot/reset forms again - they bounce straight to their role's
 // home (or to /password-setup while a temporary password is unresolved,
 // which is why that page is exempt).

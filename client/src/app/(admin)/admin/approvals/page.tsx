@@ -2,7 +2,7 @@
 
 // The approvals console: the full maker-checker history on the DataTable
 // system - filter by status, entity, and date; open a request to inspect its
-// payload; approve/reject (with an optional note) or cancel your own.
+// payload; approve/reject (with an optional note) or cancel one's own.
 import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { CheckCircle2, Eye, ShieldCheck, XCircle } from "lucide-react";
 import { useState } from "react";

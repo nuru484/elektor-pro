@@ -76,9 +76,9 @@ const SALT = 'elektor-pro-secret-salt';
 const KEY = scryptSync(ENV.ENCRYPTION_KEY, SALT, 32);
 
 /**
- * The key this data used to be encrypted under, before ENCRYPTION_KEY was
- * split out of ACCESS_TOKEN_SECRET. Decryption falls back to it so rotating
- * to a dedicated key does not strand rows written by an older deploy. Nothing
+ * Legacy key: rows written before ENCRYPTION_KEY was split out of
+ * ACCESS_TOKEN_SECRET are encrypted under the access secret. Decryption falls
+ * back to it so moving to a dedicated key does not strand those rows. Nothing
  * is ever ENCRYPTED with it, so the fallback disappears naturally as secrets
  * are re-enrolled.
  */

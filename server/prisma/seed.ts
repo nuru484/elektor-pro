@@ -27,9 +27,9 @@ import { hashPassword } from '../src/utils/password.js';
 /**
  * This seed is DEVELOPMENT DATA. It creates demo accounts that all share one
  * password, a demo election, and fabricated cast ballots. None of that
- * belongs in a real deployment, and `npm run deploy` used to run it - which
- * would have put a super-admin with a repo-published password, plus fake
- * ballots, into a production database.
+ * belongs in a real deployment: running it there would put a super-admin
+ * with a repo-published password, plus fake ballots, into a production
+ * database. No deploy script may call it.
  *
  * Production bootstrapping (organization, capability defaults, and the first
  * super-admin, nothing else) lives in prisma/bootstrap.ts instead.
@@ -248,7 +248,7 @@ async function main() {
 }
 
 /**
- * Build 5 demo data: a group-scoped election (ElectionEligibility + early
+ * Extra demo elections: a group-scoped one (ElectionEligibility + early
  * results access), a managed-roll election with every roll-entry state, a
  * certified election with a chained ballot history and an immutable result
  * snapshot, and seed audit entries. Idempotent: gated on the scoped
@@ -1267,8 +1267,8 @@ async function seedRichModules(superAdminId: string) {
   }
 
   // --- 5. Assignment history for agents and accreditors -----------------
-  // One live posting each (the rule), plus finished elections behind them so
-  // the History tabs are not empty.
+  // One live posting each, which is all the server allows, plus finished
+  // elections behind them so the History tabs are not empty.
   const finished = await prisma.election.findMany({
     orderBy: { startDate: 'desc' },
     select: { id: true },
@@ -1533,10 +1533,10 @@ async function seedScaleNumbers(superAdminId: string) {
 }
 
 /**
- * Build 6 vetting demo on the Science election: vetting on, two criteria,
+ * Vetting demo on the Science election: vetting on, two criteria,
  * candidates in every lifecycle state with scores/notes, and ballot numbers
  * on the qualified ones. Idempotent via the criteria gate; looks its targets
- * up so it also runs on databases seeded before Build 6.
+ * up so it also runs on databases seeded before vetting existed.
  */
 async function seedVettingDemo(superAdminId: string) {
   if ((await prisma.vettingCriterion.count()) > 0) {

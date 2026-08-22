@@ -1,5 +1,5 @@
-// Shared date/time presentation for data tables and detail pages (DMS
-// convention: every table shows the date AND its time).
+// Shared date/time presentation for data tables and detail pages: every
+// table shows the date AND its time.
 
 export const formatDate = (value: null | string | undefined): string => {
   if (!value) return "—";

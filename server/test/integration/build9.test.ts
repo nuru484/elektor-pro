@@ -1,6 +1,6 @@
 // test/integration/build9.test.ts
 //
-// Build 9: election cloning (structure only, fresh DRAFT), open/results
+// Election cloning (structure only, fresh DRAFT), open/results
 // announcements to eligible voters (mock channels; audited), and the
 // one-page election report.
 import { beforeEach, describe, expect, it } from 'vitest';

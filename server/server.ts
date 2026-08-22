@@ -22,7 +22,7 @@ import logger from './src/utils/logger.js';
 initErrorReporting();
 
 // BullMQ workers run in-process (deliberate, to save a separate dyno). Worker
-// entry modules are imported here as they land; each registers itself with
+// entry modules are imported here; each registers itself with
 // jobs/lifecycle.ts so shutdown and failure reporting pick it up automatically.
 await import('./src/workers/election-status.worker.js');
 await import('./src/workers/auth-maintenance.worker.js');

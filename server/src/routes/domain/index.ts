@@ -73,12 +73,12 @@ const ELECTION_OPERATIONS = [
 ] as const;
 
 /**
- * Reads are guarded as deliberately as writes. They used to sit on bare
- * `authenticateJWT`, which meant any signed-in account - including a voter
- * who had just logged in with an SMS code - could page the entire voter
- * register: names, phone numbers, emails, and each person's per-election
- * `hasVoted` flag. That is both a data-protection breach and an integrity
- * problem, since "who has not voted yet" is the list you would buy.
+ * Reads are guarded as deliberately as writes. On bare `authenticateJWT`
+ * any signed-in account - including a voter who had just logged in with an
+ * SMS code - could page the entire voter register: names, phone numbers,
+ * emails, and each person's per-election `hasVoted` flag. That is both a
+ * data-protection breach and an integrity problem, since "who has not voted
+ * yet" is exactly the list worth buying.
  */
 const crudRouter = (
   controllers: Crud,

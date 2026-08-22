@@ -49,10 +49,10 @@ const eligibleVotersWithContact = async (election: {
  * delivery instead of losing it.
  *
  * When Redis is not configured the queue does not exist, and delivery falls
- * back to the previous inline loop. That keeps the system working without
- * Redis (development, CI, and this deployment until it moves) at the cost of
- * the retries - which is the honest trade, and is logged so an operator can
- * see which mode a blast ran in.
+ * back to an inline loop. That keeps the system working without Redis
+ * (development, CI, and any deployment without Redis) at the cost of the
+ * retries - the honest trade, and logged so an operator can see which mode
+ * a blast ran in.
  */
 const deliverToAll = async (
   kind: string,

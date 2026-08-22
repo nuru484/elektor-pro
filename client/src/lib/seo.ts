@@ -1,6 +1,6 @@
 // src/lib/seo.ts
 //
-// Shared per-page metadata builder (the Khady's Kitchen pattern): one helper
+// Shared per-page metadata builder: one helper
 // produces title/description/canonical/OG/Twitter for a page, with central
 // clamping so no page can overflow search-result or share-card limits.
 import type { Metadata } from "next";

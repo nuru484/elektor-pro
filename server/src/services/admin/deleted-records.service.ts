@@ -1,6 +1,6 @@
 // src/services/admin/deleted-records.service.ts
 //
-// The deleted-records manager (DMS pattern): super-admins can review what
+// The deleted-records manager: super-admins can review what
 // has been soft-deleted, restore a row, or purge it permanently. Reads pass
 // an explicit `deletedAt` filter to opt out of the soft-delete extension's
 // scoping; the purge goes through the sanctioned `purgeRecord` seam.

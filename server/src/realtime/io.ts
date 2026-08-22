@@ -107,8 +107,9 @@ export const emitElectionUpdateThrottled = (
   const key = `${electionId}:${event}`;
   const open = windows.get(key);
   if (open) {
-    // Suppressed for now; the newest payload wins and goes out on the
-    // trailing edge. The timer keeps running so the window stays honest.
+    // Suppressed inside the open window; the newest payload wins and goes
+    // out on the trailing edge. The timer keeps running so the window stays
+    // honest.
     open.queued = { payload };
     return;
   }

@@ -1,4 +1,4 @@
-// src/types/api.ts — shared API contract types (mirror the backend envelope).
+// src/types/api.ts - shared API contract types (mirror the backend envelope).
 
 export interface ApiResponse<T> {
   data: T;

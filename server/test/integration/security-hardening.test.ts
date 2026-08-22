@@ -1,9 +1,8 @@
 // test/integration/security-hardening.test.ts
 //
-// Regression cover for the integrity and authorization defects found in the
-// production-readiness review. Each spec below reproduces the ORIGINAL
-// exploit as closely as the API allows, so a future refactor that reopens one
-// fails here rather than in an election.
+// Regression cover for known integrity and authorization defects. Each spec
+// below reproduces the ORIGINAL exploit as closely as the API allows, so a
+// future refactor that reopens one fails here rather than in an election.
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { Role } from '../../generated/prisma/client.js';
@@ -482,7 +481,7 @@ describe('maker-checker', () => {
   it('refuses to let a requester approve their own change request', async () => {
     // The original bug: approval checked only that the actor HELD
     // APPROVE_CHANGES, never that they were someone else - so gaining the
-    // capability after submitting let you sign off your own change.
+    // capability after submitting let a requester sign off their own change.
     const requester = await createUser(Role.ADMIN, {
       email: 'maker@test.com',
       password: 'Password123!',

@@ -1,4 +1,4 @@
-// src/lib/env.ts — typed public env, validated at module load.
+// src/lib/env.ts - typed public env, validated at module load.
 const required = (name: string, value: string | undefined): string => {
   if (!value) throw new Error(`Missing public env var: ${name}`);
   return value;

@@ -8,10 +8,9 @@
 // on the line and `justify-between` pushes it right; a long name's natural
 // width overflows the row, so the tag wraps below and the name then has the
 // full width to wrap into. No measuring, no breakpoint guessing - it responds
-// to the actual text at the actual width.
-//
-// Why it matters: the old always-side-by-side version left the tag floating
-// next to line one of a three-line name, detached from everything under it.
+// to the actual text at the actual width. Forcing them side by side instead
+// would leave the tag floating next to line one of a three-line name,
+// detached from everything under it.
 export function CardTitleRow({
   meta,
   tag,

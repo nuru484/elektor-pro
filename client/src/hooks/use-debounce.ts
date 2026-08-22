@@ -1,6 +1,6 @@
 "use client";
 
-// src/hooks/use-debounce.ts (DMS pattern)
+// src/hooks/use-debounce.ts
 import { useEffect, useState } from "react";
 
 /** Returns `value` only after it has been stable for `delay` ms. */

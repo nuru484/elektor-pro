@@ -22,8 +22,7 @@ export default tseslint.config(
   perfectionist.configs["recommended-natural"],
   {
     rules: {
-      // Underscore-prefixed names are an intentional "unused" marker
-      // (same convention as dms-backend / website-backend).
+      // Underscore-prefixed names are an intentional "unused" marker.
       "@typescript-eslint/no-unused-vars": [
         "error",
         {

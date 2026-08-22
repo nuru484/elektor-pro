@@ -21,11 +21,11 @@ const isDev = process.env.NODE_ENV === 'development';
 /**
  * Content-Security-Policy.
  *
- * Set here, statically, rather than per-request with a nonce. The nonce
- * approach was measured first and does not work for this app: Next only
- * stamps the nonce onto the scripts of DYNAMICALLY rendered pages, and most
- * pages here prerender at build time - the served /login carried 28 script
- * tags with zero nonces, which `strict-dynamic` would have blocked outright.
+ * Set here, statically, rather than per-request with a nonce. A nonce does
+ * not work for this app: Next only stamps the nonce onto the scripts of
+ * DYNAMICALLY rendered pages, and most pages here prerender at build time -
+ * the served /login carries 28 script tags with zero nonces, which
+ * `strict-dynamic` would block outright.
  * Buying the nonce would mean forcing every page dynamic and losing static
  * rendering and CDN caching on the public landing, legal, and results pages.
  *

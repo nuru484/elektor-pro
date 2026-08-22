@@ -1,6 +1,6 @@
 // src/services/authorization/role-capability.service.ts
 //
-// The runtime role → capability matrix (DMS RolePermission pattern). Grants
+// The runtime role → capability matrix. Grants
 // live in the RoleCapability table so super-admins can retune what each role
 // may do without a deploy; reads go through a short in-process cache because
 // every authorized request consults the matrix.

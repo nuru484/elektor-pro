@@ -42,7 +42,7 @@ const authRoutes = Router();
 // Public
 authRoutes.post('/login', authRateLimiter, ...login);
 authRoutes.post('/2fa/verify', authRateLimiter, ...verifyTwoFactorLogin);
-// Portfolio demo sign-in: no credentials, the server picks the seeded account.
+// Demo sign-in: no credentials, the server picks the seeded account.
 authRoutes.post('/demo-login', demoLoginLimiter, ...demoLogin);
 authRoutes.post('/refresh', refreshToken);
 authRoutes.post('/logout', logout);

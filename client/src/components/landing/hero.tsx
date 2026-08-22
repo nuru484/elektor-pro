@@ -98,7 +98,7 @@ export function Hero() {
                   Cast your vote
                 </button>
               </Link>
-              {/* Portfolio visitors: sign in as any role, no credentials. */}
+              {/* Demo visitors: sign in as any role, no credentials. */}
               <Link
                 className="text-base font-medium text-brand underline-offset-4 hover:underline max-sm:w-full max-sm:text-center md:text-lg"
                 href="/demo"

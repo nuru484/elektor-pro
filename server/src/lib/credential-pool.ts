@@ -5,14 +5,14 @@
 // bcrypt is deliberately slow - that is the entire point of it - at roughly
 // 300-500ms per hash at cost 12. Hashing inside a transaction puts that cost
 // on the transaction's critical path, and the cost scales with the number of
-// accounts being created: a bulk import of 20 nominations spent more than
-// Prisma's 5s transaction budget hashing alone and failed the whole import
-// with a database error that said nothing about passwords. The candidate
-// import schema allows up to 1000 rows, so this was not a corner case.
+// accounts being created: a bulk import of 20 nominations spends more than
+// Prisma's 5s transaction budget on hashing alone and fails the whole import
+// with a database error that says nothing about passwords. The candidate
+// import schema allows up to 1000 rows, so that is not a corner case.
 //
 // The pool is therefore filled BEFORE the transaction opens and drained
-// inside it. Applier signatures stay unchanged: the pool travels through
-// AsyncLocalStorage, the same way the post-commit outbox does.
+// inside it. It travels through AsyncLocalStorage, the same way the
+// post-commit outbox does, so applier signatures carry no extra parameter.
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { hashPassword } from '../utils/password.js';

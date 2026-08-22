@@ -1,6 +1,6 @@
 // src/services/auth/demo-login.service.ts
 //
-// One-click demo sign-in for the portfolio deployment: the caller names a
+// One-click demo sign-in for public demo deployments: the caller names a
 // ROLE, never an account, and the server resolves the seeded fixture behind
 // it. Nothing here trusts client input beyond the role name, and the demo
 // accounts carry an unknown random password (see prisma/seed.ts) so this

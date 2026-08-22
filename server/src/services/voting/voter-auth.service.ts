@@ -106,11 +106,11 @@ export const makeVoterAuthService = (
       if (voter.phoneNumber) {
         channel = 'sms';
         destinationMasked = maskPhone(voter.phoneNumber);
-        // sendSms REPORTS failure rather than throwing, and the result used to
-        // be dropped: the voter was told "code sent", no code ever arrived,
-        // and the resend throttle then blocked them from trying again. On
-        // election day that is a disenfranchised voter, so a failed send is
-        // now an error they can see and act on.
+        // sendSms REPORTS failure rather than throwing, so the result must be
+        // acted on: dropping it tells the voter "code sent" when no code ever
+        // arrives, and the resend throttle then blocks them from trying again.
+        // On election day that is a disenfranchised voter, so a failed send
+        // becomes an error they can see and act on.
         const result = await d.sms.send(voter.phoneNumber, message);
         if (!result.delivered) {
           throw new ServiceUnavailableError(

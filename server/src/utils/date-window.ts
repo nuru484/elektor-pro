@@ -1,7 +1,7 @@
 // src/utils/date-window.ts
 //
-// Shared parsing for `?from=YYYY-MM-DD&to=YYYY-MM-DD` list filters (the
-// standing convention: every list endpoint filters by date).
+// Shared parsing for `?from=YYYY-MM-DD&to=YYYY-MM-DD` list filters: every
+// list endpoint filters by date.
 
 /**
  * Parse a `YYYY-MM-DD` query value into a UTC day boundary. `nextDay` shifts

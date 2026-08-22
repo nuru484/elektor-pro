@@ -5,7 +5,7 @@ import ENV from '../config/env.js';
 import { verifyJwtToken } from '../utils/verify-jwt-token.js';
 
 /**
- * Attach req.user if a valid access token is present, but never reject — used by
+ * Attach req.user if a valid access token is present, but never reject - used by
  * endpoints that are public but richer when authenticated (e.g. results).
  */
 export const optionalAuth = async (
@@ -19,7 +19,7 @@ export const optionalAuth = async (
     try {
       req.user = await verifyJwtToken(token, ENV.ACCESS_TOKEN_SECRET);
     } catch {
-      // ignore — treat as anonymous
+      // ignore - treat as anonymous
     }
   }
   next();

@@ -57,10 +57,10 @@ const runApplier = (
 /**
  * A bulk import's work scales with its payload, so the default 5s interactive
  * transaction budget is the wrong shape for this path: 20 candidate rows
- * already exceeded it. Everything expensive that does NOT need the database
- * has been moved out (credential hashing below, notifications into the
- * outbox), so what remains is pure database work - but a 1000-row import is
- * still a lot of it, and timing out here means losing the whole import.
+ * already exceed it. Everything expensive that does NOT need the database
+ * stays outside (credential hashing below, notifications in the outbox), so
+ * what remains is pure database work - but a 1000-row import is still a lot
+ * of it, and timing out here means losing the whole import.
  */
 const APPLY_TIMEOUT_MS = 120_000;
 
@@ -74,8 +74,8 @@ const APPLY_TIMEOUT_MS = 120_000;
  *    run inside the transaction and never go out for a change that rolled
  *    back.
  *
- * Both were real failures, not theory: a bulk import of two nominations blew
- * the transaction budget on SMTP, and twenty blew it on hashing.
+ * Both are load-bearing: a bulk import of two nominations blows the
+ * transaction budget on SMTP alone, and twenty blow it on hashing.
  */
 const applyInTransaction = async <T>(
   applier: Applier,
@@ -169,10 +169,10 @@ export const approveChangeRequest = async (
   }
   const cr = await prisma.changeRequest.findUnique({ where: { id } });
   if (!cr) throw new NotFoundError('Change request not found');
-  // Four eyes, actually. The capability check alone let anyone who gained
+  // Four eyes: the capability check alone would let anyone who gained
   // APPROVE_CHANGES after submitting sign off their own request, which is
-  // exactly the review this queue exists to force. Cancel it and resubmit, or
-  // have someone else approve.
+  // exactly the review this queue exists to force. The requester cancels and
+  // resubmits, or somebody else approves.
   if (cr.requestedById === actor.id) {
     throw new ForbiddenError('You cannot approve your own change request', {
       code: 'SELF_APPROVAL',

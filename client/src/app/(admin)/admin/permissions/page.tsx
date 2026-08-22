@@ -167,7 +167,7 @@ export default function PermissionsPage() {
         <ErrorState message={isError ? undefined : "Could not load permissions."} />
       ) : (
         // Mounted only once the data exists so the local matrix state can be
-        // derived directly from it (the DMS edit-form pattern).
+        // derived directly from it.
         <Matrix data={data.data} />
       )}
     </div>

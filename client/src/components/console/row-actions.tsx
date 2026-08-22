@@ -1,6 +1,6 @@
 "use client";
 
-// DMS-style row actions: a vertical three-dot trigger opening a dropdown of
+// Row actions: a vertical three-dot trigger opening a dropdown of
 // actions. Every data table's Actions column renders this - actions never
 // sit on the row as bare icon buttons.
 import { MoreVertical } from "lucide-react";

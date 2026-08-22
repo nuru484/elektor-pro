@@ -229,10 +229,10 @@ function CurrentElectionPanel({
 
 /**
  * One past posting. Deliberately flat - a single bordered card with rows,
- * no panel-inside-a-card - because the previous nesting stacked three
- * borders and their padding on a phone, leaving barely any width for the
- * text. Everything that can be long (election name, candidate name,
- * portfolio) wraps on its own line rather than sharing one.
+ * no panel-inside-a-card: nesting panels stacks three borders and their
+ * padding on a phone, leaving barely any width for the text. Everything that
+ * can be long (election name, candidate name, portfolio) wraps on its own
+ * line rather than sharing one.
  */
 function HistoryCard({ assignment }: { assignment: AgentDashboardRow }) {
   const { candidate, election } = assignment;

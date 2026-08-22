@@ -2,11 +2,12 @@
 //
 // The queue behind every message this system sends to a voter.
 //
-// Announcements used to fan out inline: one loop over the whole roll,
-// `Promise.allSettled` per batch, failures counted and then discarded. On a
-// 2,800-voter election that meant a rate-limited SMS provider, a transient
-// 502, or a restart mid-blast silently left some voters never told that
-// voting had opened - with nothing to retry and nothing to inspect.
+// Fanning announcements out inline - one loop over the whole roll,
+// `Promise.allSettled` per batch, failures counted and then discarded - does
+// not survive an election-sized roll: on 2,800 voters a rate-limited SMS
+// provider, a transient 502, or a restart mid-blast silently leaves some
+// voters never told that voting had opened, with nothing to retry and
+// nothing to inspect.
 //
 // One job per recipient fixes that: each message retries on its own schedule,
 // a provider limit slows delivery instead of dropping it, and anything that

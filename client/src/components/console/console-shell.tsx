@@ -1,7 +1,7 @@
 "use client";
 
 // The console shell: a persistent sidebar on large screens (collapsible to an
-// icon rail, DMS-style), a sheet drawer on phones, a slim top bar whose
+// icon rail), a sheet drawer on phones, a slim top bar whose
 // bottom hairline lines up with the sidebar header's, and a console footer.
 // Role-aware: nav items come from nav-config filtered by the signed-in user's
 // role, and the guard redirects signed-out visitors to the login page.
@@ -380,8 +380,8 @@ export function ConsoleShell({
               <Logo href={homeForRole(role)} imgSize={30} textClassName="max-[380px]:hidden text-lg" />
               <div className="flex min-w-0 items-center gap-1.5">
                 <ThemeToggle />
-                {/* Which console you are in, immediately beside the account
-                    menu: it describes who you are signed in as, so it belongs
+                {/* Which console is active, immediately beside the account
+                    menu: it describes the signed-in identity, so it belongs
                     against the avatar rather than the wordmark. */}
                 <span className="hidden shrink-0 rounded-full border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
                   {ROLE_LABELS[role]}
@@ -443,7 +443,7 @@ export function ConsoleShell({
               </SheetContent>
             </Sheet>
             <HeaderBackButton />
-            {/* Desktop: collapse/expand the sidebar (DMS-style trigger). */}
+            {/* Desktop: collapse/expand the sidebar. */}
             <Button
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               className="hidden lg:inline-flex"

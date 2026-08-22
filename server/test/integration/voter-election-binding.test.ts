@@ -1,6 +1,6 @@
 // test/integration/voter-election-binding.test.ts
 //
-// Build 7.1: voters are registered INTO elections, candidates get sign-in
+// Voters are registered INTO elections, candidates get sign-in
 // accounts from their contact details, and the roll's bulk-add can enrol
 // voters into one of the election's eligibility groups.
 import { beforeEach, describe, expect, it } from 'vitest';

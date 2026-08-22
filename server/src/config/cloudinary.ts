@@ -288,11 +288,11 @@ export const isCloudinaryConfigured = (config: ICloudinaryConfig): boolean =>
 /**
  * A service that fails only when an upload is actually attempted.
  *
- * The eager version threw while this MODULE was being imported, so a
- * deployment missing Cloudinary credentials died at boot with
- * "Invalid Cloudinary config" - even though env.ts marks those variables
- * optional and most of the app never touches an image. Failing at the point
- * of use keeps the contract honest and the error legible.
+ * Constructing the service eagerly throws while this MODULE is imported, so
+ * a deployment missing Cloudinary credentials dies at boot with "Invalid
+ * Cloudinary config" - even though env.ts marks those variables optional and
+ * most of the app never touches an image. Failing at the point of use keeps
+ * the contract honest and the error legible.
  */
 const unconfiguredService: ICloudinaryUploadService = {
   deleteImage: () => {

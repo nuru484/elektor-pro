@@ -1,6 +1,6 @@
 "use client";
 
-// File-import dialogs (DMS style: everything in a dialog, no separate page).
+// File-import dialogs: everything happens in a dialog, never a separate page.
 // Shared three-stage body - pick a file, review the parsed preview with
 // per-row problems, confirm - specialized for voters and candidates. Nothing
 // is written until the final confirmation, and writes ride maker-checker.

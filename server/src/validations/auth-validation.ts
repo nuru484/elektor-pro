@@ -69,7 +69,7 @@ export const confirmCodeSchema = z.object({
   code: z.string().min(4).max(10),
 });
 
-// --- Demo sign-in (portfolio) ---
+// --- Demo sign-in ---
 
 export const demoLoginSchema = z.object({
   role: z.enum(DEMO_ROLES),

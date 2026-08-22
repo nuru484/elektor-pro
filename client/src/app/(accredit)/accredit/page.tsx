@@ -237,7 +237,7 @@ export default function AccreditPage() {
                 </NativeSelect>
               </Field>
             ) : myDesk ? (
-              // Your one desk, stated rather than chosen.
+              // The accreditor's single desk, stated rather than chosen.
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium text-muted-foreground">

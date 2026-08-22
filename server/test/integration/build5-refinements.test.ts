@@ -1,6 +1,6 @@
 // test/integration/build5-refinements.test.ts
 //
-// Build 5 refinements: candidate bulk creation + file import preview,
+// Candidate bulk creation + file import preview,
 // per-election results role visibility, and election list date filters.
 import { beforeEach, describe, expect, it } from 'vitest';
 

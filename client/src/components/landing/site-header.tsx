@@ -1,12 +1,11 @@
 "use client";
 
-// Text-first navigation derived from the portfolio's language, but with its
-// own behavior: transparent at the top of the page, sticky with a blurred
-// hairline once scrolled. Three tiers: phones get the "Menu"/"Close" toggle
-// with a full-screen overlay; tablets (md-lg) drop the section tabs and show
-// only the auth links, which is all that fits well there; from lg the full
-// bar renders - section links apart from the actions ("Voter portal" as a
-// quiet text link, "Sign in" as the single pill) so it stays airy.
+// Text-first navigation: transparent at the top of the page, sticky with a
+// blurred hairline once scrolled. Three tiers: phones get the "Menu"/"Close"
+// toggle with a full-screen overlay; tablets (md-lg) drop the section tabs
+// and show only the auth links, which is all that fits well there; from lg
+// the full bar renders - section links apart from the actions ("Voter portal"
+// as a quiet text link, "Sign in" as the single pill) so it stays airy.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 

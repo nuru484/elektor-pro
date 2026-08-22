@@ -1,4 +1,4 @@
-// src/redux/admin-api.ts — admin domain endpoints (elections, candidates,
+// src/redux/admin-api.ts - admin domain endpoints (elections, candidates,
 // voters, change requests, dashboard, audit).
 import type {
   BulkImportResponse,

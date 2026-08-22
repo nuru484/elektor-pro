@@ -1,6 +1,6 @@
 // test/integration/voter-import.test.ts
 //
-// Build 5: the CSV/XLSX voter import preview - header aliasing, per-row
+// The CSV/XLSX voter import preview: header aliasing, per-row
 // validation, in-file and against-DB duplicate detection, no writes.
 import ExcelJS from 'exceljs';
 import { beforeEach, describe, expect, it } from 'vitest';

@@ -1,4 +1,4 @@
-// src/redux/governance-api.ts — staff accounts, agent assignments, capability
+// src/redux/governance-api.ts - staff accounts, agent assignments, capability
 // grants, groups/categories, and the organization settings.
 import type {
   AccessGrant,

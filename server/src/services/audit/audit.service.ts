@@ -30,7 +30,7 @@ type TxOnlyClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
  * and both write rows claiming it as their `prevHash`, which permanently
  * breaks verification (the sequence is an autoincrement, so there is no
  * unique constraint to catch the collision the way the ballot chain has one).
- * On election day, concurrent accreditations made this the normal case.
+ * On election day, concurrent accreditations make this the normal case.
  */
 const AUDIT_LOCK_KEY = 4_919_001;
 
@@ -52,8 +52,8 @@ export interface AuditChainRow {
  * The exact payload that gets hashed. Every field here is also persisted, so
  * the hash can be recomputed from the stored row - which is what makes the
  * chain tamper-EVIDENT rather than merely tamper-shaped. `createdAt` is
- * written explicitly for the same reason: hashing a timestamp that was never
- * stored made the old hashes unverifiable by construction.
+ * written explicitly for the same reason: hashing a timestamp that is never
+ * stored would make the hashes unverifiable by construction.
  *
  * Metadata is round-tripped through JSON first so the value hashed here is
  * byte-identical to what Postgres will return on a later read (a Date in

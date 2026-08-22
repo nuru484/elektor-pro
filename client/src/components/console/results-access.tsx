@@ -89,7 +89,7 @@ export function ResultsAccessTab({
       />
     );
   }
-  // Viewable first: the whole point of the tab is what you can open now.
+  // Viewable first: the point of the tab is what can be opened now.
   const ordered = [...elections].sort(
     (a, b) => Number(resultsViewable(b)) - Number(resultsViewable(a)),
   );

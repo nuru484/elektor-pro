@@ -281,10 +281,10 @@ export const makeAuthService = (
 
     if (!verified) {
       // A failed second factor counts toward the SAME lockout budget as a
-      // failed password. Without this the challenge token was an unlimited
-      // guessing oracle for its whole 5-minute life: an attacker holding a
-      // correct password could grind codes with nothing but an IP-level
-      // limiter in the way, and the account never locked.
+      // failed password. Without this the challenge token would be an
+      // unlimited guessing oracle for its whole 5-minute life: an attacker
+      // holding a correct password could grind codes with nothing but an
+      // IP-level limiter in the way, and the account would never lock.
       const attempts = user.failedLoginAttempts + 1;
       const shouldLock = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
       await prisma.user.update({

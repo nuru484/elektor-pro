@@ -1,6 +1,5 @@
-// Feature grid as clean bordered cards - Elektor's own take on the shared
-// language (hairlines, muted type, quiet numbering), distinct from the
-// portfolio's outlined-number signature. Each card carries a small product
+// Feature grid as clean bordered cards in the site's own language:
+// hairlines, muted type, quiet numbering. Each card carries a small product
 // vignette (a mock slice of the real UI, same family as the hero's
 // declaration panel), a mono index, a brand top rule that brightens on
 // hover, title, and body.

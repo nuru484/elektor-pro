@@ -1,6 +1,6 @@
 "use client";
 
-// Shared filter toolbar for console data tables, mobile-first (KK/DMS style):
+// Shared filter toolbar for console data tables, mobile-first:
 //
 // - Phones/tablets (below lg): the search field is always visible and spans
 //   the full width; beneath it a "Filters" toggle (with an active-count
@@ -31,7 +31,7 @@ const countActiveFilters = (filters: Record<string, unknown>): number =>
  * The search box owns its own input state and commits it debounced (500ms),
  * so typing never fires a request per keystroke. `lastEmitted` tells our own
  * commits apart from external changes (URL navigation, session restore,
- * clear-all) - the input resyncs on the latter, never mid-typing. DMS pattern.
+ * clear-all) - the input resyncs on the latter, never mid-typing.
  */
 function DebouncedSearch({
   committed,

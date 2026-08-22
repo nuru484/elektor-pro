@@ -1,6 +1,6 @@
 // test/integration/accreditation-desk.test.ts
 //
-// Build 7: the accreditation desk - voter lookup, check-in with one-time
+// The accreditation desk: voter lookup, check-in with one-time
 // voting codes, single-use code sign-in, revocation, and live turnout.
 import { beforeEach, describe, expect, it } from 'vitest';
 

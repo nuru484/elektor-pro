@@ -4,7 +4,7 @@
 // domain. The real auth cookies are httpOnly and may live on the API domain
 // (invisible to this app's proxy), so the server-side console gate needs a
 // signal it can always see. This marker carries no auth value: forging it
-// only gets you the console shell HTML - every API call is still
+// only yields the console shell HTML - every API call is still
 // authenticated by the backend via the httpOnly cookies.
 export const SESSION_MARKER_COOKIE = "ep_session";
 

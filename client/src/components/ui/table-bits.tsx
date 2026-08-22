@@ -87,7 +87,7 @@ export const ROW_BADGE = "px-1.5 py-px text-[10px] tracking-[0.04em]";
 /**
  * Pulsing placeholder rows shaped like a RowCard (checkbox, meta line,
  * title + subtitle, action button) - the mobile counterpart of the table
- * skeleton, per the content-shaped-skeleton convention.
+ * skeleton, mirroring the real content rather than a generic block.
  */
 export function SkeletonRowCards({ rows = 8 }: { rows?: number }) {
   return (

@@ -402,9 +402,9 @@ const ensureCandidateAccount = async (
   }
 
   // Pre-hashed outside the transaction (see lib/credential-pool). Hashing
-  // here instead cost ~300-500ms per nomination INSIDE the transaction, so a
-  // bulk import of twenty exhausted the transaction budget and failed the
-  // whole thing with a database error that never mentioned passwords.
+  // here instead costs ~300-500ms per nomination INSIDE the transaction, so a
+  // bulk import of twenty exhausts the transaction budget and fails the
+  // whole thing with a database error that never mentions passwords.
   const { hash, password: temporaryPassword } = await takeCredential();
   const [firstName, ...restName] = name.trim().split(/\s+/);
   const user = await tx.user.create({
@@ -419,10 +419,10 @@ const ensureCandidateAccount = async (
     },
     select: { id: true },
   });
-  // Credential delivery is deferred to AFTER the transaction commits. Doing
-  // it inline put a network round-trip on the transaction's critical path:
-  // against a real SMTP relay each send cost seconds, and a bulk import of a
-  // few nominations exhausted the transaction timeout and failed outright.
+  // Credential delivery is deferred to AFTER the transaction commits. Inline
+  // it would put a network round-trip on the transaction's critical path:
+  // against a real SMTP relay each send costs seconds, and a bulk import of a
+  // few nominations exhausts the transaction timeout and fails outright.
   // Deferring also means credentials never go out for a nomination that then
   // rolls back. Still best-effort: the candidate can always use password
   // reset, so a failed send must not lose the nomination.

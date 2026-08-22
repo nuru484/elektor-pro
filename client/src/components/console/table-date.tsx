@@ -1,6 +1,6 @@
 "use client";
 
-// DMS-style table timestamp: the date on top, its time below in smaller
+// Table timestamp: the date on top, its time below in smaller
 // muted type - keeps columns narrow while showing both.
 import { formatDate, formatTime } from "@/utils/format-date";
 

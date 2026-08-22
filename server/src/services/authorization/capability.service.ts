@@ -11,7 +11,7 @@ const ALL_CAPABILITIES = Object.values(Capability);
 const ALL_SET: ReadonlySet<Capability> = new Set(ALL_CAPABILITIES);
 const EMPTY_SET: ReadonlySet<Capability> = new Set();
 
-/** The role's capabilities per the runtime matrix. */
+/** The role's capabilities from the runtime matrix. */
 const roleCapabilities = async (role: Role): Promise<ReadonlySet<Capability>> => {
   if (role === Role.SUPER_ADMIN) return ALL_SET;
   if (!isEditableRole(role)) return EMPTY_SET;

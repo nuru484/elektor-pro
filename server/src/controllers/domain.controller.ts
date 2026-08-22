@@ -368,7 +368,7 @@ export const previewVoterImportController: RequestHandler[] = [
 /**
  * Rows above this go through the chunked, resumable import path instead of a
  * single transaction. Below it the direct write is faster and keeps the
- * simpler maker-checker story, so small imports are unchanged.
+ * simpler maker-checker story, so small imports stay on that path.
  */
 const ASYNC_IMPORT_THRESHOLD = 500;
 

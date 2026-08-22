@@ -204,7 +204,7 @@ export const computeResults = async (electionId: string) => {
     const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
     const ranked = [...candidates].sort((a, b) => b.votes - a.votes);
     // A tie is a real electoral outcome, not a sorting detail. Declaring
-    // `ranked[0]` the winner handed the seat to whoever happened to sort
+    // `ranked[0]` the winner would hand the seat to whoever happened to sort
     // first, silently. When the top score is shared there is NO winner until
     // the commission resolves it, so say so explicitly and list who is level.
     const topVotes = ranked[0]?.votes ?? 0;
@@ -266,7 +266,7 @@ export type ElectionResults = Awaited<ReturnType<typeof computeResults>>;
  * recomputations per second, against an endpoint measured at ~115 req/s peak:
  * 12ms of work spread over seven queries, which degrades under concurrency
  * rather than scaling with it. A couple of hundred people watching a busy
- * election would have collapsed it.
+ * election would collapse it.
  *
  * A very short TTL fixes that without anyone noticing: live results stay live
  * to within a second, and a burst of a thousand viewers costs one computation

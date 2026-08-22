@@ -1,6 +1,6 @@
-// Elektor Pro — generic, customizable e-voting platform schema
+// Elektor Pro - generic, customizable e-voting platform schema
 // Single-organization deployment. Works for schools, companies, unions,
-// associations — any body that runs elections. Constituency grouping is
+// associations - any body that runs elections. Constituency grouping is
 // entirely optional: by default every eligible voter votes every portfolio.
 // Docs: https://pris.ly/d/prisma-schema
 
@@ -145,7 +145,7 @@ enum CandidateStatus {
 }
 
 // ===========================================================================
-// Organization (singleton) — branding & default settings for the deployment
+// Organization (singleton) - branding & default settings for the deployment
 // ===========================================================================
 
 model Organization {
@@ -559,8 +559,8 @@ model Candidate {
   manifestoUrl   String?
   order          Int     @default(0)
 
-  // Nomination lifecycle (Build 6). Existing/non-vetting candidates default
-  // to QUALIFIED so ballots keep working unchanged.
+  // Nomination lifecycle. Candidates on non-vetting elections default to
+  // QUALIFIED, which puts them straight on the ballot.
   status       CandidateStatus @default(QUALIFIED)
   /// Position on the printed/on-screen ballot, unique within the portfolio.
   ballotNumber Int?
@@ -905,8 +905,8 @@ model AccessGrant {
   @@index([electionId])
 }
 
-/// Runtime role → capability grants, edited by super-admins from the console
-/// (DMS RolePermission pattern). Seeded with the shipped defaults; the
+/// Runtime role → capability grants, edited by super-admins from the console.
+/// Seeded with the shipped defaults; the
 /// capability service reads these behind a short cache. SUPER_ADMIN is never
 /// stored - it implicitly holds every capability.
 model RoleCapability {

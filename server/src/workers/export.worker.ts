@@ -1,9 +1,9 @@
 // src/workers/export.worker.ts
 //
 // Renders queued exports. Import-for-side-effect from server.ts. With
-// REDIS_URL unset there is no queue, and the controller keeps streaming
-// exports synchronously as before - so the feature is unchanged without
-// Redis rather than broken by its absence.
+// REDIS_URL unset there is no queue, and the controller streams exports
+// synchronously instead - so the feature works without Redis rather than
+// breaking in its absence.
 import type { ConnectionOptions } from 'bullmq';
 
 import { Worker } from 'bullmq';

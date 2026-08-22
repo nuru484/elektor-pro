@@ -7,8 +7,7 @@ import type { TxClient } from '../../types/prisma.types.js';
 // The direct bulk path writes every row inside a single transaction. That is
 // the right shape for a few hundred rows and the wrong one for fifty
 // thousand: the transaction is held open for minutes, blocks vacuum, and
-// eventually times out - so the import was capped at 5,000 rows rather than
-// fixed.
+// eventually times out, which caps that path at 5,000 rows.
 //
 // Here the validated rows are persisted first, then written a chunk at a
 // time. Each chunk advances `processedRows` IN THE SAME TRANSACTION that

@@ -1,6 +1,6 @@
 // test/integration/results-policy.test.ts
 //
-// Build 8: results visibility follows the election's policy exactly - a
+// Results visibility follows the election's policy exactly: a
 // MANUAL election stays hidden after it ends until someone publishes, and
 // unpublish takes it back down; certify locks and snapshots; the candidate
 // console endpoint returns only the caller's own candidacies.

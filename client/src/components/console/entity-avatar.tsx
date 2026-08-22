@@ -1,6 +1,6 @@
 "use client";
 
-// Small circular avatar for data-table rows (DMS admin-table style): the
+// Small circular avatar for data-table rows: the
 // photo when there is one, initials on the brand disc otherwise.
 import Image from "next/image";
 

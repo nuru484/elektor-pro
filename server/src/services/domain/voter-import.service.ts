@@ -17,9 +17,9 @@ import { validateAndFormatPhone } from '../../utils/validate-phone.js';
 
 /**
  * Upper bound on a single file, kept only as a guard against a runaway upload
- * (a corrupt or hostile file), not as a capability limit. The real constraint
- * used to be the single-transaction write; imports now commit in chunks, so
- * this sits far above any real register.
+ * (a corrupt or hostile file), not as a capability limit. Imports commit in
+ * chunks rather than in one transaction, so this sits far above any real
+ * register.
  */
 export const MAX_IMPORT_ROWS = 100_000;
 

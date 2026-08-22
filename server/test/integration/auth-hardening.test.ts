@@ -1,6 +1,6 @@
 // test/integration/auth-hardening.test.ts
 //
-// Build 4 auth hardening: the server-side forced-password-change gate,
+// Auth hardening: the server-side forced-password-change gate,
 // recovery-code regeneration + remaining count, and the auth-hygiene sweep.
 import { beforeEach, describe, expect, it } from 'vitest';
 

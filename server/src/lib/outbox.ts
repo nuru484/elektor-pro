@@ -5,9 +5,9 @@
 // Sending an email or an SMS from inside a database transaction is a trap:
 // the network call sits on the transaction's critical path, so a slow relay
 // spends the transaction's whole budget and the write fails. Bulk candidate
-// import hit exactly this - a real SMTP server took ~3s per credential mail,
-// two nominations blew Prisma's 5s transaction timeout, and the import failed
-// with a database error that said nothing about email.
+// import is the sharp edge: a real SMTP server costs ~3s per credential mail,
+// so two nominations blow Prisma's 5s transaction timeout and the import
+// fails with a database error that says nothing about email.
 //
 // Deferring the send also fixes the ordering: credentials should never go out
 // for a nomination whose transaction then rolls back.
@@ -51,7 +51,7 @@ export const withOutbox = async <T>(fn: () => Promise<T>): Promise<T> => {
 /**
  * Queue work to run after the surrounding transaction commits. With no outbox
  * in scope the task runs immediately (still best-effort), so callers outside a
- * transaction behave the way they always did.
+ * transaction need no special handling.
  */
 export const afterCommit = (task: OutboxTask): void => {
   const tasks = storage.getStore();

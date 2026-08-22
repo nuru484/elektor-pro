@@ -26,7 +26,7 @@ export class RateLimitExceededError extends CustomError {
 /**
  * One shared Redis client for every limiter. With REDIS_URL set, counters
  * live in Redis and SURVIVE process restarts - the in-memory default store
- * is per-process RAM, which is why a restart used to clear active blocks.
+ * is per-process RAM, so a restart there clears every active block.
  * Without Redis (CI, tests, bare dev) limiters fall back to memory.
  */
 const rateLimitRedis = createRedisConnection();
@@ -53,9 +53,9 @@ const makeStore = (): RedisStore | undefined => {
  * Default bucket key.
  *
  * `req.user` is only populated by route-level authenticateJWT, so an
- * app-level limiter never sees it and would key EVERY request by IP alone.
- * That is how the global limiter came to cap a whole institution - every
- * voter behind one campus NAT, plus every admin - at a single shared budget.
+ * app-level limiter never sees it and would key EVERY request by IP alone,
+ * capping a whole institution - every voter behind one campus NAT, plus
+ * every admin - at a single shared budget.
  *
  * So fall back to the session cookie, which cookie-parser has already put on
  * the request by the time any limiter runs: it gives each signed-in device
@@ -141,8 +141,8 @@ const authTargetKey = (req: Request): string | undefined => {
  * Auth attempts are limited PER ACCOUNT, not per IP.
  *
  * Credential stuffing targets one account at a time, so this is where the
- * limit bites; keying by IP instead meant a whole campus behind one NAT
- * shared a single login budget on the one day everybody signs in at once.
+ * limit bites; keying by IP instead would make a whole campus behind one NAT
+ * share a single login budget on the one day everybody signs in at once.
  * Per-IP flooding is still bounded by the global limiter below, and the
  * per-account defences (lockout after MAX_FAILED_LOGIN_ATTEMPTS, the OTP
  * resend window, OTP attempt limits) are unaffected.
@@ -178,11 +178,11 @@ export const globalLimiter = createRateLimiter(
 
 /**
  * The blanket limiter in front of the whole API. It is a flood guard, not a
- * usage quota: a console page fans out into many parallel queries, so the old
- * 100-per-15-minutes ceiling threw 429s at admins doing ordinary work
- * (measured: the 100th request of a normal session). The budget is now per
- * signed-in device (see defaultKey), which is what makes a generous ceiling
- * safe - anonymous callers still share their IP's bucket.
+ * usage quota: a console page fans out into many parallel queries, so a
+ * 100-per-15-minutes ceiling throws 429s at admins doing ordinary work
+ * (the 100th request of a normal session). The budget is per signed-in
+ * device (see defaultKey), which is what makes a generous ceiling safe -
+ * anonymous callers still share their IP's bucket.
  */
 export const apiLimiter = createRateLimiter(
   15 * 60 * 1000, // 15 minutes

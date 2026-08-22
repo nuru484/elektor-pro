@@ -1,6 +1,6 @@
 "use client";
 
-// Portfolio demo entry point: one card per role, each signing in with a
+// Demo entry point: one card per role, each signing in with a
 // single click. No credentials are shown (or needed) - the server resolves
 // the seeded account behind the role name, so nothing here is a password
 // hint for the real login form.

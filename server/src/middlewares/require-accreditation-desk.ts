@@ -13,7 +13,7 @@ import { asyncHandler, ForbiddenError, UnauthorizedError } from './error-handler
  * assigned to elections and pass through.
  *
  * Always mount it AFTER `requireCapability(ACCREDIT_VOTERS)`, so the answer to
- * "may you accredit at all" is settled before we ask "may you accredit here".
+ * "may this caller accredit at all" is settled before "may they accredit here".
  */
 export const requireAccreditationDesk = asyncHandler(
   async (req: Request, _res: Response, next: NextFunction) => {

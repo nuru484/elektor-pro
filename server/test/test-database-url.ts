@@ -3,12 +3,12 @@
 // Where the suite's TEMPLATE database lives. Resolved once and shared by
 // vitest.config.ts and test/global-setup.ts.
 //
-// No credentials are hardcoded here: the previous literal put a real local
-// password into the repository (and its history). Resolution order:
+// No credentials are hardcoded here: a literal connection string would put a
+// real local password into the repository and its history. Resolution order:
 //   1. TEST_DATABASE_URL          - explicit, wins everywhere (CI, containers)
 //   2. DATABASE_URL from .env     - the dev database, with its name swapped to
 //                                   `<name>_test` so the suite can never point
-//                                   at the database you develop against
+//                                   at the database being developed against
 //   3. a credential-free local default
 //
 // .env is PARSED, never loaded into process.env. Importing 'dotenv/config'

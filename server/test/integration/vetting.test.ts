@@ -1,6 +1,6 @@
 // test/integration/vetting.test.ts
 //
-// Build 6: nomination vetting - draft intake on vetting-enabled elections,
+// Nomination vetting: draft intake on vetting-enabled elections,
 // criteria + scoring, qualification decisions with the lifecycle map, ballot
 // visibility for qualified candidates only, and ballot-number assignment.
 import { beforeEach, describe, expect, it } from 'vitest';

@@ -22,7 +22,7 @@ import logger from '../utils/logger.js';
 
 /**
  * Send one message. SMS is preferred, email is the fallback - the same rule
- * the inline path used, kept here so both routes behave identically.
+ * the inline path applies, so both routes behave identically.
  *
  * Throwing is deliberate: it is what tells BullMQ to retry. A recipient with
  * neither channel is NOT an error - nothing can be done for them, and

@@ -275,7 +275,7 @@ export const castBallot = async (
 
   // Exactly one decision per portfolio. Checking only the SET size against the
   // eligible count is not enough: a ballot listing one portfolio twice and
-  // omitting none still matched, and each entry passed `normalizeSelection`
+  // omitting none still matches, and each entry passes `normalizeSelection`
   // independently, so a voter could record several votes for one seat. The
   // per-ballot unique index does not catch it either (different candidateIds
   // are distinct rows), and the hash chain happily signs the stuffed ballot.
@@ -299,7 +299,7 @@ export const castBallot = async (
   }
 
   // The advisory lock in createBallotInTx serialises the chain, so a sequence
-  // collision should no longer happen. This stays as a safety net for the
+  // collision is not expected. The retry loop is a safety net for the
   // remaining races (a duplicate receipt/hash draw, a queued caller giving
   // up) with jittered backoff so a burst of retries does not synchronise into
   // another collision. MAX_BALLOT_ATTEMPTS is generous: failing here loses a

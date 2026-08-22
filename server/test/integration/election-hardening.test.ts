@@ -1,6 +1,6 @@
 // test/integration/election-hardening.test.ts
 //
-// Build 4 hardening around the election domain: certification visibility,
+// Hardening around the election domain: certification visibility,
 // the certification lock, the status state machine, whole-chain ballot
 // verification, single-select category enforcement, and voter email
 // uniqueness.

@@ -1,5 +1,5 @@
 // src/lib/prisma.ts
-// Single shared Prisma client for the whole app. Imported everywhere — never `new PrismaClient()`.
+// Single shared Prisma client for the whole app. Imported everywhere - never `new PrismaClient()`.
 import { PrismaPg } from '@prisma/adapter-pg';
 
 import { PrismaClient } from '../../generated/prisma/client.js';
@@ -58,7 +58,7 @@ interface SoftDeletableDelegate {
  * - read operations default to excluding soft-deleted rows (pass `deletedAt`
  *   explicitly to include them).
  *
- * `findUnique` is intentionally NOT filtered — it is the deliberate seam for
+ * `findUnique` is intentionally NOT filtered - it is the deliberate seam for
  * looking a record up regardless of soft-delete state. Use `findFirst` for a
  * soft-delete-aware lookup.
  */

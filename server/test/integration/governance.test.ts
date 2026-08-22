@@ -27,7 +27,7 @@ describe('maker-checker governance', () => {
       name: 'Pending Person',
       portfolioId: portfolio.id,
     });
-    // 202 Accepted — staged, not applied
+    // 202 Accepted: staged, not applied
     expect(created.status).toBe(202);
     expect(bodyOf<{ pending: boolean }>(created).pending).toBe(true);
 

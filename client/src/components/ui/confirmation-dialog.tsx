@@ -1,6 +1,6 @@
 "use client";
 
-// Shared confirmation dialog (DMS pattern): destructive/critical actions ask
+// Shared confirmation dialog: destructive/critical actions ask
 // before acting, and high-stakes ones can require typing an exact phrase.
 import { useState } from "react";
 

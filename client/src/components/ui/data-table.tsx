@@ -288,8 +288,7 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      {/* Parity with the previous per-module tables: pagination appears once
-          the data outgrows the default page size. */}
+      {/* Pagination appears once the data outgrows the default page size. */}
       {totalCount > 10 && (
         <DataTablePagination
           table={table}

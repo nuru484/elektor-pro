@@ -42,14 +42,14 @@ export interface IUseTableQueryStateOptions<
 /**
  * Owns a list page's URL-synced table state: page, pageSize and typed filters.
  *
- * Replaces the hand-rolled plumbing each list page previously duplicated:
+ * Covers the whole plumbing a list page needs:
  * - initial state parsed from the URL (shareable/refresh-safe links)
  * - state -> URL sync via router.replace (no history spam, no scroll jump)
  * - URL -> state sync for external navigation (e.g. a badge pushing new params)
  * - page reset on filter/pageSize change, scroll-to-top on page change
  * - `queryParams` with empty values stripped, ready for the RTK Query hook
  * - session memory: re-entering the list through the nav (a bare URL, no
- *   table params) restores where you left it; an explicit URL always wins
+ *   table params) restores the state the list was left in; an explicit URL wins
  *   and a fresh browser session starts clean
  * - optional `prefix` namespacing so several tables can share one pathname
  */
@@ -99,7 +99,7 @@ export const useTableQueryState = <
   );
 
   /**
-   * Session memory: when the page mounts with a bare URL (no table params —
+   * Session memory: when the page mounts with a bare URL (no table params -
    * e.g. re-entered through the sidebar), restore the state saved for this
    * pathname earlier in the browser session. Runs in a mount effect, never a
    * useState initializer, because SSR/prerender has no sessionStorage. An

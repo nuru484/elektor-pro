@@ -1,6 +1,6 @@
 // test/integration/eligibility-roll.test.ts
 //
-// Build 5: election-level constituency scoping (EligibilityMode.GROUPS),
+// Election-level constituency scoping (EligibilityMode.GROUPS),
 // explicit roll management, and the visibility rules in the voter portal.
 import { beforeEach, describe, expect, it } from 'vitest';
 
