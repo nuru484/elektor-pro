@@ -10,7 +10,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { EntityAvatar } from "@/components/console/entity-avatar";
-import { TableDate } from "@/components/console/table-date";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -28,6 +27,7 @@ import {
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { EntityCardsSkeleton } from "@/components/console/skeletons";
+import { formatDate } from "@/utils/format-date";
 
 function AssignModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [assign, { isLoading }] = useAssignAccreditorMutation();
@@ -155,13 +155,18 @@ export default function AccreditorsPage() {
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((row) => (
             <Card key={row.id}>
-              <CardContent className="flex items-start justify-between gap-3 p-4">
-                <div className="flex min-w-0 items-start gap-3">
+              <CardContent className="p-4">
+                {/* Identity row. The avatar pairs with the name rather than
+                    holding a column of its own down the whole card, which on a
+                    phone left the text roughly forty per cent of the width and
+                    pushed every line below it into a wrap. The remove action
+                    ends this row for the same reason. */}
+                <div className="flex items-center gap-3">
                   <EntityAvatar
                     name={`${row.user.firstName} ${row.user.lastName}`}
                     url={row.user.profilePicture ?? null}
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium [overflow-wrap:anywhere]">
                       {row.user.firstName} {row.user.lastName}
                     </p>
@@ -170,32 +175,40 @@ export default function AccreditorsPage() {
                         {row.user.email}
                       </p>
                     )}
-                    <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm">
-                      <span className="[overflow-wrap:anywhere]">
-                        {row.election.name}
-                      </span>
-                      <StatusBadge status={row.election.status} />
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Assigned <TableDate value={row.createdAt} />
-                    </p>
                   </div>
+                  <Button
+                    aria-label="Remove assignment"
+                    className="-mr-1 shrink-0"
+                    onClick={() => {
+                      setRemoving({
+                        election: row.election.name,
+                        id: row.id,
+                        name: `${row.user.firstName} ${row.user.lastName}`,
+                      });
+                    }}
+                    size="icon-sm"
+                    title="Remove this accreditor from the election"
+                    variant="ghost"
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                  </Button>
                 </div>
-                <Button
-                  aria-label="Remove assignment"
-                  onClick={() => {
-                    setRemoving({
-                      election: row.election.name,
-                      id: row.id,
-                      name: `${row.user.firstName} ${row.user.lastName}`,
-                    });
-                  }}
-                  size="sm"
-                  title="Remove this accreditor from the election"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+
+                {/* The election name is admin-authored free text and can run
+                    long, so it takes the full width and wraps. */}
+                <p className="mt-3 min-w-0 text-sm [overflow-wrap:anywhere]">
+                  {row.election.name}
+                </p>
+
+                {/* Status and the assignment date are both short and fixed
+                    length: they share a line at every width instead of each
+                    claiming one. */}
+                <p className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                  <StatusBadge status={row.election.status} />
+                  <span className="whitespace-nowrap">
+                    Assigned {formatDate(row.createdAt)}
+                  </span>
+                </p>
               </CardContent>
             </Card>
           ))}

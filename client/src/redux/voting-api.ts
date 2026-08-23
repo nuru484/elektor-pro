@@ -115,6 +115,10 @@ export const votingApi = apiSlice.injectEndpoints({
       ApiResponse<{ receiptCode: string }>,
       { electionId: string; selections: BallotSelection[] }
     >({
+      // Casting a ballot flips hasVoted on the voter's entry and adds a row
+      // to their history. Without these the elections list kept serving its
+      // pre-vote copy, so "Vote now" stayed on an election already voted in.
+      invalidatesTags: ["Roll", "Results"],
       query: ({ electionId, selections }) => ({
         body: { selections },
         method: "POST",
@@ -126,12 +130,14 @@ export const votingApi = apiSlice.injectEndpoints({
       query: (electionId) => `/elections/${electionId}/results`,
     }),
     getVoterBallot: build.query<ApiResponse<VoterBallot>, string>({
+      providesTags: ["Roll"],
       query: (electionId) => `/voter/elections/${electionId}/ballot`,
     }),
     listVoterElections: build.query<
       PaginatedResponse<VoterElectionItem>,
       PersonalListParams
     >({
+      providesTags: ["Roll"],
       query: (params) => `/voter/elections${personalQs(params)}`,
     }),
     requestOtp: build.mutation<
@@ -172,6 +178,7 @@ export const votingApi = apiSlice.injectEndpoints({
       PaginatedResponse<VoterHistoryItem>,
       PersonalListParams
     >({
+      providesTags: ["Roll"],
       query: (params) => `/voter/history${personalQs(params)}`,
     }),
     getMyCandidacies: build.query<

@@ -52,6 +52,7 @@ import {
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { formatDate } from "@/utils/format-date";
 import { type FormErrors } from "@/utils/form-validate";
+import { RecordCardsSkeleton } from "@/components/console/skeletons";
 
 function ElectionCard({ election }: { election: VoterElectionItem }) {
   const entry = election.voterElections.at(0);
@@ -299,17 +300,26 @@ function ParticipationSummary() {
  * to narrow down. The totals come from the list endpoints' meta, so a
  * `limit: 1` probe answers it without fetching a page of rows.
  */
+type VoterTab = "elections" | "votes";
+
 function VoterFilters({
   filter,
   onChange,
+  tab,
 }: {
   filter: ElectionFilter;
   onChange: (next: ElectionFilter) => void;
+  tab: VoterTab;
 }) {
   const { data: electionsData } = useListVoterElectionsQuery({ limit: 1, page: 1 });
   const { data: historyData } = useGetVoterHistoryQuery({ limit: 1, page: 1 });
+  // Count only the list the open tab shows. Summing both put a search box and
+  // a date range over an empty "My votes" panel for any voter who had
+  // elections to vote in but had not voted yet - which is every new voter.
   const total =
-    (electionsData?.meta?.total ?? 0) + (historyData?.meta?.total ?? 0);
+    tab === "votes"
+      ? (historyData?.meta?.total ?? 0)
+      : (electionsData?.meta?.total ?? 0);
   const active = filter.search !== "" || filter.from !== "" || filter.to !== "";
   if (total === 0 && !active) return null;
   return <ElectionFilterBar filter={filter} onChange={onChange} />;
@@ -319,7 +329,7 @@ function VotingHistory({ filter }: { filter: ElectionFilter }) {
   const { params, setPage } = usePersonalListParams(filter);
   const { data, isLoading } = useGetVoterHistoryQuery(params);
   const history = data?.data ?? [];
-  if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
+  if (isLoading) return <RecordCardsSkeleton cols={1} count={2} />;
   if (history.length === 0) {
     return (
       <EmptyState
@@ -373,7 +383,7 @@ const usePersonalListParams = (filter: ElectionFilter) => {
 function ElectionPicker({ filter }: { filter: ElectionFilter }) {
   const { params, setPage } = usePersonalListParams(filter);
   const { data, isError, isLoading } = useListVoterElectionsQuery(params);
-  if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
+  if (isLoading) return <RecordCardsSkeleton cols={1} count={2} />;
   if (isError) {
     return <EmptyState icon={Vote} title="Could not load your elections" />;
   }
@@ -412,6 +422,7 @@ export default function VotePage() {
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [filter, setFilter] = useState<ElectionFilter>(EMPTY_ELECTION_FILTER);
+  const [tab, setTab] = useState<VoterTab>("elections");
 
   // A returning voter with a live session skips the sign-in forms entirely -
   // the login page is unreachable until they log out.
@@ -497,14 +508,20 @@ export default function VotePage() {
             </p>
           </div>
           <ParticipationSummary />
-          <Tabs className="gap-4" defaultValue="elections">
+          <Tabs
+            className="gap-4"
+            onValueChange={(value) => {
+              setTab(value as VoterTab);
+            }}
+            value={tab}
+          >
             <TabsList>
               <TabsTrigger value="elections">Elections</TabsTrigger>
               <TabsTrigger value="votes">My votes</TabsTrigger>
             </TabsList>
-            {/* Filters only once there is something to filter: on an empty
-                portal they are noise above an empty state. */}
-            <VoterFilters filter={filter} onChange={setFilter} />
+            {/* Filters only once the open tab has something to filter: over an
+                empty state they are noise. */}
+            <VoterFilters filter={filter} onChange={setFilter} tab={tab} />
             <TabsContent value="elections">
               <ElectionPicker filter={filter} />
             </TabsContent>
