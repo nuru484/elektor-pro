@@ -54,6 +54,7 @@ import {
 } from '../services/domain/import-batch.service.js';
 import {
   type BrandingField,
+  clearBrandingImage,
   updateBrandingImage,
 } from '../services/domain/organization-branding.service.js';
 import {
@@ -542,6 +543,23 @@ export const updateOrganizationFaviconController: RequestHandler[] = [
   multerUpload.single('image'),
   brandingHandler('faviconUrl', 'Favicon updated'),
 ];
+
+/** Clearing a mark, which returns the surface to the platform's own. */
+const clearBrandingHandler = (field: BrandingField, message: string) =>
+  asyncHandler(async (req, res) => {
+    const org = await clearBrandingImage(field, actorOf(req), ctxOf(req));
+    sendOk(res, message, org);
+  });
+
+export const clearOrganizationLogoController = clearBrandingHandler(
+  'logoUrl',
+  'Logo removed',
+);
+
+export const clearOrganizationFaviconController = clearBrandingHandler(
+  'faviconUrl',
+  'Favicon removed',
+);
 
 export const updateOrganizationController: RequestHandler[] = [
   ...validationMiddleware.update(updateOrganizationSchema),

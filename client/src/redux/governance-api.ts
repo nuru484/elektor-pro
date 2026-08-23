@@ -212,6 +212,17 @@ export const governanceApi = apiSlice.injectEndpoints({
       invalidatesTags: ["Organization", "ChangeRequest"],
       query: (body) => ({ body, method: "PATCH", url: "/organization" }),
     }),
+    /** Clears a mark, which returns the surface to the platform's own. */
+    clearOrganizationImage: build.mutation<
+      ApiResponse<Organization>,
+      { field: "favicon" | "logo" }
+    >({
+      invalidatesTags: ["Organization"],
+      query: ({ field }) => ({
+        method: "DELETE",
+        url: `/organization/${field}`,
+      }),
+    }),
     updateOrganizationImage: build.mutation<
       ApiResponse<Organization>,
       { field: "favicon" | "logo"; file: File }
@@ -255,6 +266,7 @@ export const governanceApi = apiSlice.injectEndpoints({
 export const {
   useAssignAccreditorMutation,
   useAssignAgentMutation,
+  useClearOrganizationImageMutation,
   useConfirmUserContactMutation,
   useCreateGroupCategoryMutation,
   useCreateGroupMutation,
@@ -262,21 +274,21 @@ export const {
   useDeleteGroupCategoryMutation,
   useDeleteGroupMutation,
   useDeleteStaffUserMutation,
-  useGetGroupCategoryQuery,
-  useGetGroupQuery,
   useGetAgentDashboardQuery,
   useGetBrandingQuery,
+  useGetGroupCategoryQuery,
+  useGetGroupQuery,
   useGetOrganizationQuery,
   useGetStaffUserQuery,
-  useLockUserMutation,
   useGrantCapabilityMutation,
   useListAccreditorsQuery,
   useListAgentsQuery,
-  useListMyDeskElectionsQuery,
   useListGrantsQuery,
   useListGroupCategoriesQuery,
   useListGroupsQuery,
+  useListMyDeskElectionsQuery,
   useListStaffUsersQuery,
+  useLockUserMutation,
   useRemoveAccreditorMutation,
   useRemoveAgentMutation,
   useRequestUserContactMutation,

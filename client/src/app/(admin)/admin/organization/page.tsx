@@ -18,6 +18,7 @@ import {
   CARD_PAD_MOBILE,
 } from "@/components/profile/details-section";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   Card,
   CardContent,
@@ -31,6 +32,7 @@ import { SettingsCardsSkeleton } from "@/components/console/skeletons";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
+  useClearOrganizationImageMutation,
   useGetOrganizationQuery,
   useUpdateOrganizationImageMutation,
   useUpdateOrganizationMutation,
@@ -165,7 +167,9 @@ function BrandingImage({
   const inputRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<File | null>(null);
   const [preview, setPreview] = useState<null | string>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [upload, { isLoading: uploading }] = useUpdateOrganizationImageMutation();
+  const [clear, { isLoading: clearing }] = useClearOrganizationImageMutation();
 
   const stage = (file: File | undefined) => {
     if (!file) return;
@@ -191,6 +195,16 @@ function BrandingImage({
       await upload({ field, file: staged }).unwrap();
       toast.success(`${label} updated`);
       clearStaged();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const remove = async () => {
+    try {
+      await clear({ field }).unwrap();
+      toast.success(`${label} removed`);
+      setConfirmingRemove(false);
     } catch (error) {
       toast.error(getApiErrorMessage(error));
     }
@@ -229,17 +243,43 @@ function BrandingImage({
               </Button>
             </>
           ) : (
-            <Button
-              onClick={() => inputRef.current?.click()}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              Choose image
-            </Button>
+            <>
+              <Button
+                onClick={() => inputRef.current?.click()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {url ? "Replace image" : "Choose image"}
+              </Button>
+              {/* Only where there is something to clear. Removing puts the
+                  surface back to Elektor Pro's own mark rather than to
+                  nothing, which is what every reader already falls back on. */}
+              {url ? (
+                <Button
+                  loading={clearing}
+                  onClick={() => setConfirmingRemove(true)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </>
           )}
         </div>
       </div>
+
+      <ConfirmationDialog
+        confirmText="Remove"
+        description={`The ${label.toLowerCase()} is deleted and the platform's own mark takes its place everywhere it appeared. You can upload another at any time.`}
+        isDestructive
+        onConfirm={() => void remove()}
+        onOpenChange={setConfirmingRemove}
+        open={confirmingRemove}
+        title={`Remove the ${label.toLowerCase()}?`}
+      />
     </div>
   );
 }

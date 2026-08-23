@@ -9,6 +9,8 @@ import {
   bulkUploadVotersController,
   cancelChangeRequestController,
   candidateControllers,
+  clearOrganizationFaviconController,
+  clearOrganizationLogoController,
   cloneElectionController,
   createCandidateController,
   electionControllers,
@@ -126,6 +128,20 @@ domainRoutes.patch(
   authenticateJWT,
   requireCapability(Capability.MANAGE_ORGANIZATION),
   ...updateOrganizationFaviconController,
+);
+// Clearing a mark returns the surface to the platform's own, so it is the
+// same right as replacing one.
+domainRoutes.delete(
+  '/organization/logo',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_ORGANIZATION),
+  clearOrganizationLogoController,
+);
+domainRoutes.delete(
+  '/organization/favicon',
+  authenticateJWT,
+  requireCapability(Capability.MANAGE_ORGANIZATION),
+  clearOrganizationFaviconController,
 );
 
 // Groups & categories
