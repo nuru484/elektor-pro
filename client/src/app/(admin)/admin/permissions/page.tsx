@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { TableRowsSkeleton } from "@/components/ui/skeleton";
+import { PermissionsMatrixSkeleton } from "@/components/console/skeletons";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
@@ -162,7 +162,7 @@ export default function PermissionsPage() {
         title="Permissions"
       />
       {isLoading ? (
-        <TableRowsSkeleton cols={5} />
+        <PermissionsMatrixSkeleton />
       ) : isError || !data ? (
         <ErrorState message={isError ? undefined : "Could not load permissions."} />
       ) : (

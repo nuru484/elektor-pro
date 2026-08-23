@@ -24,7 +24,7 @@ import { PhotoViewerTrigger } from "@/components/console/photo-viewer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/link-button";
-import { CardGridSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { RecordCardsSkeleton, ScoreBreakdownSkeleton } from "@/components/console/skeletons";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -38,7 +38,7 @@ import { useGetMyCandidaciesQuery } from "@/redux/voting-api";
 function VettingDetails({ candidacy }: { candidacy: MyCandidacy }) {
   const { data, isError, isLoading } = useGetCandidateVettingQuery(candidacy.id);
   const vetting = data?.data;
-  if (isLoading) return <Skeleton className="h-16 rounded-lg" />;
+  if (isLoading) return <ScoreBreakdownSkeleton />;
   if (isError || !vetting) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -288,7 +288,7 @@ export default function CandidateDashboardPage() {
           )}
 
           {isLoading ? (
-            <CardGridSkeleton count={3} />
+            <RecordCardsSkeleton count={3} />
           ) : isError ? (
             <ErrorState />
           ) : candidacies.length === 0 ? (

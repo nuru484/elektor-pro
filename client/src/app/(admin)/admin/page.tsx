@@ -15,7 +15,7 @@ import { DailyBars } from "@/components/dashboard/daily-bars";
 import { MeterList } from "@/components/dashboard/meter-list";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent } from "@/components/ui/card";
-import { CardGridSkeleton } from "@/components/ui/skeleton";
+import { DashboardSkeleton } from "@/components/console/skeletons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ErrorState, PageHeader } from "@/components/ui/states";
 import { LinkButton } from "@/components/ui/link-button";
@@ -71,7 +71,7 @@ export default function AdminDashboard() {
     return (
       <div className="space-y-8">
         {header}
-        <CardGridSkeleton />
+        <DashboardSkeleton />
       </div>
     );
   }

@@ -14,7 +14,7 @@ import { PhotoViewerTrigger } from "@/components/console/photo-viewer";
 import { ResultsAccessTab } from "@/components/console/results-access";
 import { Card, CardContent } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/link-button";
-import { CardGridSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { FigureStripSkeleton, RecordCardsSkeleton } from "@/components/console/skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -29,7 +29,7 @@ function TurnoutStats({ electionId }: { electionId: string }) {
   const { data, isLoading } = useGetTurnoutQuery(electionId, {
     pollingInterval: 30_000,
   });
-  if (isLoading) return <Skeleton className="h-14 rounded-lg" />;
+  if (isLoading) return <FigureStripSkeleton />;
   const turnout = data?.data;
   if (!turnout) return null;
   return (
@@ -307,7 +307,7 @@ export default function AgentDashboardPage() {
           description="The candidate you are observing, and everything you have observed before."
           title="My assignment"
         />
-        <CardGridSkeleton count={1} />
+        <RecordCardsSkeleton cols={1} count={1} />
       </div>
     );
   }

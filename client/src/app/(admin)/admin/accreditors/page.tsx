@@ -17,7 +17,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field } from "@/components/ui/field";
 import { Select as NativeSelect } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { useListElectionsQuery } from "@/redux/admin-api";
@@ -28,6 +27,7 @@ import {
   useRemoveAccreditorMutation,
 } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { EntityCardsSkeleton } from "@/components/console/skeletons";
 
 function AssignModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [assign, { isLoading }] = useAssignAccreditorMutation();
@@ -144,7 +144,7 @@ export default function AccreditorsPage() {
       />
 
       {isLoading ? (
-        <Skeleton className="h-40 rounded-xl" />
+        <EntityCardsSkeleton />
       ) : rows.length === 0 ? (
         <EmptyState
           description="Assign an accreditor to an election and it appears here. Until then, no accreditor can check anyone in."

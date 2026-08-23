@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
-import { CardGridSkeleton } from "@/components/ui/skeleton";
+import { SettingsCardsSkeleton } from "@/components/console/skeletons";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/states";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
@@ -524,7 +524,7 @@ export default function OrganizationPage() {
         title="Organization"
       />
       {isLoading ? (
-        <CardGridSkeleton count={4} />
+        <SettingsCardsSkeleton cards={4} />
       ) : isError || !org ? (
         <ErrorState />
       ) : (

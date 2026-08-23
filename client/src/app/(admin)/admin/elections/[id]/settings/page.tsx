@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
   useDeleteElectionMutation,
@@ -29,6 +28,7 @@ import {
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { type FormErrors, validateRequired } from "@/utils/form-validate";
 import { formatDateTime } from "@/utils/format-date";
+import { SettingsCardsSkeleton } from "@/components/console/skeletons";
 
 const pendingToast = (res: unknown, applied: string) => {
   toast.success(
@@ -615,11 +615,7 @@ export default function ElectionSettingsPage({
 
   if (isLoading || !election) {
     return (
-      <div className="space-y-4">
-        {[0, 1, 2].map((i) => (
-          <Skeleton className="h-40 rounded-xl" key={i} />
-        ))}
-      </div>
+      <SettingsCardsSkeleton cards={3} />
     );
   }
 

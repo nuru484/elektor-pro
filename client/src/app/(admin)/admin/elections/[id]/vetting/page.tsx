@@ -23,7 +23,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAuthRole } from "@/hooks/use-auth-role";
@@ -38,6 +37,7 @@ import {
 } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { type FormErrors, validateRequired } from "@/utils/form-validate";
+import { BorderedListSkeleton, VettingBoardSkeleton } from "@/components/console/skeletons";
 
 const QUEUE_STATUSES: CandidateStatus[] = [
   "DRAFT",
@@ -172,7 +172,7 @@ export default function ElectionVettingPage({
   const [autoAssign, { isLoading: assigning }] = useAutoAssignBallotNumbersMutation();
 
   if (electionLoading || !election) {
-    return <Skeleton className="h-64 rounded-xl" />;
+    return <VettingBoardSkeleton />;
   }
 
   if (!vettingOn) {
@@ -220,7 +220,7 @@ export default function ElectionVettingPage({
         </div>
         <div className="mt-3">
           {criteriaLoading ? (
-            <Skeleton className="h-20 rounded-lg" />
+            <BorderedListSkeleton rows={2} />
           ) : criteria.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No criteria yet - add the first yardstick above.
@@ -347,7 +347,7 @@ export default function ElectionVettingPage({
         </div>
         <div className="mt-3">
           {queueLoading ? (
-            <Skeleton className="h-24 rounded-lg" />
+            <BorderedListSkeleton avatar rows={3} />
           ) : queue.length === 0 ? (
             <p className="text-sm text-muted-foreground">No candidates match.</p>
           ) : (

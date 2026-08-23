@@ -18,10 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useCloneElectionMutation, useGetElectionQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { formatDateTime } from "@/utils/format-date";
+import { ElectionOverviewSkeleton } from "@/components/console/skeletons";
 
 const RESULTS_POLICY_LABELS: Record<string, string> = {
   LIVE: "Live while voting is open",
@@ -96,11 +96,7 @@ export default function ElectionOverviewPage({
 
   if (isLoading || !election) {
     return (
-      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <Skeleton className="h-28 rounded-xl" key={i} />
-        ))}
-      </div>
+      <ElectionOverviewSkeleton />
     );
   }
 

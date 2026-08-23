@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import { ResultsExportButton } from "@/components/results/export-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { useAuthRole } from "@/hooks/use-auth-role";
 import {
@@ -33,6 +32,7 @@ import {
 import { useGetResultsQuery } from "@/redux/voting-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { formatDateTime } from "@/utils/format-date";
+import { StatGridSkeleton } from "@/components/console/skeletons";
 
 const fmt = (n: number) => n.toLocaleString();
 
@@ -128,11 +128,7 @@ export default function ElectionResultsTab({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <Skeleton className="h-24 rounded-xl" key={i} />
-        ))}
-      </div>
+      <StatGridSkeleton count={3} />
     );
   }
   if (isError) {

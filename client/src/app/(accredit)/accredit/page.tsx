@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, PageHeader } from "@/components/ui/states";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -39,6 +38,7 @@ import {
 import { useListMyDeskElectionsQuery } from "@/redux/governance-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { formatDateTime } from "@/utils/format-date";
+import { BorderedListSkeleton } from "@/components/console/skeletons";
 
 const fmt = (n: number) => n.toLocaleString();
 
@@ -359,7 +359,7 @@ export default function AccreditPage() {
               title="Select an election to begin"
             />
           ) : isFetching ? (
-            <Skeleton className="h-32 rounded-xl" />
+            <BorderedListSkeleton avatar rows={4} />
           ) : rows.length === 0 ? (
             <EmptyState
               description={

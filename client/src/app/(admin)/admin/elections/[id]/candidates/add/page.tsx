@@ -16,7 +16,6 @@ import { EntityAvatar } from "@/components/console/entity-avatar";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input, Select as NativeSelect } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/states";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -25,6 +24,7 @@ import {
   useListCandidatesQuery,
 } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { BorderedListSkeleton } from "@/components/console/skeletons";
 
 function CandidateRow({
   candidate,
@@ -176,7 +176,7 @@ export default function AllocateCandidatesPage({
         </Field>
 
         {isFetching ? (
-          <Skeleton className="h-24 rounded-lg" />
+          <BorderedListSkeleton avatar rows={3} />
         ) : (
           <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-border p-1.5">
             {offered.length === 0 ? (
