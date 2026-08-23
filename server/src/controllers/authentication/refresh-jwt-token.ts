@@ -11,7 +11,7 @@ import {
 import { getProfile } from '../../services/auth/auth.service.js';
 import { makeSessionService } from '../../services/auth/session.service.js';
 import { defaultDeps } from '../../services/deps.js';
-import { setSessionCookies } from '../../utils/auth-session.js';
+import { setAccessCookieOnly, setSessionCookies } from '../../utils/auth-session.js';
 import { CookieManager } from '../../utils/CookieManager.js';
 
 const sessions = makeSessionService(defaultDeps);
@@ -20,6 +20,10 @@ const sessions = makeSessionService(defaultDeps);
  * Exchange the refresh cookie for a fresh token pair, rotating the persisted
  * session. A stale/reused token revokes the whole session (see the session
  * service) so a stolen refresh token cannot be replayed.
+ *
+ * A request that lost a rotation race is answered with a fresh access token
+ * only: the winner's refresh token is already in the browser and is the one
+ * the session row holds, so overwriting it here would strand the session.
  */
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
@@ -45,7 +49,11 @@ export const refreshToken = asyncHandler(
     const user = await getProfile(rotated.userId);
     if (!user) throw new NotFoundError('Invalid credentials');
 
-    setSessionCookies(res, rotated);
+    if (rotated.rotated) {
+      setSessionCookies(res, rotated);
+    } else {
+      setAccessCookieOnly(res, rotated.accessToken);
+    }
     res.status(200).json({
       data: user,
       message: 'Token refreshed successfully',

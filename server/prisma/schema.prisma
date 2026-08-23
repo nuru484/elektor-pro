@@ -296,15 +296,21 @@ model Otp {
 // refresh, so a stolen older refresh token is dead on arrival and users can
 // see and revoke their signed-in devices.
 model Session {
-  id         String    @id @default(cuid())
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId     String
-  tokenHash  String    @unique
-  ipAddress  String?
-  userAgent  String?
-  lastUsedAt DateTime  @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
+  id        String @id @default(cuid())
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId    String
+  tokenHash String @unique
+  // The hash this session held immediately before the last rotation, and when
+  // that rotation happened. Presenting the previous token within the grace
+  // window is a concurrent refresh (two tabs racing the same expiry), not
+  // theft - see rotateSession. Both are null until a session first rotates.
+  previousTokenHash String?
+  rotatedAt         DateTime?
+  ipAddress         String?
+  userAgent         String?
+  lastUsedAt        DateTime  @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

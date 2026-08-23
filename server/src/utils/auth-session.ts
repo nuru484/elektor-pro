@@ -35,6 +35,21 @@ export const setSessionCookies = (
   CookieManager.setRefreshToken(res, tokens.refreshToken);
 };
 
+/**
+ * Replace only the access cookie, leaving the refresh cookie as it stands.
+ *
+ * Used by the refresh path when this request lost a rotation race: the winner
+ * has already put its refresh token in the browser and that is the one the
+ * session row holds. Writing a second one here would leave the browser
+ * carrying a token the row has demoted, and the next refresh - half an hour
+ * later, long past the rotation grace - would read it as theft and revoke the
+ * session. The caller still needs to get on with its request, hence the fresh
+ * access token.
+ */
+export const setAccessCookieOnly = (res: Response, accessToken: string): void => {
+  CookieManager.setAccessToken(res, accessToken);
+};
+
 export const requestContextOf = (
   req: Request,
 ): { ipAddress?: string; userAgent?: string } => ({

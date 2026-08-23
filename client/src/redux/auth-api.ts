@@ -1,5 +1,6 @@
 // src/redux/auth-api.ts
 import type { ApiResponse, CurrentUser } from "@/types/api";
+import { isAuthFailure } from "@/utils/extract-api-error";
 
 import { apiSlice } from "./api-slice";
 import { userLoggedIn, userLoggedOut } from "./auth/auth-slice";
@@ -42,9 +43,14 @@ export const authApi = apiSlice.injectEndpoints({
         try {
           const result = await queryFulfilled;
           dispatch(userLoggedIn({ user: result.data.data }));
-        } catch {
-          // A failed getMe after the silent refresh means no session.
-          dispatch(userLoggedOut());
+        } catch (error) {
+          // Only an auth failure clears the session. This query refetches
+          // whenever a mutation invalidates CurrentUser, so a slow or briefly
+          // unreachable API used to end the session mid-task: the refetch
+          // timed out, the user was cleared, and the console guard bounced
+          // the visitor to /login while their action was still in flight.
+          // A timeout or a 5xx says nothing about whether they are signed in.
+          if (isAuthFailure(error)) dispatch(userLoggedOut());
         }
       },
       providesTags: ["CurrentUser"],

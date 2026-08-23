@@ -33,6 +33,26 @@ const isFetchBaseQueryError = (error: unknown): error is FetchBaseQueryError =>
 const isSerializedError = (error: unknown): error is SerializedError =>
   typeof error === "object" && error !== null && "message" in error && !("status" in error);
 
+/**
+ * What a signed-out 401 should say.
+ *
+ * The API answers an expired or missing access token in its own terms -
+ * "Access token expired.", "Access token not found", "Invalid access token.
+ * Please login again". Those describe a mechanism the visitor has never heard
+ * of, and they land in a toast at exactly the moment the person is being
+ * signed out and is least able to interpret them.
+ */
+const SESSION_EXPIRED_MESSAGE = "Your session has ended. Please sign in again.";
+
+const TOKEN_ERROR_CODES = new Set([
+  "EXPIRED_TOKEN",
+  "INVALID_TOKEN",
+  "MISSING_TOKEN",
+]);
+
+const isSessionMessage = (code?: string, message?: string): boolean =>
+  TOKEN_ERROR_CODES.has(code ?? "") || /access token/i.test(message ?? "");
+
 const isFieldErrorArray = (value: unknown): value is ApiFieldError[] =>
   Array.isArray(value) &&
   value.every(
@@ -66,6 +86,9 @@ export const extractApiError = (
     const fieldErrors = isFieldErrorArray(body.details?.errors) ? body.details.errors : [];
     const status = typeof error.status === "number" ? error.status : undefined;
 
+    if (status === 401 && isSessionMessage(body.code, body.message)) {
+      return { fieldErrors, message: SESSION_EXPIRED_MESSAGE, status };
+    }
     if (body.message) {
       return { fieldErrors, message: body.message, status };
     }
@@ -82,3 +105,27 @@ export const extractApiError = (
 /** Convenience for call sites that only need the headline string. */
 export const getApiErrorMessage = (error: unknown, fallback?: string): string =>
   extractApiError(error, fallback).message;
+
+/**
+ * Whether a failure actually means "this request was not authenticated".
+ *
+ * The distinction matters wherever a failure is allowed to end a session. A
+ * 401 or 403 says the credentials are no longer good; a timeout, a dropped
+ * connection or a 5xx says nothing at all about whether the visitor is signed
+ * in - and treating those as a signed-out state logs people out every time
+ * the API is briefly slow or unreachable.
+ *
+ * `queryFulfilled` rejects with the error wrapped in `{ error }`, so unwrap
+ * that shape before reading the status.
+ */
+export const isAuthFailure = (error: unknown): boolean => {
+  const unwrapped =
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    !("status" in error)
+      ? (error as { error: unknown }).error
+      : error;
+  const { status } = extractApiError(unwrapped);
+  return status === 401 || status === 403;
+};
