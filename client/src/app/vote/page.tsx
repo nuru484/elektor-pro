@@ -6,6 +6,7 @@
 // Each election card shows the voter's full standing: window, status,
 // accreditation, whether they voted, and the path to results.
 import {
+  AlertCircle,
   ArrowRight,
   BadgeCheck,
   BarChart3,
@@ -327,9 +328,20 @@ function VoterFilters({
 
 function VotingHistory({ filter }: { filter: ElectionFilter }) {
   const { params, setPage } = usePersonalListParams(filter);
-  const { data, isLoading } = useGetVoterHistoryQuery(params);
+  const { data, error, isError, isLoading, refetch } =
+    useGetVoterHistoryQuery(params);
   const history = data?.data ?? [];
   if (isLoading) return <RecordCardsSkeleton cols={1} count={2} />;
+  // Without this a failed fetch fell through to the empty state below and
+  // told a voter who had just cast a ballot that they had never voted.
+  if (isError && !data) {
+    return (
+      <FetchFailure
+        message={getApiErrorMessage(error, "Could not load your votes.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
   if (history.length === 0) {
     return (
       <EmptyState
@@ -380,12 +392,49 @@ const usePersonalListParams = (filter: ElectionFilter) => {
   };
 };
 
+/**
+ * A fetch that failed with nothing cached behind it. Distinct from an empty
+ * state on purpose: "you have nothing" and "we could not ask" are different
+ * facts, and only one of them is worth a retry.
+ */
+function FetchFailure({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center gap-3 border border-dashed border-border px-6 py-12 text-center"
+      role="alert"
+    >
+      <AlertCircle aria-hidden className="size-5 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">{message}</p>
+      <Button onClick={onRetry} size="sm" type="button" variant="outline">
+        Try again
+      </Button>
+    </div>
+  );
+}
+
 function ElectionPicker({ filter }: { filter: ElectionFilter }) {
   const { params, setPage } = usePersonalListParams(filter);
-  const { data, isError, isLoading } = useListVoterElectionsQuery(params);
+  const { data, error, isError, isLoading, refetch } =
+    useListVoterElectionsQuery(params);
   if (isLoading) return <RecordCardsSkeleton cols={1} count={2} />;
-  if (isError) {
-    return <EmptyState icon={Vote} title="Could not load your elections" />;
+  // Only when there is nothing to fall back on. Casting a ballot invalidates
+  // this list, so it refetches the moment the voter returns here - and a
+  // refetch that fails still leaves the last good copy in `data`. Reading
+  // isError first threw that copy away and told a voter who had just voted
+  // that their elections could not be loaded.
+  if (isError && !data) {
+    return (
+      <FetchFailure
+        message={getApiErrorMessage(error, "Could not load your elections.")}
+        onRetry={() => void refetch()}
+      />
+    );
   }
   const elections = data?.data ?? [];
   if (elections.length === 0) {

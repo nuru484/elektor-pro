@@ -88,4 +88,49 @@ describe("voter election list caching", () => {
     expect(after.data?.data[0].voterElections[0].hasVoted).toBe(true);
     subscription.unsubscribe();
   });
+
+  /**
+   * A refetch that fails must not discard the copy already on screen. Casting
+   * a ballot invalidates this list, so it refetches when the voter returns to
+   * the portal - and reading isError before data turned a transient failure
+   * into "Could not load your elections" over a list that was still there.
+   */
+  it("keeps the last good list when a refetch fails", async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${API}/voter/elections`, () => {
+        calls += 1;
+        if (calls === 1) {
+          return HttpResponse.json({
+            data: [election(false)],
+            message: "ok",
+            meta: { limit: 10, page: 1, total: 1, totalPages: 1 },
+            success: true,
+          });
+        }
+        return HttpResponse.json({ message: "upstream down" }, { status: 503 });
+      }),
+    );
+
+    const store = makeStore();
+    const params = { limit: 10, page: 1 };
+    const subscription = store.dispatch(
+      votingApi.endpoints.listVoterElections.initiate(params),
+    );
+    await subscription;
+
+    await store.dispatch(
+      votingApi.endpoints.listVoterElections.initiate(params, {
+        forceRefetch: true,
+      }),
+    );
+
+    const entry = votingApi.endpoints.listVoterElections.select(params)(
+      store.getState(),
+    );
+    expect(entry.isError).toBe(true);
+    // The panel renders from `data`, so it must survive the failed refetch.
+    expect(entry.data?.data).toHaveLength(1);
+    subscription.unsubscribe();
+  });
 });

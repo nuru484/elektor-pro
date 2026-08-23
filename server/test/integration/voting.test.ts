@@ -103,4 +103,42 @@ describe('voter OTP + secret ballot voting', () => {
     const ballot = await prisma.ballot.findFirst({ where: { electionId: election.id } });
     expect(Object.keys(ballot ?? {})).not.toContain('voterId');
   });
+
+  /**
+   * The portal refetches the voter's elections the moment a ballot is cast, so
+   * that list has to keep answering afterwards. It reported "Could not load
+   * your elections" instead.
+   */
+  it('still lists the voter elections after the ballot is cast', async () => {
+    const { candidates, election, portfolio } = await createElectionFixture();
+    await createVoterFixture('STU9', '+233550000009');
+    const cookie = await voterLogin('STU9');
+
+    const before = await api().get('/api/v1/voter/elections').set('Cookie', cookie);
+    expect(before.status).toBe(200);
+
+    const cast = await api()
+      .post(`/api/v1/voter/elections/${election.id}/ballot`)
+      .set('Cookie', cookie)
+      .send({
+        selections: [{ candidateIds: [candidates[0].id], portfolioId: portfolio.id }],
+      });
+    expect(cast.status).toBe(201);
+
+    const after = await api().get('/api/v1/voter/elections').set('Cookie', cookie);
+    expect(after.status).toBe(200);
+    const body = bodyOf<{
+      data: { voterElections: { hasVoted: boolean }[] }[];
+    }>(after);
+    expect(body.data[0].voterElections[0].hasVoted).toBe(true);
+
+    // The ballot endpoint is refetched by the same invalidation.
+    const ballot = await api()
+      .get(`/api/v1/voter/elections/${election.id}/ballot`)
+      .set('Cookie', cookie);
+    expect(ballot.status).toBe(200);
+
+    const history = await api().get('/api/v1/voter/history').set('Cookie', cookie);
+    expect(history.status).toBe(200);
+  });
 });
