@@ -28,6 +28,7 @@ import {
 } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
 import { type FormErrors, validateRequired } from "@/utils/form-validate";
+import { formatDateTime } from "@/utils/format-date";
 
 const pendingToast = (res: unknown, applied: string) => {
   toast.success(
@@ -180,8 +181,8 @@ function DetailsCard({ editable, election }: { editable: boolean; election: Elec
               {election.description ?? "—"}
             </dd>
           </div>
-          <DetailRow label="Opens" value={new Date(election.startDate).toLocaleString()} />
-          <DetailRow label="Closes" value={new Date(election.endDate).toLocaleString()} />
+          <DetailRow label="Opens" value={formatDateTime(election.startDate)} />
+          <DetailRow label="Closes" value={formatDateTime(election.endDate)} />
           <DetailRow label="Slug" value={<span className="font-mono text-xs">{election.slug}</span>} />
         </dl>
       )}

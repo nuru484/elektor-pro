@@ -44,7 +44,7 @@ function Overlay({
       <div className="flex justify-end p-4">
         <button
           aria-label="Close photo"
-          className="grid size-10 place-items-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-accent"
+          className="grid size-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-accent"
           onClick={onClose}
           type="button"
         >

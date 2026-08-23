@@ -1,11 +1,12 @@
 "use client";
 
-// Declaration-style hero: editorial message column (mono eyebrow, serif
-// display headline, lede, pill CTAs, mono assurance line) beside the
-// certified-declaration panel. Elements rise in numbered steps on load and
-// the seal stamps in once the counts settle; reduced motion renders the
-// final state instantly (rules in globals.css).
-import { ArrowRight } from "lucide-react";
+// The hero is one full-bleed blue block with square corners: message column
+// on the left, the certified-declaration panel floating on the wash to the
+// right, and three outlined assurance cards running along the bottom edge.
+// Elements rise in numbered steps on load and the seal stamps in once the
+// counts settle; reduced motion renders the final state instantly (rules in
+// globals.css).
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -13,22 +14,10 @@ import { DeclarationPanel } from "./declaration-panel";
 
 const SEAL_DELAY_MS = 1200;
 
-const PROOF_BAND: [string, string, string][] = [
-  [
-    "Ballot",
-    "Secret by construction",
-    "A ballot is separated from the voter at the moment it is cast. Nobody, including you, can trace one back.",
-  ],
-  [
-    "Count",
-    "Sealed at close",
-    "No running tally while voting is open. The count is produced once, certified, and published as a signed declaration.",
-  ],
-  [
-    "Proof",
-    "Checked by anyone",
-    "Every voter leaves with a receipt code. Anyone can confirm that a ballot entered the count without revealing how it was cast.",
-  ],
+const ASSURANCES: [string, string][] = [
+  ["Secret ballot", "Separated from the voter as it is cast"],
+  ["Live count", "Turnout and tallies as the votes land"],
+  ["Public proof", "A receipt code anyone can check"],
 ];
 
 export function Hero() {
@@ -42,9 +31,12 @@ export function Hero() {
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    const timer = setTimeout(() => {
-      setSealed(true);
-    }, reduced ? 0 : SEAL_DELAY_MS);
+    const timer = setTimeout(
+      () => {
+        setSealed(true);
+      },
+      reduced ? 0 : SEAL_DELAY_MS,
+    );
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(timer);
@@ -53,91 +45,88 @@ export function Hero() {
 
   return (
     <section
-      className={`mb-24 md:mb-32 ${ready ? "hero-ready" : ""} ${sealed ? "hero-sealed" : ""}`}
+      className={`${ready ? "hero-ready" : ""} ${sealed ? "hero-sealed" : ""}`}
     >
-      <div className="mx-auto max-w-6xl px-6 pt-10 pb-20 md:px-10 md:pt-16 md:pb-24">
-        <div className="grid items-start gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
-          {/* Message column */}
-          <div>
-            <h1
-              className="rise text-[clamp(2.6rem,5.6vw,4.2rem)] font-semibold leading-[1.08]"
-              data-step="1"
-            >
-              Run the <span className="text-muted-foreground/70">vote.</span>
-              <br />
-              Publish the <span className="text-brand">proof</span>
-            </h1>
+      <div className="mx-auto w-full max-w-[100rem] px-5 md:px-8 lg:px-12">
+        {/* The wash runs light in the upper right and deepens to the left.
+            Its lightest stop is capped at the point where solid white still
+            clears 4.5:1, which is also why nothing here uses translucent
+            white: hierarchy comes from size and weight instead, and those
+            cost no contrast. */}
+        <div className="relative overflow-hidden bg-[radial-gradient(115%_115%_at_82%_10%,oklch(0.56_0.155_243)_0%,oklch(0.51_0.185_250)_46%,oklch(0.46_0.2_257)_100%)] px-6 py-14 text-white md:px-12 md:py-18 lg:px-16 lg:py-20">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
+            {/* Message column */}
+            <div>
+              <p
+                className="rise font-mono text-[11px] font-medium tracking-[0.2em] text-white uppercase"
+                data-step="1"
+              >
+                Elections, end to end
+              </p>
 
-            <p
-              className="rise mt-8 max-w-[34ch] text-lg leading-relaxed text-muted-foreground md:mt-10"
-              data-step="3"
-            >
-              Elektor Pro runs elections for unions, universities, associations
-              and party primaries. Voters keep a receipt they can check
-              themselves, so the result is something you can show, not something
-              people have to take on faith.
-            </p>
+              {/* Each line is a real text node inside its own clipping box,
+                  so the heading is still one string to a screen reader while
+                  the lines swing up from behind their own edge. */}
+              <h1 className="display mt-6 text-[clamp(2.9rem,6.4vw,5.6rem)]">
+                <span className="line-mask">
+                  <span>Run the vote.</span>
+                </span>
+                <span className="line-mask">
+                  <span>Publish the proof.</span>
+                </span>
+              </h1>
 
-            <div
-              className="rise mt-10 flex flex-wrap items-center gap-3 md:mt-12"
-              data-step="4"
-            >
-              <Link className="max-sm:w-full" href="/login">
-                <button
-                  className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-foreground bg-foreground px-6 py-3 text-base font-medium text-background transition-colors duration-500 ease-in-out hover:bg-transparent hover:text-foreground max-sm:w-full md:px-8 md:py-3.5 md:text-lg"
-                  type="button"
+              <p
+                className="rise mt-7 max-w-[36ch] text-lg leading-relaxed text-white"
+                data-step="3"
+              >
+                Voters keep a receipt they can check themselves, so the result
+                is something you show rather than something people take on
+                faith.
+              </p>
+
+              <div
+                className="rise mt-9 flex flex-wrap items-center gap-3"
+                data-step="4"
+              >
+                <Link
+                  className="flex items-center justify-center gap-2 border-[1.6px] border-white bg-white px-8 py-3.5 text-base font-semibold whitespace-nowrap text-brand transition-colors duration-200 hover:bg-transparent hover:text-white max-sm:w-full md:text-lg"
+                  href="/login"
                 >
-                  Start an election <ArrowRight className="size-5" />
-                </button>
-              </Link>
-              <Link className="max-sm:w-full" href="/vote">
-                <button
-                  className="flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-foreground bg-transparent px-6 py-3 text-base font-medium text-foreground transition-colors duration-500 ease-in-out hover:bg-foreground hover:text-background max-sm:w-full md:px-8 md:py-3.5 md:text-lg"
-                  type="button"
+                  Start an election <ArrowUpRight aria-hidden className="size-5" />
+                </Link>
+                <Link
+                  className="flex items-center justify-center gap-2 border-[1.6px] border-white px-8 py-3.5 text-base font-semibold whitespace-nowrap text-white transition-colors duration-200 hover:bg-white hover:text-brand max-sm:w-full md:text-lg"
+                  href="/vote"
                 >
                   Cast your vote
-                </button>
-              </Link>
-              {/* Demo visitors: sign in as any role, no credentials. */}
-              <Link
-                className="text-base font-medium text-brand underline-offset-4 hover:underline max-sm:w-full max-sm:text-center md:text-lg"
-                href="/demo"
+                </Link>
+              </div>
+            </div>
+
+            {/* Declaration panel - the product visual, floating on the wash. */}
+            <div className="rise" data-step="3">
+              <DeclarationPanel />
+            </div>
+          </div>
+
+          {/* Assurance cards along the bottom edge of the block. */}
+          <div
+            className="rise mt-14 grid gap-4 sm:grid-cols-3 md:mt-18"
+            data-step="4"
+          >
+            {ASSURANCES.map(([title, body]) => (
+              <div
+                className="border border-white/55 px-5 py-5 transition-colors hover:border-white"
+                key={title}
               >
-                Explore a live demo
-              </Link>
-            </div>
+                <p className="font-display text-lg font-semibold">{title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-white">
+                  {body}
+                </p>
+              </div>
+            ))}
           </div>
-
-          {/* Declaration panel */}
-          <div className="rise" data-step="3">
-            <DeclarationPanel />
-          </div>
-        </div>
-      </div>
-
-      {/* Proof band - how results hold up. */}
-      <div aria-label="How results hold up" className="border-y border-border bg-card/40" role="region">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-6 py-10 md:px-10 lg:grid-cols-3">
-          {PROOF_BAND.map(([label, title, body], index) => (
-            <div
-              className={
-                index === 0
-                  ? ""
-                  : "border-t border-border pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
-              }
-              key={label}
-            >
-              <p className="font-mono text-[11px] font-bold tracking-[0.16em] uppercase text-brand">
-                {label}
-              </p>
-              <h3 className="mt-2 font-display text-xl font-semibold">
-                {title}
-              </h3>
-              <p className="mt-1.5 max-w-[30ch] text-sm text-muted-foreground">
-                {body}
-              </p>
-            </div>
-          ))}
         </div>
       </div>
     </section>

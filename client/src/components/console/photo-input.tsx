@@ -54,7 +54,7 @@ export function PhotoInput({
         {file && (
           <button
             aria-label="Remove photo"
-            className="absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-destructive"
+            className="absolute -top-1 -right-1 grid size-5 place-items-center border border-border bg-background text-muted-foreground transition-colors hover:text-destructive"
             onClick={() => {
               onChange(null);
               if (inputRef.current) inputRef.current.value = "";

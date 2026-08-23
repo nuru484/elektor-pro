@@ -45,9 +45,9 @@ export function VoteBars({ candidates }: { candidates: CandidateResult[] }) {
               {candidate.percentage}%
             </span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+          <div className="mt-1.5 h-2 overflow-hidden bg-muted">
             <div
-              className="h-full rounded-full transition-[width] duration-700"
+              className="h-full transition-[width] duration-700"
               style={{
                 background: seriesColor(index),
                 width: `${(candidate.votes / max) * 100}%`,
@@ -190,11 +190,11 @@ export function TurnoutGauge({
         aria-valuemax={100}
         aria-valuemin={0}
         aria-valuenow={Math.round(pct)}
-        className="h-2.5 min-w-48 flex-1 overflow-hidden rounded-full bg-muted"
+        className="h-2.5 min-w-48 flex-1 overflow-hidden bg-muted"
         role="progressbar"
       >
         <div
-          className="h-full rounded-full bg-chart-1 transition-[width] duration-700"
+          className="h-full bg-chart-1 transition-[width] duration-700"
           style={{ width: `${pct}%` }}
         />
       </div>

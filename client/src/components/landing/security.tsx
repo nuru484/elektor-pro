@@ -1,6 +1,6 @@
-// Typographic guarantees - heading left, promises right - anchored by one
-// visual: a mock slice of the ballot chain (same family as the hero's
-// declaration panel), showing what "tamper-evident" concretely means.
+// One graphite block carrying the trust argument: the claim in display type,
+// the ballot chain as the single visual that shows what "tamper-evident"
+// concretely means, and the four guarantees beside it.
 
 /* Decorative mock with sample data; the guarantee copy carries the actual
    claims, so the diagram is aria-hidden. */
@@ -11,33 +11,35 @@ function BallotChain() {
     { hash: "42bc…a1f7", prev: "d310…55e8", seq: "2541" },
   ];
   return (
-    <div aria-hidden className="mt-10 max-w-sm">
-      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-muted-foreground">
+    <div aria-hidden className="mt-12 max-w-sm">
+      <p className="font-mono text-[10px] tracking-[0.14em] uppercase text-ink-foreground/55">
         Ballot chain &middot; latest entries
       </p>
       <div className="mt-3">
         {BLOCKS.map((block, index) => (
           <div key={block.seq}>
             {/* Connector: each ballot's hash feeds the next one's `prev`. */}
-            {index > 0 && <span className="ml-6 block h-4 w-px bg-border" />}
-            <div className="rounded-lg border border-border/70 bg-card/60 px-4 py-2.5 font-mono text-[11px] leading-relaxed">
+            {index > 0 && (
+              <span className="ml-6 block h-4 w-px bg-ink-foreground/25" />
+            )}
+            <div className="border border-ink-foreground/20 px-4 py-2.5 font-mono text-[11px] leading-relaxed">
               <p className="flex justify-between gap-3">
-                <span className="text-muted-foreground">
+                <span className="text-ink-foreground/60">
                   Ballot {block.seq}
                 </span>
-                <span className="text-foreground">{block.hash}</span>
+                <span className="text-ink-foreground">{block.hash}</span>
               </p>
-              <p className="flex justify-between gap-3 text-muted-foreground">
+              <p className="flex justify-between gap-3 text-ink-foreground/60">
                 <span>prev</span>
                 <span>{block.prev}</span>
               </p>
             </div>
           </div>
         ))}
-        <span className="ml-6 block h-4 w-px bg-border" />
-        <p className="flex items-center gap-2 rounded-lg border border-brand/50 bg-brand-muted px-4 py-2.5 font-mono text-[11px] font-bold text-foreground">
+        <span className="ml-6 block h-4 w-px bg-ink-foreground/25" />
+        <p className="flex items-center gap-2 border border-brand-bright bg-brand-bright/15 px-4 py-2.5 font-mono text-[11px] font-bold text-ink-foreground">
           <svg
-            className="size-3.5 flex-none text-brand"
+            className="size-3.5 flex-none text-brand-bright"
             fill="none"
             stroke="currentColor"
             strokeLinecap="round"
@@ -75,32 +77,45 @@ const GUARANTEES = [
 
 export function Security() {
   return (
-    <section
-      className="mx-auto mb-24 max-w-6xl scroll-mt-8 px-6 md:mb-32 md:px-12"
-      id="security"
-    >
-      <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
-        <div className="md:sticky md:top-12 md:self-start">
-          <h2 className="text-4xl font-medium md:text-5xl">
-            Trust is the{" "}
-            <span className="text-muted-foreground/50">whole product</span>
-          </h2>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
-            A disputed election costs more than any software. Elektor Pro is
-            engineered so that even the losing side can check the math - and
-            agree with the outcome.
+    <section className="scroll-mt-24 py-20 md:py-28" id="security">
+      <div className="mx-auto w-full max-w-[100rem] px-5 md:px-8 lg:px-12">
+        <div
+          data-reveal="scale"
+          className="bg-ink px-6 py-16 text-ink-foreground md:px-12 md:py-20 lg:px-16 lg:py-24"
+        >
+          <p className="font-mono text-[11px] font-medium tracking-[0.2em] uppercase text-brand-bright">
+            Security
           </p>
-          <BallotChain />
-        </div>
-        <div className="flex flex-col gap-10">
-          {GUARANTEES.map((item) => (
-            <div key={item.title}>
-              <h3 className="text-2xl font-medium md:text-3xl">{item.title}</h3>
-              <p className="mt-3 max-w-md text-lg leading-relaxed text-muted-foreground">
-                {item.body}
+
+          <div className="mt-6 grid gap-12 lg:grid-cols-2 lg:gap-20">
+            <div>
+              <h2 className="display max-w-[14ch] text-[clamp(2.4rem,5vw,4.5rem)]">
+                Trust is the whole product
+              </h2>
+              <p className="mt-7 max-w-md text-lg leading-relaxed text-ink-foreground/75">
+                A disputed election costs more than any software. Elektor Pro is
+                engineered so that even the losing side can check the math - and
+                agree with the outcome.
               </p>
+              <BallotChain />
             </div>
-          ))}
+
+            <div className="flex flex-col">
+              {GUARANTEES.map((item) => (
+                <div
+                  className="border-t border-ink-foreground/20 py-8 last:border-b"
+                  key={item.title}
+                >
+                  <h3 className="font-display text-2xl font-medium md:text-3xl">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 max-w-md text-lg leading-relaxed text-ink-foreground/70">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

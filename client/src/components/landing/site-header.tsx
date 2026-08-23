@@ -1,11 +1,11 @@
 "use client";
 
-// Text-first navigation: transparent at the top of the page, sticky with a
-// blurred hairline once scrolled. Three tiers: phones get the "Menu"/"Close"
-// toggle with a full-screen overlay; tablets (md-lg) drop the section tabs
-// and show only the auth links, which is all that fits well there; from lg
-// the full bar renders - section links apart from the actions ("Voter portal"
-// as a quiet text link, "Sign in" as the single pill) so it stays airy.
+// Square-edged navigation bar: logo, section links, and a bordered sign-in
+// button. Transparent over the page at rest, hairline-bordered and blurred
+// once scrolled. Three tiers: phones get the "Menu"/"Close" toggle with a
+// full-screen overlay; tablets (md-lg) drop the section links and show only
+// the auth actions, which is all that fits well there; from lg the full bar
+// renders.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -45,27 +45,36 @@ export function SiteHeader() {
     <header
       className={cn(
         "sticky top-0 z-40 transition-colors duration-300",
-        scrolled && !menuOpen && "border-b border-border bg-background/85 backdrop-blur-md",
+        scrolled &&
+          !menuOpen &&
+          "border-b border-border bg-background/85 backdrop-blur-md",
       )}
     >
-      <div className="mx-auto max-w-6xl px-6 md:px-10">
-        <div className={cn("flex items-center justify-between transition-all duration-300", scrolled ? "py-3.5" : "py-6")}>
+      <div className="mx-auto w-full max-w-[100rem] px-5 md:px-8 lg:px-12">
+        <div
+          className={cn(
+            "flex items-center justify-between gap-8 transition-[padding] duration-300",
+            scrolled ? "py-3.5" : "py-6",
+          )}
+        >
           <Logo imgSize={34} textClassName="text-2xl" />
 
-          {/* Page links, visually separate from the actions */}
-          <div className="hidden items-center gap-6 lg:flex">
+          <nav
+            aria-label="Sections"
+            className="hidden items-center gap-9 lg:flex"
+          >
             {PAGE_LINKS.map((item) => (
               <Link
-                className="text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="text-base font-medium text-foreground transition-colors hover:text-brand"
                 href={item.href}
                 key={item.label}
               >
                 {item.label}
               </Link>
             ))}
-          </div>
+          </nav>
 
-          <div className="hidden items-center gap-5 md:flex">
+          <div className="hidden items-center gap-6 md:flex">
             <Link
               className="text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
               href="/vote"
@@ -73,7 +82,7 @@ export function SiteHeader() {
               Voter portal
             </Link>
             <Link
-              className="rounded-full border border-foreground bg-foreground px-5 py-2 text-base font-medium text-background transition-colors duration-500 hover:bg-transparent hover:text-foreground"
+              className="border-[1.6px] border-foreground px-6 py-2.5 text-base font-semibold text-foreground transition-colors duration-200 hover:bg-foreground hover:text-background"
               href="/login"
             >
               Sign in
@@ -84,7 +93,7 @@ export function SiteHeader() {
             aria-expanded={menuOpen}
             aria-label="Toggle menu"
             className={cn(
-              "text-xl font-semibold text-foreground md:hidden",
+              "text-lg font-semibold text-foreground md:hidden",
               menuOpen && "z-50 text-muted-foreground",
             )}
             onClick={() => setMenuOpen((open) => !open)}
@@ -98,10 +107,10 @@ export function SiteHeader() {
       {/* Full-screen mobile menu */}
       {menuOpen && (
         <div className="fixed inset-0 z-40 flex flex-col bg-background md:hidden">
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-1 px-6">
+          <div className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col justify-center gap-1 px-5">
             {PAGE_LINKS.map((item) => (
               <Link
-                className="py-2 text-3xl font-medium text-foreground transition-colors hover:text-muted-foreground"
+                className="font-display py-2 text-3xl font-medium text-foreground transition-colors hover:text-brand"
                 href={item.href}
                 key={item.label}
                 onClick={() => setMenuOpen(false)}
@@ -111,14 +120,14 @@ export function SiteHeader() {
             ))}
             <div className="mt-8 flex flex-col gap-1 border-t border-border pt-8">
               <Link
-                className="py-2 text-3xl font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="font-display py-2 text-3xl font-medium text-muted-foreground transition-colors hover:text-foreground"
                 href="/vote"
                 onClick={() => setMenuOpen(false)}
               >
                 Voter portal
               </Link>
               <Link
-                className="py-2 text-3xl font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="font-display py-2 text-3xl font-medium text-muted-foreground transition-colors hover:text-foreground"
                 href="/login"
                 onClick={() => setMenuOpen(false)}
               >

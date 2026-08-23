@@ -43,121 +43,145 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-brand-pale: var(--brand-pale);
+  --color-brand-pale-foreground: var(--brand-pale-foreground);
+  --color-brand-bright: var(--brand-bright);
+  --radius-xs: calc(var(--radius) * 0.4);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 :root {
-  /* Light theme. Brand system is IVORY + FOREST GREEN in both themes: warm
-     ivory paper page, cream surfaces, deep pine-cast ink (never pure black),
-     one forest-green accent. `color-scheme` keeps native controls
-     (select popups, date pickers, scrollbars) matching the theme. */
+  /* Light theme. The system is WHITE PAPER + NEAR-BLACK INK + one electric
+     blue, with two named display surfaces the marketing pages compose with:
+     `ink` (the graphite block) and `brand-pale` (the soft blue block).
+     `color-scheme` keeps native controls (select popups, date pickers,
+     scrollbars) matching the theme. */
   color-scheme: light;
 
-  --radius: 0.625rem;
+  /* The design system is SQUARE: every radius-scale utility resolves to 0.
+     `rounded-full` stays for shapes that are genuinely circles - avatars,
+     status dots, spinners, badge pills. */
+  --radius: 0rem;
 
-  --background: oklch(0.977 0.006 95);
-  --foreground: oklch(0.23 0.02 150);
-  --card: oklch(0.99 0.004 95);
-  --card-foreground: oklch(0.23 0.02 150);
-  --popover: oklch(0.99 0.004 95);
-  --popover-foreground: oklch(0.23 0.02 150);
-  --primary: oklch(0.27 0.025 150);
-  --primary-foreground: oklch(0.977 0.006 95);
-  --secondary: oklch(0.945 0.008 95);
-  --secondary-foreground: oklch(0.27 0.025 150);
-  --muted: oklch(0.945 0.008 95);
-  --muted-foreground: oklch(0.49 0.02 135);
-  --accent: oklch(0.92 0.012 110);
-  --accent-foreground: oklch(0.23 0.02 150);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.15 0.002 286);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.002 286);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.002 286);
+  --primary: oklch(0.15 0.002 286);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.973 0.002 248);
+  --secondary-foreground: oklch(0.15 0.002 286);
+  --muted: oklch(0.973 0.002 248);
+  --muted-foreground: oklch(0.538 0.01 264);
+  --accent: oklch(0.962 0.016 245);
+  --accent-foreground: oklch(0.15 0.002 286);
   --destructive: oklch(0.55 0.2 25);
-  --success: oklch(0.52 0.13 162);
-  --warning: oklch(0.6 0.15 75);
-  --border: oklch(0.89 0.012 100);
-  --input: oklch(0.87 0.012 100);
-  --ring: oklch(0.45 0.11 152);
-  /* Forest green - the brand accent (darker here for contrast on ivory). */
-  --brand: oklch(0.45 0.11 152);
-  --brand-foreground: oklch(0.985 0.006 95);
-  --brand-muted: oklch(0.93 0.035 152);
-  --sidebar: oklch(0.965 0.007 95);
-  --sidebar-foreground: oklch(0.23 0.02 150);
-  --sidebar-primary: oklch(0.45 0.11 152);
-  --sidebar-primary-foreground: oklch(0.985 0.006 95);
-  --sidebar-accent: oklch(0.92 0.012 110);
-  --sidebar-accent-foreground: oklch(0.23 0.02 150);
-  --sidebar-border: oklch(0.89 0.012 100);
-  --sidebar-ring: oklch(0.45 0.11 152);
-  /* Charts: green, gold, plum, terracotta - validated (CVD + contrast) in
-     this order; assign in order, never shuffled. chart-5 is a reserved
-     neutral for an "Other" bucket, not part of the categorical rotation. */
-  --chart-1: oklch(0.45 0.11 152);
-  --chart-2: oklch(0.65 0.13 85);
-  --chart-3: oklch(0.46 0.13 325);
-  --chart-4: oklch(0.58 0.16 40);
-  --chart-5: oklch(0.5 0.02 135);
+  --success: oklch(0.55 0.13 162);
+  --warning: oklch(0.62 0.15 70);
+  --border: oklch(0.912 0.005 258);
+  --input: oklch(0.878 0.006 256);
+  --ring: oklch(0.554 0.192 256);
+  /* Electric blue - the single accent, at 4.9:1 on white so it carries body
+     text, links and filled buttons without a second "accessible" variant. */
+  --brand: oklch(0.554 0.192 256);
+  --brand-foreground: oklch(1 0 0);
+  --brand-muted: oklch(0.962 0.016 245);
+  /* Brighter blue for large display surfaces (hero wash, oversized numerals)
+     where the 4.9:1 text blue reads heavy. Never used behind small text. */
+  --brand-bright: oklch(0.663 0.148 245);
+  /* The two display blocks the marketing sections alternate between. */
+  --ink: oklch(0.258 0.006 301);
+  --ink-foreground: oklch(0.976 0.001 286);
+  --brand-pale: oklch(0.873 0.049 230);
+  --brand-pale-foreground: oklch(0.15 0.002 286);
+  --sidebar: oklch(0.985 0.001 248);
+  --sidebar-foreground: oklch(0.15 0.002 286);
+  --sidebar-primary: oklch(0.554 0.192 256);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.962 0.016 245);
+  --sidebar-accent-foreground: oklch(0.15 0.002 286);
+  --sidebar-border: oklch(0.912 0.005 258);
+  --sidebar-ring: oklch(0.554 0.192 256);
+  /* Charts: blue, plum, teal, amber - assigned in this order, never
+     shuffled. Hues sit 70-100 apart and lightness steps 0.47/0.55/0.65/0.74,
+     so adjacent series stay apart in grayscale and under CVD simulation.
+     chart-5 is a reserved neutral for an "Other" bucket. */
+  --chart-1: oklch(0.554 0.192 256);
+  --chart-2: oklch(0.47 0.17 338);
+  --chart-3: oklch(0.65 0.11 183);
+  --chart-4: oklch(0.74 0.14 74);
+  --chart-5: oklch(0.538 0.01 264);
 
   /* Ambient background (public pages). */
-  --bg-glow-1: oklch(0.45 0.11 152 / 0.07);
-  --bg-glow-2: oklch(0.45 0.11 152 / 0.045);
-  --bg-fade: oklch(0.93 0.015 100 / 0.5);
+  --bg-glow-1: oklch(0.554 0.192 256 / 0.06);
+  --bg-glow-2: oklch(0.554 0.192 256 / 0.035);
+  --bg-fade: oklch(0.955 0.006 250 / 0.6);
 }
 
 .dark {
   color-scheme: dark;
 
-  /* Dark theme: the page sits on a deep pine-black (green-cast, never a
-     neutral black); surfaces step lighter; type is warm ivory. */
-  --background: oklch(0.22 0.015 150);
-  --foreground: oklch(0.965 0.008 95);
-  --card: oklch(0.26 0.015 150);
-  --card-foreground: oklch(0.965 0.008 95);
-  --popover: oklch(0.26 0.015 150);
-  --popover-foreground: oklch(0.965 0.008 95);
-  --primary: oklch(0.95 0.008 95);
-  --primary-foreground: oklch(0.22 0.015 150);
-  --secondary: oklch(0.3 0.015 150);
-  --secondary-foreground: oklch(0.965 0.008 95);
-  --muted: oklch(0.3 0.015 150);
-  --muted-foreground: oklch(0.72 0.015 120);
-  --accent: oklch(0.33 0.017 150);
-  --accent-foreground: oklch(0.965 0.008 95);
+  /* Dark theme: near-black page, graphite surfaces, the blue lifted to
+     7.6:1 so it still carries text. */
+  --background: oklch(0.15 0.002 286);
+  --foreground: oklch(0.976 0.001 286);
+  --card: oklch(0.21 0.006 286);
+  --card-foreground: oklch(0.976 0.001 286);
+  --popover: oklch(0.21 0.006 286);
+  --popover-foreground: oklch(0.976 0.001 286);
+  --primary: oklch(0.976 0.001 286);
+  --primary-foreground: oklch(0.15 0.002 286);
+  --secondary: oklch(0.249 0.006 286);
+  --secondary-foreground: oklch(0.976 0.001 286);
+  --muted: oklch(0.249 0.006 286);
+  --muted-foreground: oklch(0.716 0.009 271);
+  --accent: oklch(0.27 0.007 286);
+  --accent-foreground: oklch(0.976 0.001 286);
   --destructive: oklch(0.7 0.19 22);
-  --success: oklch(0.74 0.13 162);
-  --warning: oklch(0.79 0.16 75);
-  --border: oklch(0.95 0.02 95 / 13%);
-  --input: oklch(0.95 0.02 95 / 17%);
-  --ring: oklch(0.7 0.13 155);
-  /* Emerald - the brand accent (lifted for legibility on the dark field);
-     dark ink on it, so brand pills read like a stamped seal. */
-  --brand: oklch(0.7 0.13 155);
-  --brand-foreground: oklch(0.2 0.02 150);
-  --brand-muted: oklch(0.33 0.05 152);
-  --sidebar: oklch(0.245 0.015 150);
-  --sidebar-foreground: oklch(0.965 0.008 95);
-  --sidebar-primary: oklch(0.7 0.13 155);
-  --sidebar-primary-foreground: oklch(0.2 0.02 150);
-  --sidebar-accent: oklch(0.3 0.015 150);
-  --sidebar-accent-foreground: oklch(0.965 0.008 95);
-  --sidebar-border: oklch(0.95 0.02 95 / 13%);
-  --sidebar-ring: oklch(0.7 0.13 155);
-  /* Same chart entities as light (green, gold, plum, terracotta), re-stepped
-     and re-validated against the dark surface - not an automatic flip.
-     chart-5 stays the reserved "Other" neutral. */
-  --chart-1: oklch(0.535 0.12 155);
-  --chart-2: oklch(0.665 0.13 92);
-  --chart-3: oklch(0.55 0.12 325);
-  --chart-4: oklch(0.64 0.15 40);
-  --chart-5: oklch(0.72 0.015 120);
+  --success: oklch(0.75 0.13 162);
+  --warning: oklch(0.8 0.15 75);
+  --border: oklch(1 0 0 / 13%);
+  --input: oklch(1 0 0 / 17%);
+  --ring: oklch(0.706 0.148 244);
+  --brand: oklch(0.706 0.148 244);
+  --brand-foreground: oklch(0.15 0.002 286);
+  --brand-muted: oklch(0.278 0.059 249);
+  --brand-bright: oklch(0.706 0.148 244);
+  /* On the dark page the graphite block steps UP from the background and the
+     blue block goes deep, so the alternation still reads as two surfaces. */
+  --ink: oklch(0.249 0.006 286);
+  --ink-foreground: oklch(0.976 0.001 286);
+  --brand-pale: oklch(0.278 0.059 249);
+  --brand-pale-foreground: oklch(0.976 0.001 286);
+  --sidebar: oklch(0.18 0.004 286);
+  --sidebar-foreground: oklch(0.976 0.001 286);
+  --sidebar-primary: oklch(0.706 0.148 244);
+  --sidebar-primary-foreground: oklch(0.15 0.002 286);
+  --sidebar-accent: oklch(0.27 0.007 286);
+  --sidebar-accent-foreground: oklch(0.976 0.001 286);
+  --sidebar-border: oklch(1 0 0 / 13%);
+  --sidebar-ring: oklch(0.706 0.148 244);
+  /* Same four entities as light, re-stepped against the dark field and
+     re-validated - not an automatic flip. chart-5 stays the "Other" neutral. */
+  --chart-1: oklch(0.68 0.16 250);
+  --chart-2: oklch(0.62 0.18 340);
+  --chart-3: oklch(0.72 0.11 183);
+  --chart-4: oklch(0.8 0.14 78);
+  --chart-5: oklch(0.716 0.009 271);
 
-  /* Ambient background (depth) - soft brand aurora glows plus a fine film
-     grain, no geometric pattern. */
-  --bg-glow-1: oklch(0.7 0.13 155 / 0.12);
-  --bg-glow-2: oklch(0.7 0.13 155 / 0.06);
-  --bg-fade: oklch(0.17 0.012 150 / 0.5);
+  --bg-glow-1: oklch(0.706 0.148 244 / 0.12);
+  --bg-glow-2: oklch(0.706 0.148 244 / 0.06);
+  --bg-fade: oklch(0.1 0.004 286 / 0.5);
 }
 
 @layer base {
@@ -182,16 +206,28 @@
        shells lay their own opaque bg-background surface on top. */
     @apply text-foreground antialiased;
     background-color: var(--background);
-    font-feature-settings: "cv11", "ss01";
+    /* Poppins is set airy: prose sits at 1.75 leading so long paragraphs
+       stay readable at the large body size the display type demands. */
+    line-height: 1.75;
     text-rendering: optimizeLegibility;
   }
-  /* Any enabled clickable control shows a pointer cursor. */
+  /* Any enabled clickable control shows a pointer cursor, skips the 300ms
+     double-tap-zoom wait on touch, and suppresses the grey flash Android
+     paints over taps - the :active and hover states already carry the
+     feedback. */
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
+  a,
   label[for],
   summary,
   select:not(:disabled) {
     @apply cursor-pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Anchor targets clear the sticky header rather than hiding under it. */
+  :target {
+    scroll-margin-top: 6rem;
   }
   /* Native <select> popups: some engines ignore color-scheme for the
      option list and paint it white while the text stays inherited-white. */
@@ -205,9 +241,20 @@
     background-color: var(--brand);
     color: var(--brand-foreground);
   }
+  /* Headings run in Space Grotesk at its own optical tracking. Space Grotesk
+     is already tightly fitted, so the usual display negative tracking closes
+     the counters up and the oversized headlines lose their grid. */
   h1, h2, h3, h4 {
-    @apply tracking-tight;
+    @apply font-display font-medium;
+    letter-spacing: 0;
     text-wrap: balance;
+  }
+  /* Oversized display headings wrap by hand at deliberate points, so leave
+     the balancer out of them - it fights the authored line breaks. */
+  .display {
+    @apply font-display font-medium;
+    line-height: 0.98;
+    text-wrap: initial;
   }
 }
 
@@ -290,11 +337,22 @@
     linear-gradient(to bottom, transparent 55%, var(--bg-fade) 100%);
 }
 
-/* --- Hero load sequence (landing) ---------------------------------------- */
+/* --- Motion system -------------------------------------------------------
 
-/* Elements enter in numbered steps once the hero mounts: fade up, then the
-   gauge bars paint, the counts tick, and the certification seal stamps in.
-   The global reduced-motion rule collapses all of it to an instant render. */
+   Three layers, all compositor-only (transform + opacity) and all cut by the
+   reduced-motion rule above:
+
+   1. Load sequence  - the hero paints itself in once, on mount.
+   2. Scroll reveal  - sections arrive as they enter the viewport, driven by
+                       a native view() timeline so there is no scroll listener
+                       and no observer. Browsers without scroll-driven
+                       animation never hide the content in the first place.
+   3. Route motion   - console pages and their contents settle in on
+                       navigation instead of snapping.
+   ------------------------------------------------------------------------ */
+
+/* 1. Hero load sequence. Elements enter in numbered steps once the hero
+      mounts, then the certification seal stamps in over the settled counts. */
 .rise {
   opacity: 0;
   transform: translateY(14px);
@@ -319,6 +377,35 @@
   transition-delay: 0.32s;
 }
 
+/*
+ * Line mask for the hero headline. Each line is a real text node inside its
+ * own clipping box, so the heading stays one continuous string to a screen
+ * reader while the lines swing up from behind their own edge. The overshoot
+ * on the easing gives the type weight as it lands.
+ */
+.line-mask {
+  display: block;
+  overflow: hidden;
+  /* The descenders of a display face sit below the baseline; without the pad
+     the mask clips the tails of g, y and p once the line has settled. */
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.line-mask > span {
+  display: block;
+  transform: translateY(110%);
+}
+.hero-ready .line-mask > span {
+  transform: none;
+  transition: transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-ready .line-mask:nth-of-type(2) > span {
+  transition-delay: 0.1s;
+}
+.hero-ready .line-mask:nth-of-type(3) > span {
+  transition-delay: 0.2s;
+}
+
 .hero-seal {
   opacity: 0;
   transform: scale(1.14);
@@ -331,10 +418,204 @@
     transform 0.45s cubic-bezier(0.16, 1.15, 0.3, 1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rise,
-  .hero-seal {
+/* 2. Scroll reveal.
+ *
+ * Guarded twice on purpose. The @supports test means a browser that cannot
+ * run the animation never applies the hidden start state, so content is
+ * visible rather than stranded at opacity 0 - the failure mode of every
+ * observer-based reveal. The media query keeps the whole layer out of
+ * reduced-motion sessions.
+ */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(2.75rem);
+  }
+  to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.965) translateY(2rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Two panels drifting at different rates across the same scroll range read as
+   depth. The travel is small - a few rem - because the point is parallax, not
+   displacement. */
+@keyframes drift {
+  from {
+    transform: translateY(var(--drift-from, 2.5rem));
+  }
+  to {
+    transform: translateY(var(--drift-to, -2.5rem));
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 32%;
+    }
+
+    [data-reveal="scale"] {
+      animation-name: reveal-scale;
+    }
+
+    /* Grid children arrive one after another rather than as a block. The
+       index comes in as --i from the markup; the range is nudged per item so
+       the stagger is driven by scroll position, not by a fixed clock. */
+    [data-reveal-item] {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry calc(2% + var(--i, 0) * 4%) cover
+        calc(26% + var(--i, 0) * 4%);
+    }
+
+    [data-drift] {
+      animation: drift linear both;
+      animation-timeline: view();
+      animation-range: cover;
+      will-change: transform;
+    }
+  }
+}
+
+/* 3. Route motion.
+ *
+ * The console keys this on the pathname, so it replays on every navigation.
+ * Short and shallow: this is orientation feedback, not a curtain - anything
+ * longer makes the app feel like it is loading when it already has. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: page-enter 0.26s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/*
+ * Sections of a console page settle in sequence behind the page itself. The
+ * cap matters: past the eighth child every remaining row shares the last
+ * delay, so a 200-row table cannot schedule a two-second cascade.
+ */
+.stagger > * {
+  animation: page-enter 0.34s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 0.16s;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 0.24s;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 0.28s;
+}
+.stagger > *:nth-child(n + 8) {
+  animation-delay: 0.32s;
+}
+
+/*
+ * The sidebar rail. Interpolating grid-template-columns is what actually
+ * animates here; the aside itself only needs its contents not to reflow
+ * mid-transition, which the overflow clip handles.
+ */
+.console-grid {
+  transition: grid-template-columns 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/*
+ * Radix overlays. Each part animates on its own data-state, so an overlay
+ * that is dismissed mid-open reverses from wherever it got to instead of
+ * jumping to the end of the open animation first.
+ */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes content-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+
+/*
+ * Content swaps inside a page. A table replacing its skeleton, or a tab panel
+ * replacing the last one, has no navigation to hang .page-enter on - keyed on
+ * whatever identifies the content, this covers the swap instead.
+ */
+.fade-in {
+  animation: page-enter 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Reduced motion: the whole layer collapses to the settled state. The global
+   rule above already cuts durations; these reset the start states that rule
+   cannot reach, so nothing is left invisible or displaced. */
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .hero-seal,
+  .line-mask > span,
+  .stagger > *,
+  .fade-in,
+  .page-enter {
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 }

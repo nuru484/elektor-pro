@@ -72,7 +72,7 @@ export function VoterChrome({
                   navbar to one visible action on a narrow phone. */}
               {/* Which console this is, immediately beside the account
                   menu: it describes who you are signed in as. */}
-              <span className="mx-1 hidden shrink-0 rounded-full border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
+              <span className="mx-1 hidden shrink-0 border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
                 Voter
               </span>
               <DropdownMenu>

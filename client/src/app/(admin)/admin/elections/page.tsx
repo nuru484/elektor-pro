@@ -26,6 +26,7 @@ import { type TableFiltersSpec } from "@/hooks/table-query-state-logic";
 import { useTableQueryState } from "@/hooks/use-table-query-state";
 import { useCreateElectionMutation, useListElectionsQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDate } from "@/utils/format-date";
 
 const STATUSES: ElectionStatus[] = [
   "DRAFT",
@@ -75,8 +76,8 @@ const COLUMNS: ColumnDef<Election>[] = [
   {
     cell: ({ row }) => (
       <span className="text-xs whitespace-nowrap text-muted-foreground">
-        {new Date(row.original.startDate).toLocaleDateString()} –{" "}
-        {new Date(row.original.endDate).toLocaleDateString()}
+        {formatDate(row.original.startDate)} –{" "}
+        {formatDate(row.original.endDate)}
       </span>
     ),
     header: "Window",
@@ -257,7 +258,7 @@ export default function ElectionsPage() {
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {row.original._count?.portfolios ?? 0} portfolios ·{" "}
               {row.original._count?.candidates ?? 0} candidates ·{" "}
-              {new Date(row.original.startDate).toLocaleDateString()}
+              {formatDate(row.original.startDate)}
             </p>
           </RowCard>
         )}

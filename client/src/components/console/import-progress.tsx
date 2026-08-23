@@ -54,7 +54,15 @@ export function ImportProgress({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-sm">
+      {/* The status line rewrites itself as the batch progresses; without a
+          live region a screen-reader user is told the import started and
+          never told it finished. Polite, so it waits for a pause rather than
+          cutting across whatever is being read. */}
+      <div
+        aria-live="polite"
+        className="flex items-center gap-2 text-sm"
+        role="status"
+      >
         {!batch || !finished ? (
           <>
             <Loader2 aria-hidden className="size-4 animate-spin text-brand" />
@@ -87,11 +95,11 @@ export function ImportProgress({
         aria-valuemax={100}
         aria-valuemin={0}
         aria-valuenow={pct}
-        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        className="h-1.5 overflow-hidden bg-muted"
         role="progressbar"
       >
         <div
-          className="h-full rounded-full bg-chart-1 transition-[width] duration-500"
+          className="h-full bg-chart-1 transition-[width] duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>

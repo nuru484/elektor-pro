@@ -7,6 +7,7 @@
 // role, and the guard redirects signed-out visitors to the login page.
 import {
   ArrowLeft,
+  Globe,
   LogOut,
   Menu,
   PanelLeftClose,
@@ -36,6 +37,7 @@ import {
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SkipLink } from "@/components/ui/skip-link";
 import {
   Tooltip,
   TooltipContent,
@@ -46,6 +48,10 @@ import { useAuthRole } from "@/hooks/use-auth-role";
 import { clearSessionMarker, setSessionMarker } from "@/lib/session-marker";
 import { cn } from "@/lib/utils";
 import { useGetMeQuery, useLogoutMutation } from "@/redux/auth-api";
+import {
+  getApiErrorMessage,
+  isAuthFailure,
+} from "@/utils/extract-api-error";
 
 import { homeForRole, sectionsForRole } from "./nav-config";
 
@@ -64,10 +70,11 @@ function HeaderBackButton() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
   if (segments[0] !== "admin" || segments.length < 3) return null;
+  const section = segments[1] ?? "";
   return (
-    <Button asChild aria-label="Back" size="icon-sm" variant="ghost">
-      <Link href={`/admin/${segments[1]}`}>
-        <ArrowLeft className="size-5" />
+    <Button asChild size="icon-sm" variant="ghost">
+      <Link aria-label={`Back to ${section}`} href={`/admin/${section}`}>
+        <ArrowLeft aria-hidden className="size-5" />
       </Link>
     </Button>
   );
@@ -101,7 +108,7 @@ function NavList({
       {sectionsForRole(role, user?.capabilities ?? []).map((section) => (
         <div key={section.label ?? "main"}>
           {section.label && !collapsed && (
-            <p className="mb-1.5 px-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground/70 uppercase">
+            <p className="mb-1.5 px-3 font-mono text-[10px] font-medium tracking-[0.16em] text-muted-foreground/70 uppercase">
               {section.label}
             </p>
           )}
@@ -114,16 +121,20 @@ function NavList({
                 <Link
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
-                    collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
+                    "relative flex items-center gap-3 text-sm font-medium transition-[color,background-color] duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                    // The active marker is a border rather than a pseudo
+                    // element so the collapsed rail keeps it too.
+                    collapsed
+                      ? "justify-center px-0 py-2.5"
+                      : "border-l-2 py-2 pr-3 pl-[calc(0.75rem-2px)]",
                     active
-                      ? "bg-brand-muted text-brand"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      ? "border-brand bg-brand-muted text-brand"
+                      : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
                   )}
                   href={item.href}
                   onClick={onNavigate}
                 >
-                  <item.icon className="size-4 shrink-0" />
+                  <item.icon aria-hidden className="size-4 shrink-0" />
                   {!collapsed && item.label}
                 </Link>
               );
@@ -193,6 +204,15 @@ function UserMenu() {
               <UserCircle className="size-4" /> My profile
             </Link>
           </DropdownMenuItem>
+          {/* The way back out to the marketing site. It lives here rather than
+              in the sidebar footer because the personal consoles (agent,
+              candidate, accreditor) run the top-bar chrome and have no
+              sidebar - this menu is the one piece of chrome every role has. */}
+          <DropdownMenuItem asChild>
+            <Link href="/">
+              <Globe aria-hidden className="size-4" /> Public site
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setConfirmOpen(true)} variant="destructive">
             <LogOut className="size-4" /> Sign out
@@ -225,14 +245,14 @@ function TopNavLink({ item }: { item: NavItem }) {
   return (
     <Link
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+        "inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-[color,background-color,border-color] duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
         active
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+          ? "border-brand text-brand"
+          : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
       )}
       href={item.href}
     >
-      <item.icon className="size-4" />
+      <item.icon aria-hidden className="size-4" />
       {item.label}
     </Link>
   );
@@ -291,7 +311,7 @@ export function ConsoleShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isError, isLoading } = useGetMeQuery();
+  const { error, isError, isLoading, refetch } = useGetMeQuery();
   const { initialized, role, user } = useAuthRole();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Desktop sidebar collapse (icon rail), remembered across visits. The
@@ -319,9 +339,15 @@ export function ConsoleShell({
     if (user) setSessionMarker();
   }, [user]);
 
+  // A failed session check only ends the session when the API actually said
+  // "not authenticated". Anything else - a timeout, a cold backend, a 5xx -
+  // leaves the session alone and surfaces a retry below, rather than signing
+  // the visitor out in the middle of whatever they were doing.
+  const authFailed = isError && isAuthFailure(error);
+
   useEffect(() => {
     if (isLoading) return;
-    if (isError || (initialized && !user)) {
+    if (authFailed || (initialized && !user)) {
       clearSessionMarker();
       router.replace("/login");
       return;
@@ -335,7 +361,36 @@ export function ConsoleShell({
     if (role && !allowed) {
       router.replace("/profile");
     }
-  }, [allowed, initialized, isError, isLoading, role, router, user]);
+  }, [allowed, authFailed, initialized, isLoading, role, router, user]);
+
+  // The session check failed for a reason that is not authentication, so the
+  // visitor is probably still signed in and the API is just unreachable.
+  // Offer the retry instead of throwing away a working session.
+  if (isError && !authFailed && !user) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center" role="alert">
+          <h1 className="font-display text-2xl font-semibold">
+            Cannot reach the server
+          </h1>
+          <p className="mt-3 leading-relaxed text-muted-foreground">
+            {getApiErrorMessage(
+              error,
+              "The connection failed. Your session is still active.",
+            )}
+          </p>
+          <Button
+            className="mt-6"
+            onClick={() => void refetch()}
+            type="button"
+            variant="brand"
+          >
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !user || !allowed || user.mustChangePassword) {
     return <LoadingScreen />;
@@ -374,6 +429,7 @@ export function ConsoleShell({
     );
     return (
       <div className="flex min-h-dvh flex-col bg-background">
+        <SkipLink targetId="console-main" />
         <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 py-3">
@@ -383,7 +439,7 @@ export function ConsoleShell({
                 {/* Which console is active, immediately beside the account
                     menu: it describes the signed-in identity, so it belongs
                     against the avatar rather than the wordmark. */}
-                <span className="hidden shrink-0 rounded-full border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
+                <span className="hidden shrink-0 border border-brand/40 bg-brand-muted px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-foreground sm:inline">
                   {ROLE_LABELS[role]}
                 </span>
                 <UserMenu />
@@ -402,9 +458,13 @@ export function ConsoleShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          {/* Keyed by route so the enter animation replays on navigation. */}
-          <div className="page-enter mx-auto w-full max-w-6xl" key={pathname}>
+        <main className="min-w-0 flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8" id="console-main" tabIndex={-1}>
+          {/* Keyed by route so the enter animation replays on navigation:
+              the page settles in and its sections follow in sequence. */}
+          <div
+            className="page-enter stagger mx-auto w-full max-w-6xl"
+            key={pathname}
+          >
             {children}
           </div>
         </main>
@@ -417,13 +477,20 @@ export function ConsoleShell({
   return (
     <div
       className={cn(
-        "min-h-dvh bg-background lg:grid",
+        "console-grid min-h-dvh bg-background lg:grid",
         collapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[264px_1fr]",
       )}
     >
+      <SkipLink targetId="console-main" />
       {/* Desktop sidebar (full or icon rail) */}
+      {/* No overflow on the aside: it would become the nearest scrollport and
+          the sticky rail inside would scroll away with the page. The clip
+          that keeps labels from spilling while the column width animates
+          goes on the sticky element, which does not affect its own sticking. */}
       <aside className="hidden border-r border-sidebar-border bg-sidebar lg:block">
-        <div className="sticky top-0 h-dvh">{sidebar(collapsed)}</div>
+        <div className="sticky top-0 h-dvh overflow-hidden">
+          {sidebar(collapsed)}
+        </div>
       </aside>
 
       {/* min-h-dvh so the footer sits at the bottom even on short pages. */}
@@ -460,8 +527,11 @@ export function ConsoleShell({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="page-enter mx-auto w-full max-w-6xl" key={pathname}>
+        <main className="min-w-0 flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8" id="console-main" tabIndex={-1}>
+          <div
+            className="page-enter stagger mx-auto w-full max-w-6xl"
+            key={pathname}
+          >
             {children}
           </div>
         </main>

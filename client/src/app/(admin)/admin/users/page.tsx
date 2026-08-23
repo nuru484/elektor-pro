@@ -363,32 +363,48 @@ export default function UsersPage() {
             name={`${row.original.firstName} ${row.original.lastName}`}
             url={row.original.profilePicture}
           />
-          <div className="min-w-0 flex-1">
-            <p className="flex max-w-[90%] items-center gap-1.5 text-sm font-medium">
-              <span
-                className="min-w-0 truncate"
-                title={`${row.original.firstName} ${row.original.lastName}`}
-              >
-                {row.original.firstName} {row.original.lastName}
-              </span>
-              {me?.id === row.original.id && <Badge variant="brand">You</Badge>}
-            </p>
-            <p
-              className="max-w-[90%] truncate text-xs text-muted-foreground"
-              title={row.original.email ?? undefined}
+          <p className="flex min-w-0 max-w-[90%] items-center gap-1.5 text-sm font-medium">
+            <span
+              className="min-w-0 truncate"
+              title={`${row.original.firstName} ${row.original.lastName}`}
             >
-              {row.original.email ?? "—"}
-            </p>
-            {row.original.phone && (
-              <p className="max-w-[90%] truncate text-xs text-muted-foreground">
-                {row.original.phone}
-              </p>
+              {row.original.firstName} {row.original.lastName}
+            </span>
+            {me?.id === row.original.id && (
+              <Badge className="shrink-0" variant="brand">
+                You
+              </Badge>
             )}
-          </div>
+          </p>
         </div>
       ),
-      header: "Account",
+      header: "Name",
       meta: { stretch: true },
+    },
+    {
+      accessorKey: "email",
+      cell: ({ row }) => (
+        // Only the stretch column is width-capped by the table, so truncate
+        // needs an explicit max here or a long address just widens the column
+        // and pushes the row into a horizontal scroll. The title carries the
+        // full address for whatever gets cut.
+        <p
+          className="max-w-[24ch] truncate text-sm"
+          title={row.original.email ?? undefined}
+        >
+          {row.original.email ?? "—"}
+        </p>
+      ),
+      header: "Email",
+    },
+    {
+      accessorKey: "phone",
+      cell: ({ row }) => (
+        <p className="text-sm whitespace-nowrap tabular-nums">
+          {row.original.phone ?? "—"}
+        </p>
+      ),
+      header: "Phone",
     },
     {
       cell: ({ row }) => (

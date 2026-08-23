@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
+import { SkipLink } from "@/components/ui/skip-link";
 
 export function LegalPageShell({
   children,
@@ -22,13 +23,14 @@ export function LegalPageShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <SkipLink targetId="main-content" />
       <SiteHeader />
-      <main className="flex-1">
+      <main className="flex-1 outline-none" id="main-content" tabIndex={-1}>
         <div className="mx-auto max-w-3xl px-6 py-12 md:px-10 md:py-16">
           <p className="font-mono text-xs font-bold tracking-[0.18em] uppercase text-brand">
             Elektor Pro · Legal
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight lg:text-5xl">
+          <h1 className="display mt-3 text-4xl lg:text-5xl">
             {title}
           </h1>
           <p className="mt-3 mb-10 text-sm text-muted-foreground">

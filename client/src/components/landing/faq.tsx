@@ -1,4 +1,9 @@
-// Minimal bordered-row FAQ (native details/summary, plus/minus marker).
+// The page's one split layout: the heading holds the left column while the
+// questions scroll past it on the right. Native details/summary, so the
+// accordion works before any JavaScript loads. An open row turns blue and
+// grows a rule down its left edge.
+import { ChevronDown } from "lucide-react";
+
 const FAQS = [
   {
     answer:
@@ -34,34 +39,42 @@ const FAQS = [
 
 export function Faq() {
   return (
-    <section
-      className="mx-auto mb-24 flex max-w-6xl scroll-mt-8 flex-col gap-8 px-6 md:mb-32 md:px-12"
-      id="faq"
-    >
-      <h2 className="text-4xl font-medium md:text-5xl">Questions, answered</h2>
-      <div>
-        {FAQS.map((faq) => (
-          <details className="group border-t border-border last:border-b" key={faq.question}>
-            <summary className="flex list-none items-baseline justify-between gap-6 py-6 text-xl font-medium md:text-2xl [&::-webkit-details-marker]:hidden">
-              {faq.question}
-              <span
-                aria-hidden
-                className="shrink-0 text-2xl font-light text-muted-foreground group-open:hidden"
-              >
-                +
-              </span>
-              <span
-                aria-hidden
-                className="hidden shrink-0 text-2xl font-light text-muted-foreground group-open:inline"
-              >
-                −
-              </span>
-            </summary>
-            <p className="max-w-2xl pb-6 text-lg leading-relaxed text-muted-foreground">
-              {faq.answer}
-            </p>
-          </details>
-        ))}
+    <section className="scroll-mt-24 py-20 md:py-28" id="faq">
+      <div className="mx-auto grid w-full max-w-[100rem] gap-12 px-5 md:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20 lg:px-12">
+        <div className="lg:sticky lg:top-32 lg:self-start">
+          <h2
+            data-reveal
+            className="display max-w-[10ch] text-[clamp(2.4rem,5vw,4.5rem)]"
+          >
+            Questions, answered
+          </h2>
+          <p className="mt-6 max-w-sm text-lg leading-relaxed text-muted-foreground">
+            The things organizers and voters ask before their first election on
+            the platform.
+          </p>
+        </div>
+
+        <div className="lg:pt-3">
+          {FAQS.map((faq) => (
+            <details
+              className="group border-b border-foreground/25 open:border-l-2 open:border-l-brand open:pl-5"
+              key={faq.question}
+            >
+              <summary className="flex list-none items-start gap-4 py-6 [&::-webkit-details-marker]:hidden">
+                <ChevronDown
+                  aria-hidden
+                  className="mt-1.5 size-5 flex-none text-muted-foreground transition-transform duration-200 group-open:rotate-180 group-open:text-brand"
+                />
+                <span className="font-display text-xl font-semibold transition-colors group-open:text-brand md:text-2xl">
+                  {faq.question}
+                </span>
+              </summary>
+              <p className="max-w-[60ch] pb-7 pl-9 text-lg leading-relaxed text-muted-foreground">
+                {faq.answer}
+              </p>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   );

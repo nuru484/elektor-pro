@@ -34,10 +34,10 @@ export const siteConfig = {
     youtube: "#",
   },
   tagline: "Run elections everyone trusts",
-  /** Dark ink page field - used for the PWA manifest background. */
-  backgroundColor: "#161d17",
-  /** Deep blue brand - used for theme-color and the OG card accent. */
-  themeColor: "#126635",
+  /** Near-black page field - used for the PWA manifest background. */
+  backgroundColor: "#0b0b0c",
+  /** Electric blue brand - used for theme-color and the OG card accent. */
+  themeColor: "#006edf",
   /** Full home-page title (the layout template's `default`). */
   title: "Elektor Pro · Run elections everyone trusts",
 } as const;

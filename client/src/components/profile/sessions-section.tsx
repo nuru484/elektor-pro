@@ -27,6 +27,7 @@ import {
   useRevokeSessionMutation,
 } from "@/redux/profile-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 const looksMobile = (userAgent: null | string): boolean =>
   /android|iphone|ipad|mobile/i.test(userAgent ?? "");
@@ -69,7 +70,7 @@ function SessionRow({ session }: { session: SessionView }) {
         </p>
         <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
           {session.ipAddress ?? "Unknown IP"} · active{" "}
-          {new Date(session.lastUsedAt).toLocaleString()}
+          {formatDateTime(session.lastUsedAt)}
         </p>
       </div>
       {!session.current && (

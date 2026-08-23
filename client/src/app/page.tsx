@@ -6,6 +6,7 @@ import { Security } from "@/components/landing/security";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
 import { UseCases } from "@/components/landing/use-cases";
+import { SkipLink } from "@/components/ui/skip-link";
 import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
@@ -18,8 +19,9 @@ export const metadata = pageMetadata({
 export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col">
+      <SkipLink targetId="main-content" />
       <SiteHeader />
-      <main className="flex-1">
+      <main className="flex-1 outline-none" id="main-content" tabIndex={-1}>
         <Hero />
         <Features />
         <HowItWorks />

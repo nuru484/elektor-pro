@@ -75,7 +75,7 @@ export function AvatarUpdater({
         {canEdit && (
           <button
             aria-label="Change profile photo"
-            className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute -right-1 -bottom-1 grid size-7 place-items-center border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
             onClick={() => inputRef.current?.click()}
             type="button"
           >

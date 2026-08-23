@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { Bodoni_Moda, Courier_Prime, Instrument_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Poppins, Space_Grotesk } from "next/font/google";
 
 import { SiteBackground } from "@/components/site-background";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -9,25 +9,26 @@ import { ReduxProvider } from "@/redux/provider";
 
 import "./globals.css";
 
-// Editorial type system: Bodoni Moda for display headings (the "declaration"
-// voice), Instrument Sans for body/UI, Courier Prime for serials, counts and
-// micro-labels.
-const instrument = Instrument_Sans({
+// Grotesque type system: Space Grotesk carries every heading - it holds its
+// shape at the display sizes the marketing pages run at - Poppins carries
+// body and UI, and IBM Plex Mono carries serials, codes and counts.
+const poppins = Poppins({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-app",
+  weight: ["300", "400", "500", "600", "700"],
 });
-const bodoni = Bodoni_Moda({
+const spaceGrotesk = Space_Grotesk({
   display: "swap",
-  style: ["normal", "italic"],
   subsets: ["latin"],
   variable: "--font-display-app",
+  weight: ["400", "500", "600", "700"],
 });
-const courier = Courier_Prime({
+const plexMono = IBM_Plex_Mono({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-mono-app",
-  weight: ["400", "700"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -77,7 +78,7 @@ export default function RootLayout({
     // before hydration.
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${instrument.variable} ${bodoni.variable} ${courier.variable} font-sans`}
+        className={`${poppins.variable} ${spaceGrotesk.variable} ${plexMono.variable} font-sans`}
       >
         <ThemeProvider
           attribute="class"

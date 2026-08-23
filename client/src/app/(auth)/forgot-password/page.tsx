@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <form className="space-y-5" noValidate onSubmit={onSubmit}>
           <Field error={form.formState.errors.emailOrPhone?.message} label="Email or phone">
-            <Input autoFocus placeholder="you@example.com" {...form.register("emailOrPhone")} />
+            <Input spellCheck={false} autoFocus placeholder="you@example.com" {...form.register("emailOrPhone")} />
           </Field>
           <Button className="w-full" loading={isLoading} type="submit">
             Send reset link

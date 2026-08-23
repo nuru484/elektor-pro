@@ -8,7 +8,11 @@ import Image from "next/image";
  */
 export function LoadingScreen() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-6">
+    <div
+      aria-live="polite"
+      className="flex min-h-dvh items-center justify-center bg-background px-6"
+      role="status"
+    >
       <div className="flex flex-col items-center gap-8">
         <div className="relative grid size-24 place-items-center">
           <div className="absolute inset-0 rounded-full border-2 border-brand/20 border-t-brand motion-safe:animate-spin" />

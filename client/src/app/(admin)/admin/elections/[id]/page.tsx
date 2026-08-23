@@ -21,6 +21,7 @@ import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCloneElectionMutation, useGetElectionQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDateTime } from "@/utils/format-date";
 
 const RESULTS_POLICY_LABELS: Record<string, string> = {
   LIVE: "Live while voting is open",
@@ -176,11 +177,11 @@ export default function ElectionOverviewPage({
           <dl className="mt-2 space-y-2 text-sm">
             <div className="flex flex-col gap-0.5 min-[480px]:flex-row min-[480px]:justify-between">
               <dt className="text-muted-foreground">Opens</dt>
-              <dd className="font-medium">{new Date(election.startDate).toLocaleString()}</dd>
+              <dd className="font-medium">{formatDateTime(election.startDate)}</dd>
             </div>
             <div className="flex flex-col gap-0.5 min-[480px]:flex-row min-[480px]:justify-between">
               <dt className="text-muted-foreground">Closes</dt>
-              <dd className="font-medium">{new Date(election.endDate).toLocaleString()}</dd>
+              <dd className="font-medium">{formatDateTime(election.endDate)}</dd>
             </div>
             <div className="flex flex-col gap-0.5 min-[480px]:flex-row min-[480px]:justify-between">
               <dt className="text-muted-foreground">Results</dt>

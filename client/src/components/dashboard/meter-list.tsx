@@ -56,11 +56,11 @@ export function MeterList({
               aria-valuemax={100}
               aria-valuemin={0}
               aria-valuenow={Math.round(pct)}
-              className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+              className="mt-1.5 h-1.5 overflow-hidden bg-muted"
               role="progressbar"
             >
               <div
-                className="h-full rounded-full bg-chart-1"
+                className="h-full bg-chart-1"
                 style={{ width: `${Math.min(pct, 100)}%` }}
               />
             </div>

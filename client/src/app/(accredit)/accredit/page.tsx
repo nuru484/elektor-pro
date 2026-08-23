@@ -337,11 +337,11 @@ export default function AccreditPage() {
                         aria-valuemax={100}
                         aria-valuemin={0}
                         aria-valuenow={Math.round(pct)}
-                        className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"
+                        className="mt-1 h-1.5 overflow-hidden bg-muted"
                         role="progressbar"
                       >
                         <div
-                          className="h-full rounded-full bg-chart-1 transition-[width] duration-700"
+                          className="h-full bg-chart-1 transition-[width] duration-700"
                           style={{ width: `${pct}%` }}
                         />
                       </div>

@@ -1,7 +1,7 @@
 // src/lib/og-template.tsx
 //
-// Shared brand template for Open Graph cards: forest-green accent rule on the
-// dark field, the ballot-box mark + wordmark, page-specific text. Satori
+// Shared brand template for Open Graph cards: electric-blue accent rule on
+// the near-black field, the ballot-box mark + wordmark, page-specific text. Satori
 // (behind ImageResponse) supports only flexbox + a CSS subset, so the layout
 // stays flex-based. The mark is read from public/ and inlined as a data URI -
 // satori cannot fetch relative URLs at render time.
@@ -13,10 +13,10 @@ import { ImageResponse } from "next/og";
 export const OG_SIZE = { height: 630, width: 1200 } as const;
 export const OG_CONTENT_TYPE = "image/png";
 
-const FIELD = "#161d17";
-const INK = "#f5f3ee";
-const MUTED = "#a3a69c";
-const ACCENT = "#51b67a";
+const FIELD = "#0b0b0c";
+const INK = "#f7f7f8";
+const MUTED = "#a1a3a9";
+const ACCENT = "#3ea8f5";
 
 const loadMark = async (): Promise<string> => {
   const file = await readFile(

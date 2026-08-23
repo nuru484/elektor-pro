@@ -134,12 +134,12 @@ function ChangeRequestModal({
               {cr.requestedBy
                 ? `by ${cr.requestedBy.firstName} ${cr.requestedBy.lastName}`
                 : ""}{" "}
-              on {new Date(cr.createdAt).toLocaleString()}
+              on {formatDateTime(cr.createdAt)}
             </p>
             {cr.reviewedBy && (
               <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
                 Reviewed by {cr.reviewedBy.firstName} {cr.reviewedBy.lastName}
-                {cr.reviewedAt ? ` on ${new Date(cr.reviewedAt).toLocaleString()}` : ""}
+                {cr.reviewedAt ? ` on ${formatDateTime(cr.reviewedAt)}` : ""}
                 {cr.reviewNote ? ` - "${cr.reviewNote}"` : ""}
               </p>
             )}

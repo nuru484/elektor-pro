@@ -20,14 +20,14 @@ export default function ErrorBoundary({
       </p>
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <button
-          className="inline-flex items-center gap-2 rounded-full border border-foreground bg-foreground px-6 py-3 text-base font-medium text-background transition-colors duration-500 hover:bg-transparent hover:text-foreground"
+          className="inline-flex items-center gap-2 border-[1.6px] border-foreground bg-foreground px-6 py-3 text-base font-medium text-background transition-colors duration-500 hover:bg-transparent hover:text-foreground"
           onClick={reset}
           type="button"
         >
           Try again
         </button>
         <Link
-          className="inline-flex items-center gap-2 rounded-full border border-foreground bg-transparent px-6 py-3 text-base font-medium text-foreground transition-colors duration-500 hover:bg-foreground hover:text-background"
+          className="inline-flex items-center gap-2 border-[1.6px] border-foreground bg-transparent px-6 py-3 text-base font-medium text-foreground transition-colors duration-500 hover:bg-foreground hover:text-background"
           href="/"
         >
           Back to the site

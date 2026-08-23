@@ -57,13 +57,13 @@ function ResetPasswordForm() {
   return (
     <form className="space-y-5" noValidate onSubmit={onSubmit}>
       <Field error={form.formState.errors.newPassword?.message} label="New password">
-        <Input autoComplete="new-password" autoFocus placeholder="At least 8 characters" type="password" {...form.register("newPassword")} />
+        <Input spellCheck={false} autoComplete="new-password" autoFocus placeholder="At least 8 characters" type="password" {...form.register("newPassword")} />
       </Field>
       <Field
         error={form.formState.errors.confirmPassword?.message}
         label="Confirm new password"
       >
-        <Input autoComplete="new-password" placeholder="Repeat the new password" type="password" {...form.register("confirmPassword")} />
+        <Input spellCheck={false} autoComplete="new-password" placeholder="Repeat the new password" type="password" {...form.register("confirmPassword")} />
       </Field>
       <Button className="w-full" loading={isLoading} type="submit">
         Reset password

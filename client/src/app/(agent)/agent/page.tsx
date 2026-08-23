@@ -64,11 +64,11 @@ function TurnoutStats({ electionId }: { electionId: string }) {
         aria-valuemax={100}
         aria-valuemin={0}
         aria-valuenow={Math.round(turnout.percentage)}
-        className="col-span-3 mt-1 h-1.5 overflow-hidden rounded-full bg-muted"
+        className="col-span-3 mt-1 h-1.5 overflow-hidden bg-muted"
         role="progressbar"
       >
         <div
-          className="h-full rounded-full bg-chart-1 transition-[width] duration-700"
+          className="h-full bg-chart-1 transition-[width] duration-700"
           style={{ width: `${Math.min(turnout.percentage, 100)}%` }}
         />
       </div>

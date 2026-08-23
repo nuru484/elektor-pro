@@ -210,7 +210,7 @@ export default function AllocateCandidatesPage({
             <div className="flex flex-wrap gap-1.5">
               {selected.map((candidate) => (
                 <button
-                  className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:border-destructive/50"
+                  className="inline-flex max-w-full items-center gap-1 border border-border px-2.5 py-1 text-xs hover:border-destructive/50"
                   key={candidate.id}
                   onClick={() => {
                     setSelected((prev) => prev.filter((c) => c.id !== candidate.id));

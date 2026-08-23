@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
 import { useGetElectionQuery } from "@/redux/admin-api";
 import { getApiErrorMessage } from "@/utils/extract-api-error";
+import { formatDate } from "@/utils/format-date";
 
 const TABS = [
   { label: "Overview", segment: "" },
@@ -96,8 +97,8 @@ export default function ElectionWorkspaceLayout({
             <p className="text-sm text-muted-foreground">
               <span className="font-mono text-xs [overflow-wrap:anywhere]">{election.slug}</span>
               {" · "}
-              {new Date(election.startDate).toLocaleDateString()} –{" "}
-              {new Date(election.endDate).toLocaleDateString()}
+              {formatDate(election.startDate)} –{" "}
+              {formatDate(election.endDate)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

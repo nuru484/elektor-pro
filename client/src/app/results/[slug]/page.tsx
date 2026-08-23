@@ -175,9 +175,9 @@ function PortfolioCard({
                     </span>
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-2 overflow-hidden bg-muted">
                   <div
-                    className={cn("h-full rounded-full transition-all", leading ? "bg-brand" : "bg-muted-foreground/40")}
+                    className={cn("h-full transition-[width] duration-700 ease-out", leading ? "bg-brand" : "bg-muted-foreground/40")}
                     style={{ width: `${(c.votes / max) * 100}%` }}
                   />
                 </div>
@@ -348,8 +348,8 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
               {fmt(turnout.totalVoted)} of {fmt(turnout.totalEligible)} · {turnout.percentage}%
             </span>
           </div>
-          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${turnout.percentage}%` }} />
+          <div className="mt-2 h-2.5 overflow-hidden bg-muted">
+            <div className="h-full bg-brand transition-[width] duration-700 ease-out" style={{ width: `${turnout.percentage}%` }} />
           </div>
         </CardContent>
       </Card>

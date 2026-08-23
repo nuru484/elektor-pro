@@ -244,7 +244,7 @@ export default function AddVotersPage({
             <div className="flex flex-wrap gap-1.5">
               {selected.map((voter) => (
                 <button
-                  className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:border-destructive/50"
+                  className="inline-flex max-w-full items-center gap-1 border border-border px-2.5 py-1 text-xs hover:border-destructive/50"
                   key={voter.id}
                   onClick={() => {
                     setSelected((prev) => prev.filter((v) => v.id !== voter.id));

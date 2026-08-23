@@ -83,18 +83,18 @@ function VettingDetails({ candidacy }: { candidacy: MyCandidacy }) {
               aria-valuemax={100}
               aria-valuemin={0}
               aria-valuenow={Math.round(percent)}
-              className="h-1.5 overflow-hidden rounded-full bg-muted"
+              className="h-1.5 overflow-hidden bg-muted"
               role="progressbar"
             >
               <div
-                className="h-full rounded-full bg-chart-1"
+                className="h-full bg-chart-1"
                 style={{ width: `${Math.min(percent, 100)}%` }}
               />
             </div>
             {candidacy.election.vettingPassPercent != null && (
               <span
                 aria-hidden
-                className="absolute -top-0.5 h-2.5 w-0.5 rounded-full bg-foreground/60"
+                className="absolute -top-0.5 h-2.5 w-0.5 bg-foreground/60"
                 style={{ left: `${Math.min(candidacy.election.vettingPassPercent, 100)}%` }}
               />
             )}

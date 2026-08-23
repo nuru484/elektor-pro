@@ -182,7 +182,7 @@ function renderCellContent(
 
   // Randomly make some columns look like badges
   if ((adjustedIndex + 1) % 4 === 0) {
-    return <Skeleton className={`h-6 ${widthClass} rounded-full opacity-80`} />;
+    return <Skeleton className={`h-6 ${widthClass} opacity-80`} />;
   }
 
   // Randomly make some columns look like currency/numbers (right-aligned maybe?)

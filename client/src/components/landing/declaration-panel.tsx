@@ -58,7 +58,7 @@ export function DeclarationPanel() {
     <div className="relative">
       <article
         aria-labelledby="declaration-title"
-        className="relative border border-border bg-card p-6 md:p-8"
+        className="relative bg-card p-6 text-card-foreground shadow-[0_24px_60px_-30px_oklch(0.15_0.05_260_/_0.6)] md:p-8"
       >
         {/* One thin rule under the header - the only line above the footer,
             everything else separates by whitespace. */}
@@ -116,11 +116,11 @@ export function DeclarationPanel() {
                 aria-valuemax={100}
                 aria-valuemin={0}
                 aria-valuenow={row.pct}
-                className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
+                className="mt-2 h-1.5 overflow-hidden bg-muted"
                 role="progressbar"
               >
                 <div
-                  className={`h-full rounded-full transition-[width] duration-1000 ease-out ${
+                  className={`h-full transition-[width] duration-1000 ease-out ${
                     row.lead ? "bg-brand" : "bg-muted-foreground/40"
                   }`}
                   style={{ width: painted ? `${row.pct}%` : "0%" }}
@@ -155,7 +155,7 @@ export function DeclarationPanel() {
             minimal: one ring, the circular legend, the date. */}
         <svg
           aria-label="Certified, audit chain intact"
-          className="hero-seal pointer-events-none absolute right-2 -bottom-7 w-[96px] text-brand md:right-3 md:w-[120px]"
+          className="hero-seal pointer-events-none absolute right-3 -bottom-8 w-[92px] text-brand md:right-4 md:w-[112px]"
           role="img"
           viewBox="0 0 200 200"
         >
@@ -199,13 +199,10 @@ export function DeclarationPanel() {
             strokeWidth="7"
           />
         </svg>
+        <p className="mt-4 border-t border-border pt-3 pr-24 font-mono text-[10px] tracking-[0.09em] uppercase text-muted-foreground md:pr-28">
+          Sample election. Figures are illustrative.
+        </p>
       </article>
-
-      {/* One horizontal line where it fits; right padding keeps it clear of
-          the overhanging seal. */}
-      <p className="mt-6 pr-28 font-mono text-[10px] tracking-[0.09em] uppercase text-muted-foreground md:pr-32">
-        Sample election. Figures are illustrative.
-      </p>
     </div>
   );
 }

@@ -78,7 +78,7 @@ function DebouncedSearch({
       {searchInput && (
         <button
           aria-label="Clear search"
-          className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="absolute top-1/2 right-2 grid size-5 -translate-y-1/2 place-items-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           onClick={() => {
             lastEmitted.current = "";
             setSearchInput("");

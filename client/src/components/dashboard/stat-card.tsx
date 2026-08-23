@@ -59,8 +59,10 @@ export function StatCard({
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums [overflow-wrap:anywhere]">
+            <p className="font-mono text-[10px] font-medium tracking-[0.16em] uppercase text-muted-foreground">
+              {label}
+            </p>
+            <p className="font-display mt-1 text-3xl font-medium tabular-nums [overflow-wrap:anywhere]">
               {value}
             </p>
             {hint && (
