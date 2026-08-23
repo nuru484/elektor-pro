@@ -57,6 +57,7 @@ import {
   updateBrandingImage,
 } from '../services/domain/organization-branding.service.js';
 import {
+  getBranding,
   getOrganization,
 } from '../services/domain/organization.service.js';
 import {
@@ -502,6 +503,16 @@ export const groupControllers = makeCrud({
 // --- Organization (singleton) ---
 export const getOrganizationController = asyncHandler(async (_req, res) => {
   sendOk(res, 'Organization retrieved', await getOrganization());
+});
+
+/**
+ * Branding for signed-out surfaces. Deliberately unauthenticated and
+ * deliberately narrow: the name, the marks, and the contact details a voter is
+ * meant to be able to reach. Nothing here is private - it is what the
+ * organization puts on its own ballot.
+ */
+export const getBrandingController = asyncHandler(async (_req, res) => {
+  sendOk(res, 'Branding retrieved', await getBranding());
 });
 
 /** Branding images apply directly (binary can't ride maker-checker JSON). */

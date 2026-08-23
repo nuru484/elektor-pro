@@ -113,20 +113,21 @@ export interface DeletedRow {
   meta: null | string;
 }
 
+/** Everything the system brands with. Colours, locale and timezone are gone:
+ *  nothing rendered them, and free-text colours cannot be held to a contrast
+ *  ratio (see the API's updateOrganizationSchema). */
 export interface Organization {
-  accentColor: string;
   faviconUrl: null | string;
   id: string;
-  locale: string;
   logoUrl: null | string;
   name: string;
-  primaryColor: string;
-  slug: string;
   supportEmail: null | string;
   supportPhone: null | string;
-  timezone: string;
   website: null | string;
 }
+
+/** The public subset, served without a session. */
+export type Branding = Omit<Organization, "id">;
 
 export interface StaffUser {
   createdAt: string;

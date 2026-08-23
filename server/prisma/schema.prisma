@@ -151,17 +151,19 @@ enum CandidateStatus {
 model Organization {
   id           String  @id @default(cuid())
   name         String
-  slug         String  @unique
   logoUrl      String?
   faviconUrl   String?
-  primaryColor String  @default("#111827")
-  accentColor  String  @default("#2563eb")
   supportEmail String?
   supportPhone String?
   website      String?
+  // Retired: nothing reads these any more. The columns stay until a later
+  // migration drops them, so a rolling deploy never leaves the previous build
+  // selecting a column that is already gone.
+  slug         String  @unique
+  primaryColor String  @default("#111827")
+  accentColor  String  @default("#2563eb")
   timezone     String  @default("UTC")
   locale       String  @default("en")
-  // Default role-based UI visibility / feature config (elections may override).
   settings     Json?
 
   createdAt DateTime @default(now())

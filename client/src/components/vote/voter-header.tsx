@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { clearSessionMarker } from "@/lib/session-marker";
 import { useLogoutMutation } from "@/redux/auth-api";
+import { SupportContact } from "@/components/brand/support-contact";
 
 /**
  * The voter portal's chrome: wordmark plus a slim top navbar - the
@@ -120,6 +121,9 @@ export function VoterChrome({
           {children}
         </div>
       </main>
+      <footer className="mx-auto w-full max-w-2xl px-4 pb-8 sm:px-6">
+        <SupportContact className="border-t border-border pt-6" />
+      </footer>
       <ConfirmationDialog
         confirmText="Sign out"
         description="You will be signed out of the voter portal on this device."

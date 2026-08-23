@@ -1,4 +1,5 @@
 import { Logo } from "@/components/brand/logo";
+import { SupportContact } from "@/components/brand/support-contact";
 import { SkipLink } from "@/components/ui/skip-link";
 
 export default function ResultsLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,11 @@ export default function ResultsLayout({ children }: { children: React.ReactNode 
       >
         {children}
       </main>
+      <footer className="border-t border-border">
+        <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+          <SupportContact />
+        </div>
+      </footer>
     </div>
   );
 }

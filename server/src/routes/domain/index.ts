@@ -12,6 +12,7 @@ import {
   cloneElectionController,
   createCandidateController,
   electionControllers,
+  getBrandingController,
   getChangeRequestController,
   getOrganizationController,
   groupCategoryControllers,
@@ -105,6 +106,9 @@ const domainRoutes = Router();
 
 // Organization (singleton)
 domainRoutes.get('/organization', authenticateJWT, getOrganizationController);
+// Public: the sign-in pages and the published results carry the organization's
+// identity, and both are reached without a session.
+domainRoutes.get('/branding', getBrandingController);
 domainRoutes.patch(
   '/organization',
   authenticateJWT,

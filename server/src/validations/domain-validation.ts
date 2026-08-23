@@ -13,16 +13,16 @@ import { jsonRecord } from './common.js';
 
 // --- Organization ---
 export const updateOrganizationSchema = z.object({
-  accentColor: z.string().max(20).optional(),
   // logoUrl/faviconUrl deliberately absent: branding media URLs may only
   // originate from the upload endpoints, never from a request body.
-  locale: z.string().max(10).optional(),
+  //
+  // Colours are absent by design, not oversight. Two free-text hex values
+  // cannot be held to a contrast ratio, and one pale accent silently breaks
+  // every text/background pair the theme guarantees. Offering a choice means
+  // offering pre-validated palettes, not a colour field.
   name: z.string().min(2).max(150).optional(),
-  primaryColor: z.string().max(20).optional(),
-  settings: jsonRecord.optional().nullable(),
   supportEmail: z.email().optional().nullable(),
   supportPhone: z.string().max(30).optional().nullable(),
-  timezone: z.string().max(60).optional(),
   website: z.url().optional().nullable(),
 });
 

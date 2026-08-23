@@ -6,6 +6,7 @@ import type {
   AgentAssignment,
   AgentDashboardData,
   ApiResponse,
+  Branding,
   DeskAssignments,
   Group,
   GroupCategory,
@@ -101,6 +102,12 @@ export const governanceApi = apiSlice.injectEndpoints({
     getOrganization: build.query<ApiResponse<Organization>, void>({
       providesTags: ["Organization"],
       query: () => "/organization",
+    }),
+    /** Public branding. Reachable signed out, so the sign-in pages and the
+     *  published results carry the organization's identity too. */
+    getBranding: build.query<ApiResponse<Branding | null>, void>({
+      providesTags: ["Organization"],
+      query: () => "/branding",
     }),
     grantCapability: build.mutation<
       unknown,
@@ -258,6 +265,7 @@ export const {
   useGetGroupCategoryQuery,
   useGetGroupQuery,
   useGetAgentDashboardQuery,
+  useGetBrandingQuery,
   useGetOrganizationQuery,
   useGetStaffUserQuery,
   useLockUserMutation,
