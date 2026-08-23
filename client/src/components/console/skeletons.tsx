@@ -31,26 +31,30 @@ export function StatCardSkeleton({ hint = true }: { hint?: boolean }) {
   );
 }
 
-/** A row of stat cards. `cols` matches the grid the real cards sit in. */
+/**
+ * A row of stat cards.
+ *
+ * `grid` takes the real row's own column classes rather than a shared guess:
+ * the dashboard breaks to two columns at sm, the election workspace at 420px,
+ * and a skeleton that reflows at a different width than the content it stands
+ * in for reintroduces the jump it exists to avoid.
+ *
+ * `hints` marks which cards carry a second line, so the row is as tall as the
+ * one replacing it instead of uniformly tall.
+ */
 export function StatGridSkeleton({
-  cols = 3,
   count = 3,
-  hint = true,
+  grid = "grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3",
+  hints,
 }: {
-  cols?: 2 | 3 | 4;
   count?: number;
-  hint?: boolean;
+  grid?: string;
+  hints?: boolean[];
 }) {
   return (
-    <div
-      className={cn(
-        "grid grid-cols-1 gap-4 min-[420px]:grid-cols-2",
-        cols === 3 && "lg:grid-cols-3",
-        cols === 4 && "lg:grid-cols-4",
-      )}
-    >
+    <div className={cn("grid gap-4", grid)}>
       {Array.from({ length: count }).map((_, i) => (
-        <StatCardSkeleton hint={hint} key={i} />
+        <StatCardSkeleton hint={hints ? (hints[i] ?? false) : true} key={i} />
       ))}
     </div>
   );
@@ -151,11 +155,33 @@ function LinkedRowsSkeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
+/** The activity feed: a brand dot and one truncated line per entry. */
+function ActivityListSkeleton({ rows = 8 }: { rows?: number }) {
+  const widths = ["w-44", "w-52", "w-36", "w-48", "w-40"];
+  return (
+    <div className="space-y-2.5">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div className="flex items-center gap-3" key={i}>
+          <Skeleton className="size-1.5 shrink-0 rounded-full" />
+          <Skeleton className={cn("h-3", widths[i % widths.length])} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** The whole admin dashboard, in its real layout. */
 export function DashboardSkeleton() {
   return (
     <div className="space-y-8">
-      <StatGridSkeleton count={6} />
+      {/* Elections and top turnout carry a hint; voters and ballots carry a
+          trend chip, which occupies the same second line; candidates and
+          pending approvals carry neither. */}
+      <StatGridSkeleton
+        count={6}
+        grid="sm:grid-cols-2 lg:grid-cols-3"
+        hints={[true, true, false, true, false, true]}
+      />
       <WorkQueueSkeleton />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -177,7 +203,7 @@ export function DashboardSkeleton() {
           <LinkedRowsSkeleton rows={5} />
         </SectionCardSkeleton>
         <SectionCardSkeleton titleWidth="w-32">
-          <LinkedRowsSkeleton rows={5} />
+          <ActivityListSkeleton rows={8} />
         </SectionCardSkeleton>
       </div>
     </div>
