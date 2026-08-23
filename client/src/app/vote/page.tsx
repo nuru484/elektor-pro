@@ -66,7 +66,7 @@ function ElectionCard({ election }: { election: VoterElectionItem }) {
     election.resultsPublishedAt !== null || election.resultsPolicy === "LIVE";
 
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="space-y-3 p-5">
         <div className="flex flex-wrap items-center gap-2">
           <p className="min-w-0 font-medium [overflow-wrap:anywhere]">
@@ -167,7 +167,7 @@ function ElectionCard({ election }: { election: VoterElectionItem }) {
 
 function HistoryCard({ item }: { item: VoterHistoryItem }) {
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="space-y-3 p-5">
         <div className="min-w-0">
           <p className="min-w-0 font-medium [overflow-wrap:anywhere]">

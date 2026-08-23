@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 /** One StatCard: mono label, oversized value, optional hint, trailing icon. */
 export function StatCardSkeleton({ hint = true }: { hint?: boolean }) {
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -80,7 +80,7 @@ export function SectionCardSkeleton({
   titleWidth?: string;
 }) {
   return (
-    <Card className="h-full">
+    <Card className="py-0 h-full">
       <CardContent className="flex h-full flex-col p-5">
         <Skeleton className={cn("mb-4 h-4", titleWidth)} />
         <div className="min-h-0 flex-1">{children}</div>
@@ -192,7 +192,7 @@ export function EntityCardsSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i}>
+        <Card className="py-0" key={i}>
           <CardContent className="flex items-start justify-between gap-3 p-4">
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <Skeleton className="size-9 shrink-0 rounded-full" />
@@ -228,7 +228,7 @@ export function SettingsCardsSkeleton({
   return (
     <div className="space-y-6">
       {Array.from({ length: cards }).map((_, card) => (
-        <Card key={card}>
+        <Card className="py-0" key={card}>
           <CardContent className="space-y-5 p-6">
             <div>
               <Skeleton className="h-4 w-28" />
@@ -408,7 +408,7 @@ export function RecordCardsSkeleton({
       )}
     >
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i}>
+        <Card className="py-0" key={i}>
           <CardContent className="space-y-3 p-6">
             <div className="flex items-start justify-between gap-3">
               <Skeleton className="h-4 w-36" />

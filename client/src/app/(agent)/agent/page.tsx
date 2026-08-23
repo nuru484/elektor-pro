@@ -88,7 +88,7 @@ function CurrentCandidatePanel({
 }) {
   const { candidate } = assignment;
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-5">
         <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           Your candidate
@@ -171,7 +171,7 @@ function CurrentElectionPanel({
   const { election } = assignment;
   const counts = election._count;
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="space-y-3 p-5">
         <CardTitleRow
           meta={
@@ -237,7 +237,7 @@ function CurrentElectionPanel({
 function HistoryCard({ assignment }: { assignment: AgentDashboardRow }) {
   const { candidate, election } = assignment;
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-4">
         <CardTitleRow
           tag={<StatusBadge status={election.status} />}

@@ -31,7 +31,7 @@ function ChainCard({ slug }: { slug: string }) {
   const { data, error, isError, isLoading } = useVerifyChainQuery(slug);
   const chain = data?.data;
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-5">
         <div className="flex items-start gap-2.5">
           <Link2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -81,7 +81,7 @@ function ReceiptCard({ slug }: { slug: string }) {
   };
 
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-5">
         <div className="flex items-start gap-2.5">
           <Ticket className="mt-0.5 size-4 shrink-0 text-muted-foreground" />

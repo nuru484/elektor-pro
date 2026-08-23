@@ -101,7 +101,7 @@ function PortfolioCard({
   const max = Math.max(1, ...portfolio.candidates.map((c) => c.votes));
   const isYesNo = portfolio.votingMethod === "YES_NO";
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="space-y-4 p-5">
         {/* Long portfolio names own the full width and wrap; the vote count
             moves under them on phones instead of squeezing the title. */}
@@ -340,7 +340,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         </div>
       </div>
 
-      <Card>
+      <Card className="py-0">
         <CardContent className="p-5">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Turnout</span>

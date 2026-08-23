@@ -55,7 +55,7 @@ export function StatCard({
   windowDays?: number;
 }) {
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

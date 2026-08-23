@@ -32,7 +32,7 @@ function RaceCard({ portfolio }: { portfolio: PortfolioResult }) {
   const ranked = [...portfolio.candidates].sort((a, b) => b.votes - a.votes);
 
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-5 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="min-w-0 text-lg font-medium [overflow-wrap:anywhere]">
@@ -139,7 +139,7 @@ export default function ResultsChartsPage({
         )}
       </div>
 
-      <Card className="mt-8">
+      <Card className="py-0 mt-8">
         <CardContent className="p-5 md:p-6">
           <h2 className="mb-4 font-medium">Turnout</h2>
           <TurnoutGauge

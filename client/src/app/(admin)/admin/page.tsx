@@ -47,7 +47,7 @@ function SectionCard({
   // h-full so side-by-side cards in a grid row match heights instead of one
   // trailing short under its neighbour.
   return (
-    <Card className="h-full">
+    <Card className="py-0 h-full">
       <CardContent className="flex h-full flex-col p-5">
         <h2 className="mb-4 font-medium">{title}</h2>
         <div className="min-h-0 flex-1">{children}</div>

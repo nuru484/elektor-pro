@@ -154,13 +154,12 @@ export default function AccreditorsPage() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((row) => (
-            <Card key={row.id}>
+            <Card className="py-0" key={row.id}>
               <CardContent className="p-4">
                 {/* Identity row. The avatar pairs with the name rather than
                     holding a column of its own down the whole card, which on a
                     phone left the text roughly forty per cent of the width and
-                    pushed every line below it into a wrap. The remove action
-                    ends this row for the same reason. */}
+                    pushed every line below it into a wrap. */}
                 <div className="flex items-center gap-3">
                   <EntityAvatar
                     name={`${row.user.firstName} ${row.user.lastName}`}
@@ -176,9 +175,27 @@ export default function AccreditorsPage() {
                       </p>
                     )}
                   </div>
+                </div>
+
+                {/* The election name is admin-authored free text and can run
+                    long, so it takes the full width and wraps. */}
+                <p className="mt-3 min-w-0 text-sm [overflow-wrap:anywhere]">
+                  {row.election.name}
+                </p>
+
+                {/* The footer row carries everything short and fixed length -
+                    status, the assignment date, and the one action - so none
+                    of them claims a line of its own on a phone. The negative
+                    margins let the button overhang the padding box so the row
+                    stays as tall as its text. */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                  <StatusBadge status={row.election.status} />
+                  <span className="whitespace-nowrap">
+                    Assigned {formatDate(row.createdAt)}
+                  </span>
                   <Button
                     aria-label="Remove assignment"
-                    className="-mr-1 shrink-0"
+                    className="-my-1.5 -mr-1.5 ml-auto shrink-0"
                     onClick={() => {
                       setRemoving({
                         election: row.election.name,
@@ -193,22 +210,6 @@ export default function AccreditorsPage() {
                     <Trash2 aria-hidden className="size-4" />
                   </Button>
                 </div>
-
-                {/* The election name is admin-authored free text and can run
-                    long, so it takes the full width and wraps. */}
-                <p className="mt-3 min-w-0 text-sm [overflow-wrap:anywhere]">
-                  {row.election.name}
-                </p>
-
-                {/* Status and the assignment date are both short and fixed
-                    length: they share a line at every width instead of each
-                    claiming one. */}
-                <p className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                  <StatusBadge status={row.election.status} />
-                  <span className="whitespace-nowrap">
-                    Assigned {formatDate(row.createdAt)}
-                  </span>
-                </p>
               </CardContent>
             </Card>
           ))}
