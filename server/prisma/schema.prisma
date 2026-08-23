@@ -156,15 +156,6 @@ model Organization {
   supportEmail String?
   supportPhone String?
   website      String?
-  // Retired: nothing reads these any more. The columns stay until a later
-  // migration drops them, so a rolling deploy never leaves the previous build
-  // selecting a column that is already gone.
-  slug         String  @unique
-  primaryColor String  @default("#111827")
-  accentColor  String  @default("#2563eb")
-  timezone     String  @default("UTC")
-  locale       String  @default("en")
-  settings     Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -54,7 +54,7 @@ describe('soft-delete Prisma extension', () => {
     // Organization has no deletedAt column; a plain create + findMany must work
     // untouched by the extension.
     await prisma.organization.create({
-      data: { name: 'Test Org', slug: `org-${Date.now()}` },
+      data: { name: 'Test Org' },
     });
     expect(await prisma.organization.count()).toBe(1);
   });

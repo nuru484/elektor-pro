@@ -173,12 +173,9 @@ async function main() {
   if (!existingOrg) {
     await prisma.organization.create({
       data: {
-        accentColor: '#2563eb',
         name: 'Elektor Pro Demo',
-        primaryColor: '#0f172a',
-        settings: { showLiveTurnout: true },
-        slug: 'elektor-pro',
         supportEmail: 'support@elektorpro.com',
+        supportPhone: '+233 30 000 0000',
       },
     });
     console.log('organization created');

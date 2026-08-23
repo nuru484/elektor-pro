@@ -23,7 +23,6 @@ import ENV from '../src/config/env.js';
 import prisma from '../src/lib/prisma.js';
 import { appendAudit } from '../src/services/audit/audit.service.js';
 import { hashPassword } from '../src/utils/password.js';
-import { slugify } from '../src/utils/slug.js';
 import { generateTempPassword } from '../src/utils/temp-password.js';
 
 const bootstrapOrganization = async (): Promise<void> => {
@@ -32,9 +31,7 @@ const bootstrapOrganization = async (): Promise<void> => {
     return;
   }
   const name = process.env.ORGANIZATION_NAME ?? 'Elektor Pro';
-  await prisma.organization.create({
-    data: { name, slug: slugify(name) },
-  });
+  await prisma.organization.create({ data: { name } });
   console.log(`organization created (${name})`);
 };
 

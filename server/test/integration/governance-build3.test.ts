@@ -113,7 +113,7 @@ describe('organization branding uploads', () => {
 
   it('uploads a logo, cleans up the replaced asset, and audits', async () => {
     await prisma.organization.create({
-      data: { name: 'Org', slug: 'org' },
+      data: { name: 'Org' },
     });
     const superAdmin = await createUser(Role.SUPER_ADMIN, { email: 'super@test.com' });
     const { deleted, deps, uploaded } = makeTestDeps();

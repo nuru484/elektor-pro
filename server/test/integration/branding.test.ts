@@ -25,7 +25,6 @@ describe('public branding', () => {
       data: {
         logoUrl: 'https://res.cloudinary.com/demo/logo.png',
         name: 'Ashesi Student Council',
-        slug: 'ashesi-sc',
         supportEmail: 'elections@ashesi.edu.gh',
         supportPhone: '+233 30 000 0000',
       },
@@ -46,7 +45,7 @@ describe('public branding', () => {
   });
 
   it('does not expose the retired colour, locale or timezone columns', async () => {
-    await prisma.organization.create({ data: { name: 'Org', slug: 'org' } });
+    await prisma.organization.create({ data: { name: 'Org' } });
     const res = await api().get('/api/v1/branding');
     const payload = bodyOf<{ data: Record<string, unknown> }>(res).data;
     for (const retired of ['primaryColor', 'accentColor', 'timezone', 'locale', 'settings', 'slug']) {
