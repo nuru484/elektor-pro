@@ -319,7 +319,10 @@ export default function OrganizationPage() {
                 immediately.
               </CardDescription>
             </CardHeader>
-            <CardContent className={`${CARD_PAD_MOBILE} space-y-5`}>
+            {/* Side by side once there is room: they are two of the same
+                thing, and stacked they push the rest of the settings a card
+                further down for no reason. */}
+            <CardContent className={`${CARD_PAD_MOBILE} grid gap-5 md:grid-cols-2`}>
               <BrandingImage field="logo" label="Logo" url={org.logoUrl} />
               <BrandingImage field="favicon" label="Favicon" url={org.faviconUrl} />
             </CardContent>

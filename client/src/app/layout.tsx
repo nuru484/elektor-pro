@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 
 import { IBM_Plex_Mono, Poppins, Space_Grotesk } from "next/font/google";
 
+import { BrandingProvider } from "@/components/brand/branding-provider";
 import { SiteBackground } from "@/components/site-background";
 import { ThemeProvider } from "@/components/theme-provider";
+import { getServerBranding } from "@/lib/branding-server";
 import { siteConfig, siteUrl } from "@/lib/site";
 import { ReduxProvider } from "@/redux/provider";
 
@@ -31,48 +33,65 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-  applicationName: siteConfig.name,
-  authors: [{ name: siteConfig.name }],
-  creator: siteConfig.name,
-  description: siteConfig.description,
-  // Favicon/touch icons come from the src/app/icon.png + apple-icon.png file
-  // conventions (generated from public/elektor-pro-logo.png).
-  keywords: [...siteConfig.keywords],
-  metadataBase: new URL(siteUrl),
-  openGraph: {
+/**
+ * The deployment's own identity, resolved on the server.
+ *
+ * The icons come from here rather than from src/app/icon.png: file-based
+ * metadata OUTRANKS this object, so while those files existed an uploaded
+ * favicon could never reach the tab. The platform's own marks moved to
+ * /public and are the fallback, which is what they always were.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getServerBranding();
+  const name = branding?.name || siteConfig.name;
+  const icon = branding?.faviconUrl ?? "/icon.png";
+
+  return {
+    alternates: { canonical: "/" },
+    applicationName: name,
+    authors: [{ name }],
+    creator: name,
     description: siteConfig.description,
-    locale: siteConfig.locale,
-    siteName: siteConfig.name,
-    title: siteConfig.title,
-    type: "website",
-    url: "/",
-  },
-  publisher: siteConfig.name,
-  robots: {
-    follow: true,
-    googleBot: { follow: true, index: true, "max-image-preview": "large" },
-    index: true,
-  },
-  title: {
-    default: siteConfig.title,
-    template: `%s · ${siteConfig.name}`,
-  },
-  twitter: {
-    card: "summary_large_image",
-    description: siteConfig.description,
-    title: siteConfig.title,
-  },
-};
+    icons: { apple: "/apple-icon.png", icon },
+    keywords: [...siteConfig.keywords],
+    metadataBase: new URL(siteUrl),
+    openGraph: {
+      description: siteConfig.description,
+      locale: siteConfig.locale,
+      siteName: name,
+      title: siteConfig.title,
+      type: "website",
+      url: "/",
+    },
+    publisher: name,
+    robots: {
+      follow: true,
+      googleBot: { follow: true, index: true, "max-image-preview": "large" },
+      index: true,
+    },
+    title: {
+      default: branding?.name ? `${name} · Elections` : siteConfig.title,
+      template: `%s · ${name}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      description: siteConfig.description,
+      title: siteConfig.title,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: siteConfig.themeColor,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Resolved once per render and shared by the metadata above: both come out
+  // of the same cached fetch, so this costs no second round trip.
+  const branding = await getServerBranding();
+
   return (
     // suppressHydrationWarning: next-themes stamps the theme class on <html>
     // before hydration.
@@ -87,7 +106,9 @@ export default function RootLayout({
           enableSystem
         >
           <SiteBackground />
-          <ReduxProvider>{children}</ReduxProvider>
+          <ReduxProvider>
+            <BrandingProvider branding={branding}>{children}</BrandingProvider>
+          </ReduxProvider>
         </ThemeProvider>
       </body>
     </html>

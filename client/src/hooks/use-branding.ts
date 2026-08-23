@@ -1,8 +1,11 @@
 "use client";
 
+import { useContext } from "react";
+
 import type { Branding } from "@/types/api";
 
 import { siteConfig } from "@/lib/site";
+import { BrandingSeed } from "@/components/brand/branding-provider";
 import { useGetBrandingQuery } from "@/redux/governance-api";
 
 /**
@@ -15,6 +18,8 @@ import { useGetBrandingQuery } from "@/redux/governance-api";
  * is the correct answer rather than an empty header.
  */
 export interface BrandIdentity {
+  /** The tab icon, when one has been uploaded. */
+  faviconUrl: null | string;
   /** True when an organization has supplied its own mark. */
   hasLogo: boolean;
   logoUrl: string;
@@ -25,6 +30,7 @@ export interface BrandIdentity {
 }
 
 const PLATFORM: BrandIdentity = {
+  faviconUrl: null,
   hasLogo: false,
   logoUrl: "/logo-mark.png",
   name: siteConfig.name,
@@ -38,6 +44,7 @@ export const brandFrom = (
 ): BrandIdentity => {
   if (!branding) return PLATFORM;
   return {
+    faviconUrl: branding.faviconUrl,
     hasLogo: Boolean(branding.logoUrl),
     logoUrl: branding.logoUrl ?? PLATFORM.logoUrl,
     name: branding.name || PLATFORM.name,
@@ -52,5 +59,10 @@ export const useBranding = (): BrandIdentity => {
   // their own job. A failed lookup shows the platform identity rather than
   // breaking a sign-in form or a results page.
   const { data } = useGetBrandingQuery();
-  return brandFrom(data?.data);
+  // The server already resolved this, so the seed is what renders until the
+  // query lands - which is what stops a refresh flashing the platform's name
+  // before the organization's. The query still wins once it returns, so an
+  // upload in the console shows without a reload.
+  const seed = useContext(BrandingSeed);
+  return brandFrom(data?.data ?? seed);
 };
