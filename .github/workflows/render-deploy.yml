@@ -150,9 +150,16 @@ jobs:
       # deploy that should create the admin and remove it afterwards. The
       # generated password is printed in THIS step's log - read it, change it
       # at first sign-in, then delete the run.
+      #
+      # The script imports the app's fail-fast env module, which refuses to
+      # load without the token secrets even though the bootstrap never signs
+      # or encrypts anything. Placeholders satisfy the loader without copying
+      # the production signing keys into a second secret store.
       - name: Bootstrap the first admin
         if: steps.config.outputs.migrate == 'true'
         env:
+          ACCESS_TOKEN_SECRET: bootstrap_placeholder_never_signs_0123456789
+          REFRESH_TOKEN_SECRET: bootstrap_placeholder_never_signs_9876543210
           ADMIN_BOOTSTRAP_ENABLED: ${{ secrets.ADMIN_BOOTSTRAP_ENABLED }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_FIRST_NAME: ${{ secrets.ADMIN_FIRST_NAME }}
