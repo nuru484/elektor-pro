@@ -9,6 +9,8 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { randomUUID } from 'node:crypto';
 
+import { requestStore } from '../lib/request-store.js';
+
 /** Conservative shape for an acceptable inbound id (UUIDs, trace ids, etc.). */
 const INBOUND_ID_PATTERN = /^[A-Za-z0-9._-]{8,64}$/;
 
@@ -22,5 +24,5 @@ export const requestContext = (
     incoming && INBOUND_ID_PATTERN.test(incoming) ? incoming : randomUUID();
   req.requestId = requestId;
   res.setHeader('X-Request-Id', requestId);
-  next();
+  requestStore.run({ requestId }, next);
 };

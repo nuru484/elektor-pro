@@ -12,6 +12,8 @@ import { QUEUE_NAMES } from './queue-names.js';
 
 export interface ExportJobData {
   exportJobId: string;
+  /** Id of the request that queued the export, for log correlation. */
+  requestId?: string;
 }
 
 /**

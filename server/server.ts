@@ -10,9 +10,9 @@ import {
 import {
   flushErrorReporting,
   initErrorReporting,
-  reportError,
 } from './src/lib/error-reporting.js';
 import prisma from './src/lib/prisma.js';
+import { registerProcessHandlers } from './src/lib/process-handlers.js';
 import { closeRateLimitStore } from './src/middlewares/rateLimit.js';
 import { closeRealtime, initRealtime } from './src/realtime/io.js';
 import logger from './src/utils/logger.js';
@@ -54,17 +54,20 @@ let shuttingDown = false;
  * Coordinated graceful shutdown: stop accepting new HTTP connections and drain
  * in-flight requests, close realtime, drain the in-process workers, then close
  * the DB pool. A hard timeout forces exit so a stuck request/job can't hang
- * the deploy.
+ * the deploy. `exitCode` is 0 for a platform signal and 1 for a crash, so the
+ * platform can tell a deploy from a restart even when the drain was clean.
  */
-const shutdown = async (signal: string): Promise<void> => {
+const shutdown = async (signal: string, exitCode = 0): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info(`${signal} received, shutting down gracefully...`);
 
+  // Shorter than the platform's SIGKILL grace period, so a hung request or
+  // job is cut off here with a log line instead of killed mid-write.
   const forceExit = setTimeout(() => {
     logger.error('Graceful shutdown timed out; forcing exit');
     process.exit(1);
-  }, 35_000);
+  }, 10_000);
   forceExit.unref();
 
   try {
@@ -76,45 +79,15 @@ const shutdown = async (signal: string): Promise<void> => {
     // Last: give buffered crash/error reports a bounded chance to leave.
     await flushErrorReporting();
     logger.info('Shutdown complete');
-    process.exit(0);
+    process.exit(exitCode);
   } catch (error) {
     logger.error(error, 'Error during shutdown');
+    await flushErrorReporting();
     process.exit(1);
   }
 };
 
-process.on('SIGTERM', () => void shutdown('SIGTERM'));
-process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM', 0));
+process.on('SIGINT', () => void shutdown('SIGINT', 0));
 
-// A rejection with no catch handler would otherwise terminate the process
-// silently. Log it with context; do not exit (the process may still be healthy).
-process.on('unhandledRejection', (reason) => {
-  logger.error(reason, 'Unhandled promise rejection');
-  reportError(reason, {
-    errorId: 'unhandled-rejection',
-    layer: 'process',
-    severity: 'critical',
-  });
-});
-
-// An uncaught exception leaves the process in an undefined state - log it and
-// shut down cleanly rather than continuing to serve traffic.
-process.on('uncaughtException', (error) => {
-  // Dev-only noise: under `tsx --watch`, Node reports lazily-required modules
-  // to the watch parent over IPC. If that channel has already closed (a reload
-  // race), `process.send` throws ERR_IPC_CHANNEL_CLOSED mid-request. The app
-  // state is fine, so keep serving rather than killing the dev server. This
-  // cannot occur under a plain `node` production start (no watch IPC).
-  if ((error as NodeJS.ErrnoException).code === 'ERR_IPC_CHANNEL_CLOSED') {
-    logger.warn('Ignoring watch-mode ERR_IPC_CHANNEL_CLOSED (dev-only)');
-    return;
-  }
-
-  logger.fatal(error, 'Uncaught exception');
-  reportError(error, {
-    errorId: 'uncaught-exception',
-    layer: 'process',
-    severity: 'critical',
-  });
-  void shutdown('uncaughtException');
-});
+registerProcessHandlers({ shutdown });

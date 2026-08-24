@@ -14,6 +14,8 @@ import { QUEUE_NAMES } from './queue-names.js';
 
 export interface ImportJob {
   batchId: string;
+  /** Id of the request that queued the batch, for log correlation. */
+  requestId?: string;
 }
 
 /**

@@ -21,13 +21,13 @@ export const initErrorReporting = (): void => {
   if (!ENV.SENTRY_DSN || enabled) return;
   Sentry.init({
     dsn: ENV.SENTRY_DSN,
-    environment: ENV.NODE_ENV,
+    environment: ENV.SENTRY_ENVIRONMENT,
     // PII (names, phone numbers, voter ids) must stay out of the tracker; the
     // error handler already redacts what it forwards, and default PII stays off.
     sendDefaultPii: false,
-    // Error tracking only - tracing would add per-request overhead and cost
-    // that this deployment does not need yet.
-    tracesSampleRate: 0,
+    // Off by default: tracing adds per-request overhead and cost, so a
+    // deployment opts in with a small sample rate when p95 questions arise.
+    tracesSampleRate: ENV.SENTRY_TRACES_SAMPLE_RATE,
   });
   enabled = true;
   logger.info('Sentry error reporting enabled');

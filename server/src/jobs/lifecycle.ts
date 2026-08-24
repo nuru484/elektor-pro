@@ -32,17 +32,18 @@ export const registerWorker = <T extends Worker>(worker: T): T => {
  */
 export const attachWorkerFailureReporting = (): void => {
   for (const worker of workers) {
-    worker.on('failed', (job: undefined | { id?: string; name?: string }, err: Error) => {
+    worker.on('failed', (job: undefined | { data?: { requestId?: string }; id?: string; name?: string }, err: Error) => {
       reportError(err, {
         details: {
           jobId: job?.id,
           jobName: job?.name,
           queue: worker.name,
         },
-        // Queue + job id is the searchable handle for a background failure
-        // (there is no HTTP errorId/requestId to quote for jobs).
+        // Queue + job id is the searchable handle for a background failure;
+        // the requestId links it back to the request that enqueued it.
         errorId: `job_${worker.name}_${job?.id ?? 'unknown'}`,
         layer: 'worker',
+        requestId: job?.data?.requestId,
         severity: 'high',
       });
     });

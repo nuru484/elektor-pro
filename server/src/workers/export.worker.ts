@@ -12,6 +12,7 @@ import { createRedisConnection, queuesEnabled } from '../jobs/connection.js';
 import { type ExportJobData, exportQueue } from '../jobs/exports.queue.js';
 import { registerWorker } from '../jobs/lifecycle.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
+import { getRequestId } from '../lib/request-store.js';
 import {
   failExportJob,
   processExportJob,
@@ -22,7 +23,7 @@ import logger from '../utils/logger.js';
 export const runExportJob = async (exportJobId: string): Promise<boolean> => {
   const queue = exportQueue();
   if (queue) {
-    await queue.add('export', { exportJobId }, { jobId: exportJobId });
+    await queue.add('export', { exportJobId, requestId: getRequestId() }, { jobId: exportJobId });
     return true;
   }
   await processExportJob(exportJobId);

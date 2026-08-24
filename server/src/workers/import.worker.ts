@@ -12,6 +12,7 @@ import { createRedisConnection, queuesEnabled } from '../jobs/connection.js';
 import { type ImportJob, importQueue } from '../jobs/imports.queue.js';
 import { registerWorker } from '../jobs/lifecycle.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
+import { getRequestId } from '../lib/request-store.js';
 import {
   failImportBatch,
   processImportBatch,
@@ -30,7 +31,7 @@ export const runImportBatch = async (batchId: string): Promise<boolean> => {
   if (queue) {
     // The batch id doubles as the job id: re-submitting the same batch can
     // never start a second worker on it.
-    await queue.add('import', { batchId }, { jobId: batchId });
+    await queue.add('import', { batchId, requestId: getRequestId() }, { jobId: batchId });
     return true;
   }
   await processImportBatch(batchId);

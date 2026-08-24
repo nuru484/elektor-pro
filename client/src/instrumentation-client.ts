@@ -1,0 +1,8 @@
+// Browser-side Sentry setup. Next loads this file before the app hydrates.
+import * as Sentry from "@sentry/nextjs";
+
+import { sentryOptions } from "@/lib/sentry-options";
+
+Sentry.init(sentryOptions);
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

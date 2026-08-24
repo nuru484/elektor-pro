@@ -7,7 +7,10 @@
 //                    boot) and then answers statically - a poller running
 //                    SELECT 1 on every probe keeps a serverless Postgres
 //                    compute awake 24/7, defeating auto-suspend.
+//   - /ready         alias of /health/ready for platforms that probe the root.
 //   - /health/db     on-demand deep DB check that is MEANT to hit the database.
+import type { RequestHandler } from 'express';
+
 import { Router } from 'express';
 
 import prisma from '../lib/prisma.js';
@@ -19,7 +22,7 @@ healthRoutes.get('/health', (_req, res) => {
 });
 
 let dbVerifiedAtBoot = false;
-healthRoutes.get('/health/ready', async (_req, res) => {
+const readiness: RequestHandler = async (_req, res) => {
   if (!dbVerifiedAtBoot) {
     try {
       await prisma.$queryRaw`SELECT 1`;
@@ -30,7 +33,9 @@ healthRoutes.get('/health/ready', async (_req, res) => {
     }
   }
   res.status(200).json({ status: 'ready' });
-});
+};
+healthRoutes.get('/health/ready', readiness);
+healthRoutes.get('/ready', readiness);
 
 healthRoutes.get('/health/db', async (_req, res) => {
   try {

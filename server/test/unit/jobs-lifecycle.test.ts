@@ -2,6 +2,10 @@ import type { Queue, Worker } from 'bullmq';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/lib/error-reporting.js', () => ({
+  reportError: vi.fn(),
+}));
+
 import {
   _resetJobRegistryForTests,
   attachWorkerFailureReporting,
@@ -9,8 +13,12 @@ import {
   registerWorker,
   stopWorkers,
 } from '../../src/jobs/lifecycle.js';
+import { reportError } from '../../src/lib/error-reporting.js';
 
-type FailedHandler = (job: undefined | { id?: string }, err: Error) => void;
+type FailedHandler = (
+  job: undefined | { data?: { requestId?: string }; id?: string },
+  err: Error,
+) => void;
 
 const fakeWorker = () => {
   const handlers: Record<string, FailedHandler[]> = {};
@@ -72,5 +80,20 @@ describe('jobs lifecycle registry', () => {
     expect(() => {
       handler({ id: 'job-1' }, new Error('job blew up'));
     }).not.toThrow();
+  });
+
+  it('failure reports carry the job\'s originating requestId', () => {
+    const worker = fakeWorker();
+    registerWorker(worker as unknown as Worker);
+    attachWorkerFailureReporting();
+
+    const [handler] = worker.handlers.failed;
+    const err = new Error('job blew up');
+    handler({ data: { requestId: 'req-1' }, id: 'job-2' }, err);
+
+    expect(reportError).toHaveBeenCalledWith(
+      err,
+      expect.objectContaining({ errorId: 'job_testQueue_job-2', requestId: 'req-1' }),
+    );
   });
 });

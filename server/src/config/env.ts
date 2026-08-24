@@ -110,6 +110,8 @@ interface IENV {
   FROG_SENDER_ID: string;
   FROG_USERNAME: string;
   FRONTEND_URL: string;
+  /** pino level override; empty picks the per-environment default. */
+  LOG_LEVEL: string;
   /** Sender for outgoing mail; must be on a Resend-verified domain. */
   MAIL_FROM: string;
   NODE_ENV: string;
@@ -138,6 +140,10 @@ interface IENV {
   RESEND_API_KEY: string;
   /** Error-tracker DSN; empty disables reporting (dev, CI, tests). */
   SENTRY_DSN: string;
+  /** Environment tag on tracker events; defaults to NODE_ENV. */
+  SENTRY_ENVIRONMENT: string;
+  /** Fraction of requests traced for performance (0 to 1); 0 disables tracing. */
+  SENTRY_TRACES_SAMPLE_RATE: number;
 }
 
 const ENV: IENV = {
@@ -195,6 +201,7 @@ const ENV: IENV = {
   FROG_SENDER_ID: envOptional("FROG_SENDER_ID"),
   FROG_USERNAME: envOptional("FROG_USERNAME"),
   FRONTEND_URL: envOptional("FRONTEND_URL", "http://localhost:3000"),
+  LOG_LEVEL: envOptional("LOG_LEVEL"),
   MAIL_FROM: envOptional("MAIL_FROM", "Elektor Pro <no-reply@manuru.dev>"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
   NOTIFICATION_CONCURRENCY: envNumber("NOTIFICATION_CONCURRENCY", 5),
@@ -215,7 +222,13 @@ const ENV: IENV = {
   REFRESH_TOKEN_SECRET: envSecret("REFRESH_TOKEN_SECRET"),
   RESEND_API_KEY: envOptional("RESEND_API_KEY"),
   SENTRY_DSN: envOptional("SENTRY_DSN"),
+  SENTRY_ENVIRONMENT: envOptional("SENTRY_ENVIRONMENT", process.env.NODE_ENV ?? "development"),
+  SENTRY_TRACES_SAMPLE_RATE: envNumber("SENTRY_TRACES_SAMPLE_RATE", 0),
 };
+
+if (ENV.SENTRY_TRACES_SAMPLE_RATE < 0 || ENV.SENTRY_TRACES_SAMPLE_RATE > 1) {
+  throw new Error("SENTRY_TRACES_SAMPLE_RATE must be between 0 and 1");
+}
 
 if (ENV.OTP_MODE === "live" && !ENV.FROG_API_KEY) {
   throw new Error("OTP_MODE=live requires FROG_API_KEY to be set");

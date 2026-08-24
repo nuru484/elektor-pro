@@ -19,13 +19,17 @@ import { Queue } from 'bullmq';
 
 import type { EmailOptions } from '../utils/sendMail.js';
 
+import { getRequestId } from '../lib/request-store.js';
 import logger from '../utils/logger.js';
 import sendMail from '../utils/sendMail.js';
 import { createRedisConnection, queuesEnabled } from './connection.js';
 import { registerQueue } from './lifecycle.js';
 import { QUEUE_NAMES } from './queue-names.js';
 
-export type MailJob = EmailOptions;
+export type MailJob = EmailOptions & {
+  /** Id of the request that queued the mail, for log correlation. */
+  requestId?: string;
+};
 
 /**
  * Five attempts with exponential backoff from 15s: the failures that actually
@@ -68,7 +72,7 @@ export const enqueueEmail = async (options: MailJob): Promise<void> => {
   const q = mailQueue();
   try {
     if (q) {
-      await q.add('send-email', options);
+      await q.add('send-email', { ...options, requestId: getRequestId() });
       return;
     }
     await sendMail(options);

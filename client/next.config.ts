@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 /**
@@ -102,4 +103,19 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 };
 
-export default nextConfig;
+/**
+ * Source maps upload only when the three SENTRY_* build secrets are present;
+ * without them the plugin skips the upload and the build still passes.
+ * The tunnel keeps browser events on this origin, so the CSP connect-src above
+ * stays closed to third-party hosts, and ad blockers cannot drop them.
+ */
+export default withSentryConfig(nextConfig, {
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  tunnelRoute: '/monitoring',
+  webpack: { treeshake: { removeDebugLogging: true } },
+  widenClientFileUpload: true,
+});

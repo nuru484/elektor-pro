@@ -73,7 +73,7 @@ if (ENV.NODE_ENV !== 'test') {
     pinoHttp<Request, Response>({
       // Health probes fire constantly (platform pollers); logging them is noise.
       autoLogging: {
-        ignore: (req) => req.url.startsWith('/health'),
+        ignore: (req) => req.url.startsWith('/health') || req.url === '/ready',
       },
       customLogLevel: (_req, res, err) => {
         if (err || res.statusCode >= 500) return 'error';

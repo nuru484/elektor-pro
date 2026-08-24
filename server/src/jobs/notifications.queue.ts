@@ -31,6 +31,8 @@ export interface NotificationJob {
   /** Recipient's display name, used in the email body. */
   name: string;
   phoneNumber: null | string;
+  /** Id of the request that queued the message, for log correlation. */
+  requestId?: string;
   subject: string;
   text: string;
 }

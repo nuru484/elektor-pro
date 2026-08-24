@@ -1,14 +1,21 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
+import { useEffect } from "react";
 
 /** Route-segment error boundary - the failed-page state with a retry. */
 export default function ErrorBoundary({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-20 text-center">
       <h1 className="text-2xl font-medium sm:text-3xl md:text-4xl">

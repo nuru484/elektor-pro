@@ -22,6 +22,13 @@ describe('health endpoints', () => {
     expect(second.status).toBe(200);
   });
 
+  it('GET /ready answers the same readiness check', async () => {
+    _resetReadinessForTests();
+    const res = await api().get('/ready');
+    expect(res.status).toBe(200);
+    expect(bodyOf<{ status: string }>(res).status).toBe('ready');
+  });
+
   it('GET /health/db performs a live database check', async () => {
     const res = await api().get('/health/db');
     expect(res.status).toBe(200);

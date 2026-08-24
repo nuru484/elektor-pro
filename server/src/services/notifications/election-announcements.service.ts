@@ -12,6 +12,7 @@ import {
   notificationQueue,
 } from '../../jobs/notifications.queue.js';
 import prisma from '../../lib/prisma.js';
+import { getRequestId } from '../../lib/request-store.js';
 import logger from '../../utils/logger.js';
 import { deliverNotification } from '../../workers/notification.worker.js';
 import { appendAudit } from '../audit/audit.service.js';
@@ -69,6 +70,7 @@ const deliverToAll = async (
   const queue = notificationQueue();
 
   if (queue) {
+    const requestId = getRequestId();
     // A stable job id per recipient makes a repeated announcement a no-op
     // rather than a second text to the entire roll.
     await queue.addBulk(
@@ -79,6 +81,7 @@ const deliverToAll = async (
           link,
           name: voter.name,
           phoneNumber: voter.phoneNumber,
+          requestId,
           subject,
           text: message,
         },
