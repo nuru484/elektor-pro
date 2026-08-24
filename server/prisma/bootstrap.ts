@@ -15,41 +15,24 @@
 // Idempotent: safe to run on every deploy. An existing super-admin is left
 // completely untouched - no password reset, no role change.
 import { Role } from '../generated/prisma/client.js';
-import {
-  DEFAULT_ROLE_CAPABILITIES,
-  EDITABLE_ROLES,
-} from '../src/config/capabilities.js';
 import ENV from '../src/config/env.js';
 import prisma from '../src/lib/prisma.js';
 import { appendAudit } from '../src/services/audit/audit.service.js';
 import { hashPassword } from '../src/utils/password.js';
 import { generateTempPassword } from '../src/utils/temp-password.js';
 import { requireAdminEnv } from './admin-env.js';
-
-const bootstrapOrganization = async (): Promise<void> => {
-  if ((await prisma.organization.count()) > 0) {
-    console.log('• organization already present');
-    return;
-  }
-  const name = process.env.ORGANIZATION_NAME ?? 'Elektor Pro';
-  await prisma.organization.create({ data: { name } });
-  console.log(`organization created (${name})`);
-};
-
-const bootstrapRoleCapabilities = async (): Promise<void> => {
-  if ((await prisma.roleCapability.count()) > 0) {
-    console.log('• role capabilities already configured (left untouched)');
-    return;
-  }
-  await prisma.roleCapability.createMany({
-    data: EDITABLE_ROLES.flatMap((role) =>
-      DEFAULT_ROLE_CAPABILITIES[role].map((capability) => ({ capability, role })),
-    ),
-  });
-  console.log('role capability defaults seeded');
-};
+import { ensureOrganization, ensureRoleCapabilities } from './baseline.js';
 
 const bootstrapSuperAdmin = async (): Promise<void> => {
+  // Explicit opt-in, the same shape the seed uses: the admin identity can sit
+  // in the deploy's secrets permanently while the account is created on
+  // exactly one run. The organization and capability defaults above are NOT
+  // gated - a deployment needs those every release.
+  if (!ENV.ADMIN_BOOTSTRAP_ENABLED) {
+    console.log('• super admin skipped (ADMIN_BOOTSTRAP_ENABLED is not true)');
+    return;
+  }
+
   const existing = await prisma.user.findFirst({
     select: { email: true },
     where: { role: Role.SUPER_ADMIN },
@@ -102,8 +85,8 @@ const bootstrapSuperAdmin = async (): Promise<void> => {
 
 async function main(): Promise<void> {
   console.log(`Bootstrapping Elektor Pro (NODE_ENV=${ENV.NODE_ENV})\n`);
-  await bootstrapOrganization();
-  await bootstrapRoleCapabilities();
+  await ensureOrganization('Elektor Pro');
+  await ensureRoleCapabilities();
   await bootstrapSuperAdmin();
   console.log('Bootstrap complete.');
 }

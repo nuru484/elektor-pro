@@ -13,7 +13,6 @@ import {
   Role,
   VotingMethod,
 } from '../generated/prisma/client.js';
-import { DEFAULT_ROLE_CAPABILITIES, EDITABLE_ROLES } from '../src/config/capabilities.js';
 import { GENESIS_HASH } from '../src/config/constants.js';
 import ENV from '../src/config/env.js';
 import prisma from '../src/lib/prisma.js';
@@ -24,6 +23,7 @@ import { type BallotSelection, castBallot } from '../src/services/voting/voting.
 import { chainHash, generateReceiptCode, sha256, stableStringify } from '../src/utils/crypto.js';
 import { hashPassword } from '../src/utils/password.js';
 import { requireAdminEnv } from './admin-env.js';
+import { ensureOrganization, ensureRoleCapabilities } from './baseline.js';
 
 /**
  * This seed is DEVELOPMENT DATA. It creates demo accounts that all share one
@@ -169,31 +169,11 @@ async function ensureFullContactDetails() {
 }
 
 async function main() {
-  // --- Organization (singleton) ---
-  const existingOrg = await prisma.organization.findFirst();
-  if (!existingOrg) {
-    await prisma.organization.create({
-      data: {
-        name: 'Elektor Pro Demo',
-        supportEmail: 'support@elektorpro.com',
-        supportPhone: '+233 30 000 0000',
-      },
-    });
-    console.log('organization created');
-  }
-
-  // --- Role capability matrix. Seeded ONLY while the table is empty: once a
-  // super-admin has edited grants at runtime, re-running the seed must never
-  // re-add a capability they revoked. ---
-  const roleCapabilityCount = await prisma.roleCapability.count();
-  if (roleCapabilityCount === 0) {
-    await prisma.roleCapability.createMany({
-      data: EDITABLE_ROLES.flatMap((role) =>
-        DEFAULT_ROLE_CAPABILITIES[role].map((capability) => ({ capability, role })),
-      ),
-    });
-    console.log('role capability defaults seeded');
-  }
+  // The organization and the capability matrix are what a deployment cannot
+  // run without, so they belong to the baseline both entry points share -
+  // not to two copies that drift apart.
+  await ensureOrganization('Elektor Pro Demo');
+  await ensureRoleCapabilities();
 
   // --- Accounts. One password for every seeded account (dev data only). ---
   // Only this script and the bootstrap read ADMIN_*, so the assertion lives

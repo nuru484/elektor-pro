@@ -65,6 +65,7 @@ const envSecret = (name: string): string => {
 interface IENV {
   ACCESS_TOKEN_EXPIRY: string;
   ACCESS_TOKEN_SECRET: string;
+  ADMIN_BOOTSTRAP_ENABLED: boolean;
   ADMIN_EMAIL: string | undefined;
   ADMIN_FIRST_NAME: string | undefined;
   ADMIN_LAST_NAME: string | undefined;
@@ -142,6 +143,10 @@ interface IENV {
 const ENV: IENV = {
   ACCESS_TOKEN_EXPIRY: envOptional("ACCESS_TOKEN_EXPIRY", "30m"),
   ACCESS_TOKEN_SECRET: envSecret("ACCESS_TOKEN_SECRET"),
+  /** Gate for the super-admin half of `npm run bootstrap`: false (default)
+   * makes it a no-op. The organization and the capability defaults are not
+   * gated - a deployment needs those on every release. */
+  ADMIN_BOOTSTRAP_ENABLED: envBool("ADMIN_BOOTSTRAP_ENABLED"),
   /**
    * ADMIN_*: read ONLY by `npm run seed` and `npm run bootstrap`, both of
    * which assert what they need. Optional here, and deliberately without
