@@ -26,6 +26,8 @@ export interface NotificationJob {
   /** Election this message belongs to, for auditing and tracing. */
   electionId?: string;
   email: null | string;
+  /** Absolute URL the message points at, when it has somewhere to send them. */
+  link?: string;
   /** Recipient's display name, used in the email body. */
   name: string;
   phoneNumber: null | string;

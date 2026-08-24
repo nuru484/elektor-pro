@@ -7,9 +7,11 @@ import {
   type Prisma,
   Role,
 } from '../../../generated/prisma/client.js';
+import ENV from '../../config/env.js';
 import { takeCredential } from '../../lib/credential-pool.js';
 import { afterCommit } from '../../lib/outbox.js';
 import prisma from '../../lib/prisma.js';
+import { buildCredentialsEmail } from '../../mail/account-emails.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../../middlewares/error-handler.js';
 import { buildMeta, type PaginationParams } from '../../utils/http.js';
 import { validateAndFormatPhone } from '../../utils/validate-phone.js';
@@ -419,20 +421,22 @@ const ensureCandidateAccount = async (
     },
     select: { id: true },
   });
-  // Credential delivery is deferred to AFTER the transaction commits. Inline
-  // it would put a network round-trip on the transaction's critical path:
-  // against a real SMTP relay each send costs seconds, and a bulk import of a
-  // few nominations exhausts the transaction timeout and fails outright.
+  // Credential delivery is queued AFTER the transaction commits. Inline it
+  // would put a network round-trip on the transaction's critical path, and a
+  // bulk import of a few nominations would exhaust the transaction timeout.
   // Deferring also means credentials never go out for a nomination that then
-  // rolls back. Still best-effort: the candidate can always use password
-  // reset, so a failed send must not lose the nomination.
-  const message = `Hello ${firstName || name},\n\nYou have been nominated on Elektor Pro and a candidate account was created for you.\n\nTemporary password: ${temporaryPassword}\n\nSign in with your ${normalEmail ? 'email' : 'phone number'} and this password - you will be asked to set your own password before you can continue.`;
+  // rolls back, and the queue retries a refused send rather than leaving the
+  // candidate with an account they were never told about.
   if (normalEmail) {
     afterCommit(() =>
-      defaultDeps.mail.send({
+      defaultDeps.queueMail.enqueue({
+        ...buildCredentialsEmail(
+          firstName || name,
+          temporaryPassword,
+          `${ENV.FRONTEND_URL.replace(/\/+$/, '')}/login`,
+          { candidate: true, identifier: normalEmail },
+        ),
         email: normalEmail,
-        subject: 'Your Elektor Pro candidate account',
-        text: message,
       }),
     );
   }

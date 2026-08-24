@@ -88,6 +88,8 @@ interface IENV {
   DEMO_SUPER_ADMIN_EMAIL: string;
   /** Voters sign in by voter ID, not email. */
   DEMO_VOTER_ID: string;
+  /** Client origin used in emailed links (password reset, invitations). */
+  EMAIL_LOGO_URL: string | undefined;
   /**
    * Key for data encrypted at rest (TOTP secrets). Separate from the JWT
    * secrets on purpose: were it derived from ACCESS_TOKEN_SECRET, rotating
@@ -106,7 +108,6 @@ interface IENV {
   FROG_API_KEY: string;
   FROG_SENDER_ID: string;
   FROG_USERNAME: string;
-  /** Client origin used in emailed links (password reset, invitations). */
   FRONTEND_URL: string;
   /** Sender for outgoing mail; must be on a Resend-verified domain. */
   MAIL_FROM: string;
@@ -169,6 +170,12 @@ const ENV: IENV = {
     "demo.superadmin@elektorpro.app",
   ),
   DEMO_VOTER_ID: envOptional("DEMO_VOTER_ID", "DEMO-VOTER-001"),
+  /**
+   * Masthead logo in every email, fetched by the recipient's client. Falls
+   * back to the organization's own logo, then the frontend's file - which
+   * only resolves once FRONTEND_URL is a public https origin.
+   */
+  EMAIL_LOGO_URL: envOptional("EMAIL_LOGO_URL"),
   ENCRYPTION_KEY: isProduction
     ? envSecret("ENCRYPTION_KEY")
     : envOptional("ENCRYPTION_KEY") || envRequired("ACCESS_TOKEN_SECRET"),

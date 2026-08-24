@@ -190,6 +190,15 @@ export const makeTestDeps = () => {
         },
       },
       prisma,
+      // Queued mail lands in the same outbox as the direct sends: a test
+      // asking "did the account holder get told?" should not have to care
+      // which side of the queue the email went out on.
+      queueMail: {
+        enqueue: (options: CapturedMail) => {
+          sentMail.push(options);
+          return Promise.resolve();
+        },
+      },
       sms: {
         send: (to: string, message: string) => {
           sentSms.push({ message, to });

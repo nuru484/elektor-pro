@@ -6,6 +6,7 @@
 // always summarized in the audit trail. Callers fire these AFTER their
 // transaction commits - a failed batch never rolls back a status change.
 import { EligibilityMode } from '../../../generated/prisma/client.js';
+import ENV from '../../config/env.js';
 import {
   notificationJobId,
   notificationQueue,
@@ -16,6 +17,9 @@ import { deliverNotification } from '../../workers/notification.worker.js';
 import { appendAudit } from '../audit/audit.service.js';
 
 const BATCH_SIZE = 25;
+
+/** FRONTEND_URL without a trailing slash, so the links below never double up. */
+const siteUrl = (): string => ENV.FRONTEND_URL.replace(/\/+$/, '');
 
 /** Voters who may vote in this election, with a contact channel. */
 const eligibleVotersWithContact = async (election: {
@@ -60,6 +64,7 @@ const deliverToAll = async (
   voters: { email: null | string; id: string; name: string; phoneNumber: null | string }[],
   subject: string,
   message: string,
+  link: string,
 ): Promise<{ attempted: number; failed: number; queued: boolean }> => {
   const queue = notificationQueue();
 
@@ -71,6 +76,7 @@ const deliverToAll = async (
         data: {
           electionId,
           email: voter.email,
+          link,
           name: voter.name,
           phoneNumber: voter.phoneNumber,
           subject,
@@ -93,6 +99,7 @@ const deliverToAll = async (
         await deliverNotification({
           electionId,
           email: voter.email,
+          link,
           name: voter.name,
           phoneNumber: voter.phoneNumber,
           subject,
@@ -124,6 +131,7 @@ export const announceElectionOpened = async (electionId: string): Promise<void> 
       voters,
       `Voting is open: ${election.name}`,
       `Voting is now open for "${election.name}". Cast your ballot before ${closes}.`,
+      `${siteUrl()}/login`,
     );
     await appendAudit(prisma, {
       action: 'election.open_announced',
@@ -145,12 +153,14 @@ export const announceResultsPublished = async (electionId: string): Promise<void
     });
     if (!election) return;
     const voters = await eligibleVotersWithContact(election);
+    const resultsUrl = `${siteUrl()}/results/${election.slug}`;
     const summary = await deliverToAll(
       'results.published',
       electionId,
       voters,
       `Results are out: ${election.name}`,
-      `The results of "${election.name}" have been published. See them at /results/${election.slug}.`,
+      `The results of "${election.name}" have been published. See them at ${resultsUrl}.`,
+      resultsUrl,
     );
     await appendAudit(prisma, {
       action: 'election.results_announced',

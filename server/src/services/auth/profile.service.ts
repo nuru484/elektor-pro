@@ -6,6 +6,7 @@
 // address/number confirms ownership - so nobody can point an account at a
 // contact they don't control.
 import { OtpPurpose } from '../../../generated/prisma/client.js';
+import { buildEmailChangeEmail } from '../../mail/auth-emails.js';
 import {
   BadRequestError,
   ConflictError,
@@ -24,7 +25,17 @@ export interface ProfileUpdateInput {
 }
 
 export const makeProfileService = (
-  d: Pick<AppDeps, 'clock' | 'cloudinary' | 'config' | 'logger' | 'mail' | 'prisma' | 'sms'>,
+  d: Pick<
+    AppDeps,
+    | 'clock'
+    | 'cloudinary'
+    | 'config'
+    | 'logger'
+    | 'mail'
+    | 'prisma'
+    | 'queueMail'
+    | 'sms'
+  >,
 ) => {
   const { clock, prisma } = d;
   const otp = makeOtpService(d);
@@ -97,9 +108,8 @@ export const makeProfileService = (
     });
     const issued = await otp.issue(userId, OtpPurpose.EMAIL_CHANGE);
     await d.mail.send({
+      ...buildEmailChangeEmail(user.firstName, issued.code, issued.ttlMinutes),
       email: newEmail,
-      subject: 'Confirm your new email address',
-      text: `Your Elektor Pro confirmation code is ${issued.code}. It expires in ${issued.ttlMinutes} minutes.`,
     });
     return { email: newEmail, ttlMinutes: issued.ttlMinutes };
   };

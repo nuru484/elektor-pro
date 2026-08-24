@@ -8,6 +8,7 @@ export const QUEUE_NAMES = {
   ELECTION_STATUS: 'election-status',
   EXPORTS: 'exports',
   IMPORTS: 'imports',
+  MAIL: 'mail',
   NOTIFICATIONS: 'notifications',
 } as const;
 

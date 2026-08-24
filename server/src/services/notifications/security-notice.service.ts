@@ -1,10 +1,25 @@
+import type { EmailOptions } from '../../utils/sendMail.js';
 // src/services/notifications/security-notice.service.ts
 //
 // Security notification emails: fired on account-security events (password
-// changed, 2FA toggled, contact changed, new sign-in). Best-effort by design:
-// a mail outage must never fail the security action itself, so every send is
-// caught and logged instead of thrown.
+// changed, 2FA toggled, contact changed, new sign-in).
+//
+// These go on the mail queue rather than out inline. Nobody is waiting on
+// them, so they must never fail the security action that produced them - but
+// they are also the only warning an account holder gets that someone else
+// changed their password, so losing one to a transient provider error is not
+// acceptable either. The queue gives both: the action returns immediately,
+// and delivery retries on its own schedule.
 import type { AppDeps } from '../deps.js';
+
+import {
+  buildEmailChangedEmail,
+  buildNewLoginEmail,
+  buildPasswordChangedEmail,
+  buildPhoneChangedEmail,
+  buildTwoFactorDisabledEmail,
+  buildTwoFactorEnabledEmail,
+} from '../../mail/account-emails.js';
 
 interface NoticeContext {
   ipAddress?: string;
@@ -16,24 +31,16 @@ interface Recipient {
   firstName: string;
 }
 
-const footer =
-  'If this was not you, reset your password immediately and contact your administrator.';
-
-export const makeSecurityNoticeService = (d: Pick<AppDeps, 'logger' | 'mail'>) => {
-  const { logger, mail } = d;
-
-  const send = async (recipient: Recipient, subject: string, lines: string[]): Promise<void> => {
+export const makeSecurityNoticeService = (d: Pick<AppDeps, 'queueMail'>) => {
+  const send = async (
+    recipient: Recipient,
+    build: (name: string) => Omit<EmailOptions, 'email'>,
+  ): Promise<void> => {
     if (!recipient.email) return;
-    try {
-      await mail.send({
-        email: recipient.email,
-        subject,
-        text: `Hi ${recipient.firstName},\n\n${lines.join('\n')}\n\n${footer}\n\n- Elektor Pro`,
-      });
-    } catch (error) {
-      // Best-effort: the security action already succeeded.
-      logger.error({ error, subject }, 'Security notice email failed');
-    }
+    await d.queueMail.enqueue({
+      ...build(recipient.firstName),
+      email: recipient.email,
+    });
   };
 
   const describeDevice = (ctx: NoticeContext): string =>
@@ -42,30 +49,17 @@ export const makeSecurityNoticeService = (d: Pick<AppDeps, 'logger' | 'mail'>) =
 
   return {
     emailChanged: (recipient: Recipient, newEmail: string) =>
-      send(recipient, 'Your email address was changed', [
-        `The email on your Elektor Pro account was changed to ${newEmail}.`,
-      ]),
+      send(recipient, (name) => buildEmailChangedEmail(name, newEmail)),
     newLogin: (recipient: Recipient, ctx: NoticeContext) =>
-      send(recipient, 'New sign-in to your account', [
-        `Your Elektor Pro account was just signed in to from ${describeDevice(ctx)}.`,
-      ]),
+      send(recipient, (name) => buildNewLoginEmail(name, describeDevice(ctx))),
     passwordChanged: (recipient: Recipient) =>
-      send(recipient, 'Your password was changed', [
-        'The password on your Elektor Pro account was just changed.',
-        'All other signed-in devices have been signed out.',
-      ]),
+      send(recipient, (name) => buildPasswordChangedEmail(name)),
     phoneChanged: (recipient: Recipient, newPhone: string) =>
-      send(recipient, 'Your phone number was changed', [
-        `The phone number on your Elektor Pro account was changed to ${newPhone}.`,
-      ]),
+      send(recipient, (name) => buildPhoneChangedEmail(name, newPhone)),
     twoFactorDisabled: (recipient: Recipient) =>
-      send(recipient, 'Two-factor authentication disabled', [
-        'Two-factor authentication was turned OFF for your Elektor Pro account.',
-      ]),
+      send(recipient, (name) => buildTwoFactorDisabledEmail(name)),
     twoFactorEnabled: (recipient: Recipient, method: string) =>
-      send(recipient, 'Two-factor authentication enabled', [
-        `Two-factor authentication (${method}) was turned on for your Elektor Pro account.`,
-      ]),
+      send(recipient, (name) => buildTwoFactorEnabledEmail(name, method)),
   };
 };
 

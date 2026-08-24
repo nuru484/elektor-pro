@@ -27,6 +27,7 @@ initErrorReporting();
 await import('./src/workers/election-status.worker.js');
 await import('./src/workers/auth-maintenance.worker.js');
 await import('./src/workers/notification.worker.js');
+await import('./src/workers/mail.worker.js');
 await import('./src/workers/import.worker.js');
 await import('./src/workers/export.worker.js');
 

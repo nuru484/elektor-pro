@@ -7,10 +7,12 @@
 //
 // `defaultDeps` is the production wiring; controllers import the default-wired
 // singletons, so they need no knowledge of this indirection.
+import type { EmailOptions } from '../utils/sendMail.js';
 import type sendMailFn from '../utils/sendMail.js';
 
 import { cloudinaryService } from '../config/cloudinary.js';
 import ENV from '../config/env.js';
+import { enqueueEmail } from '../jobs/mail.queue.js';
 import { type Clock, systemClock } from '../lib/clock.js';
 import prismaClient from '../lib/prisma.js';
 import { sendSms } from '../services/notifications/sms.service.js';
@@ -31,6 +33,8 @@ export interface AppDeps {
   logger: Logger;
   mail: MailClient;
   prisma: DbClient;
+  /** Durable email: queued with retries, for mail nobody is waiting on. */
+  queueMail: QueuedMailClient;
   sms: SmsClient;
 }
 
@@ -47,6 +51,11 @@ export type Logger = typeof loggerInstance;
 /** Email I/O surface; injected so tests never hit SMTP. */
 export interface MailClient {
   send: typeof sendMailFn;
+}
+
+/** Queued email surface; injected so tests capture jobs instead of enqueuing. */
+export interface QueuedMailClient {
+  enqueue: (options: EmailOptions) => Promise<void>;
 }
 
 /** SMS I/O surface; injected so tests never hit the gateway. */
@@ -69,5 +78,6 @@ export const defaultDeps: AppDeps = {
   logger: loggerInstance,
   mail: { send: sendMail },
   prisma: prismaClient,
+  queueMail: { enqueue: enqueueEmail },
   sms: { send: sendSms },
 };

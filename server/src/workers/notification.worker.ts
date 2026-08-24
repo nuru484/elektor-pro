@@ -17,6 +17,7 @@ import {
   type NotificationJob,
 } from '../jobs/notifications.queue.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
+import { buildAnnouncementEmail } from '../mail/election-emails.js';
 import { defaultDeps } from '../services/deps.js';
 import logger from '../utils/logger.js';
 
@@ -38,9 +39,8 @@ export const deliverNotification = async (
   }
   if (job.email) {
     await deps.mail.send({
+      ...buildAnnouncementEmail(job.name, job.subject, job.text, job.link),
       email: job.email,
-      subject: job.subject,
-      text: `Hello ${job.name},\n\n${job.text}`,
     });
     return 'email';
   }

@@ -3,6 +3,7 @@
 // logged in dev, FROG in live); voters without a phone on record fall back to
 // their email. Factory-built so tests inject a frozen clock + fake channels.
 import { OtpPurpose, Role } from '../../../generated/prisma/client.js';
+import { buildVoterCodeEmail } from '../../mail/election-emails.js';
 import {
   BadRequestError,
   CustomError,
@@ -122,9 +123,8 @@ export const makeVoterAuthService = (
         channel = 'email';
         destinationMasked = maskEmail(voter.email);
         await d.mail.send({
+          ...buildVoterCodeEmail(issued.code, issued.ttlMinutes),
           email: voter.email,
-          subject: 'Your Elektor Pro verification code',
-          text: message,
         });
       } else {
         // Unreachable (guarded above); typed for exhaustiveness.

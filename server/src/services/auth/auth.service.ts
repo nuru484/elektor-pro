@@ -11,6 +11,11 @@ import {
 } from '../../../generated/prisma/client.js';
 import { MAX_FAILED_LOGIN_ATTEMPTS } from '../../config/constants.js';
 import {
+  buildPasswordResetEmail,
+  buildSignInCodeEmail,
+  buildTwoFactorSetupEmail,
+} from '../../mail/auth-emails.js';
+import {
   BadRequestError,
   ConflictError,
   ForbiddenError,
@@ -78,7 +83,10 @@ export interface RequestContext {
 const isPhone = (value: string): boolean => /^[\d\s+\-()]+$/.test(value);
 
 export const makeAuthService = (
-  d: Pick<AppDeps, 'clock' | 'config' | 'logger' | 'mail' | 'prisma' | 'sms'>,
+  d: Pick<
+    AppDeps,
+    'clock' | 'config' | 'logger' | 'mail' | 'prisma' | 'queueMail' | 'sms'
+  >,
 ) => {
   const { clock, config, prisma } = d;
   const otp = makeOtpService(d);
@@ -183,9 +191,8 @@ export const makeAuthService = (
         }
         const issued = await otp.issue(user.id, OtpPurpose.STAFF_LOGIN);
         await d.mail.send({
+          ...buildSignInCodeEmail(user.firstName, issued.code, issued.ttlMinutes),
           email: user.email,
-          subject: 'Your Elektor Pro sign-in code',
-          text: `Your sign-in code is ${issued.code}. It expires in ${issued.ttlMinutes} minutes.`,
         });
       }
       return { method, status: 'two_factor_required', userId: user.id };
@@ -430,9 +437,8 @@ export const makeAuthService = (
     const link = `${config.FRONTEND_URL}/reset-password?token=${token}`;
     if (user.email) {
       await d.mail.send({
+        ...buildPasswordResetEmail(user.firstName, link, PASSWORD_RESET_TTL_MS / 60_000),
         email: user.email,
-        subject: 'Reset your Elektor Pro password',
-        text: `Reset your password using this link (valid for 30 minutes): ${link}`,
       });
     } else if (user.phone) {
       await d.sms.send(user.phone, `Reset your Elektor Pro password: ${link}`);
@@ -608,7 +614,7 @@ export const makeAuthService = (
   /** Begin email-2FA enrollment: send a confirmation code to the email. */
   const requestEmailTwoFactor = async (userId: string): Promise<{ emailMasked: string }> => {
     const user = await prisma.user.findUnique({
-      select: { email: true, twoFactorEnabled: true },
+      select: { email: true, firstName: true, twoFactorEnabled: true },
       where: { id: userId },
     });
     if (!user) throw new NotFoundError('User not found');
@@ -618,9 +624,8 @@ export const makeAuthService = (
     }
     const issued = await otp.issue(userId, OtpPurpose.TWO_FACTOR_EMAIL_ENABLE);
     await d.mail.send({
+      ...buildTwoFactorSetupEmail(user.firstName, issued.code, issued.ttlMinutes),
       email: user.email,
-      subject: 'Confirm email two-factor authentication',
-      text: `Your confirmation code is ${issued.code}. It expires in ${issued.ttlMinutes} minutes.`,
     });
     const [name = '', domain = ''] = user.email.split('@');
     return { emailMasked: `${name.slice(0, 2)}***@${domain}` };

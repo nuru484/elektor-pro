@@ -43,11 +43,16 @@ describe('deliverNotification', () => {
       asDeps(d),
     );
     expect(channel).toBe('email');
-    expect(d.mail.send).toHaveBeenCalledWith({
-      email: 'ama@example.com',
-      subject: 'Voting is open',
-      text: 'Hello Ama,\n\nCast your ballot.',
-    });
+    // The branded shell carries the announcement; the plain-text body stays
+    // the fallback for clients that refuse HTML.
+    expect(d.mail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'ama@example.com',
+        subject: 'Voting is open',
+        template: 'message.ejs',
+        text: 'Hello Ama,\n\nCast your ballot.',
+      }),
+    );
   });
 
   it('reports "none" - not an error - when the voter has no channel', async () => {

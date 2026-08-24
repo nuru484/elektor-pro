@@ -5,12 +5,14 @@ import {
   type Status as UserStatus,
 } from '../../../generated/prisma/client.js';
 import { LIVE_ELECTION_STATUSES } from '../../config/constants.js';
+import ENV from '../../config/env.js';
 // src/services/governance/governance.service.ts
 // Staff/agent/candidate account creation, agent assignments, and capability
 // grants. These account-level actions are super-admin / capability gated and
 // apply directly (not via maker-checker), always audited.
 import { afterCommit } from '../../lib/outbox.js';
 import prisma from '../../lib/prisma.js';
+import { buildCredentialsEmail } from '../../mail/account-emails.js';
 import {
   BadRequestError,
   ConflictError,
@@ -76,15 +78,19 @@ export const createStaffUser = async (
     },
     select: { id: true },
   });
-  // Best-effort credential delivery, and deliberately NOT awaited: a real
-  // SMTP relay costs seconds, and blocking the response on it would make
-  // creating an account feel broken. The account is already committed and the
-  // admin is shown the password, so a failed send loses nothing.
+  // Queued after the transaction commits: the admin does not wait on the
+  // provider, credentials never go out for an account that then rolls back,
+  // and a refused send is retried instead of quietly stranding the new user
+  // with no way in but a password reset.
   afterCommit(() =>
-    defaultDeps.mail.send({
+    defaultDeps.queueMail.enqueue({
+      ...buildCredentialsEmail(
+        input.firstName,
+        temporaryPassword,
+        `${ENV.FRONTEND_URL.replace(/\/+$/, '')}/login`,
+        { identifier: input.email.toLowerCase() },
+      ),
       email: input.email.toLowerCase(),
-      subject: 'Your Elektor Pro account',
-      text: `Hello ${input.firstName},\n\nAn account has been created for you on Elektor Pro.\n\nTemporary password: ${temporaryPassword}\n\nSign in with your email and this password - you will be asked to set your own password before you can continue.`,
     }),
   );
   await appendAudit(prisma, {

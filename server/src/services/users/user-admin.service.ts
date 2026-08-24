@@ -11,6 +11,7 @@ import {
   Role,
   Status,
 } from '../../../generated/prisma/client.js';
+import { buildAdminEmailChangeEmail } from '../../mail/auth-emails.js';
 import {
   BadRequestError,
   ForbiddenError,
@@ -183,9 +184,8 @@ export const makeUserAdminService = (
       await prisma.user.update({ data: { pendingEmail: email }, where: { id: userId } });
       const issued = await otp.issue(userId, OtpPurpose.EMAIL_CHANGE);
       await d.mail.send({
+        ...buildAdminEmailChangeEmail(issued.code, issued.ttlMinutes),
         email,
-        subject: 'Confirm this email for your Elektor Pro account',
-        text: `An administrator is setting this email on an Elektor Pro account. Confirmation code: ${issued.code}. It expires in ${issued.ttlMinutes} minutes.`,
       });
       return { ttlMinutes: issued.ttlMinutes };
     }

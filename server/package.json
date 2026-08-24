@@ -15,7 +15,7 @@
     "format:check": "prettier --check .",
     "dev": "tsx --watch --env-file .env server.ts",
     "start": "node dist/server.js",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json && npm run copy:assets",
     "migrate": "prisma migrate dev",
     "seed": "npx prisma db seed",
     "bootstrap": "tsx prisma/bootstrap.ts",
@@ -24,7 +24,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "migrate:deploy": "prisma migrate deploy",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "copy:assets": "cp -r src/ejs dist/src/ejs",
+    "audit:ci": "node scripts/audit-gate.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
