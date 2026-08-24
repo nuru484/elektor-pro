@@ -62,7 +62,7 @@ export function StatCard({
             <p className="font-mono text-[10px] font-medium tracking-[0.16em] uppercase text-muted-foreground">
               {label}
             </p>
-            <p className="font-display mt-1 text-3xl font-medium tabular-nums [overflow-wrap:anywhere]">
+            <p className="font-display mt-1 text-2xl font-medium tabular-nums [overflow-wrap:anywhere] sm:text-3xl">
               {value}
             </p>
             {hint && (

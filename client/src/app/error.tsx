@@ -11,7 +11,7 @@ export default function ErrorBoundary({
 }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-20 text-center">
-      <h1 className="text-3xl font-medium md:text-4xl">
+      <h1 className="text-2xl font-medium sm:text-3xl md:text-4xl">
         Something didn&apos;t go through.
       </h1>
       <p className="mt-4 max-w-md text-lg leading-relaxed text-muted-foreground">

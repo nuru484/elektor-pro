@@ -37,7 +37,7 @@ export function DataTablePagination<TData>({
   const endItem = Math.min(page * pageSize, totalCount);
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t bg-background px-3 py-2.5 text-sm text-muted-foreground sm:px-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 gap-y-2 border-t bg-background px-3 py-2.5 text-sm text-muted-foreground sm:px-4">
       {/* Rows per page */}
       <div className="flex items-center gap-2">
         <label className="hidden text-xs whitespace-nowrap sm:inline" htmlFor="page-size">
@@ -58,7 +58,7 @@ export function DataTablePagination<TData>({
       </div>
 
       {/* Range + navigation */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <span className="text-xs whitespace-nowrap tabular-nums">
           {startItem.toLocaleString()}–{endItem.toLocaleString()} of{" "}
           {totalCount.toLocaleString()}

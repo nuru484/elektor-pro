@@ -70,7 +70,7 @@ export function Features() {
         </p>
         <h2
           data-reveal
-          className="display mt-5 max-w-[16ch] text-[clamp(2.4rem,5vw,4.5rem)]"
+          className="display mt-5 max-w-[16ch] text-[clamp(2rem,5vw,4.5rem)]"
         >
           Everything an election needs
         </h2>
@@ -102,7 +102,7 @@ export function Features() {
               key={pillar.title}
             >
               <div>
-                <h3 className="display max-w-[12ch] text-[clamp(2rem,3.6vw,3.25rem)]">
+                <h3 className="display max-w-[12ch] text-[clamp(1.75rem,3.6vw,3.25rem)]">
                   {pillar.title}
                 </h3>
                 <p

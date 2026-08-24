@@ -127,7 +127,7 @@ export default function ResultsChartsPage({
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-3xl font-medium [overflow-wrap:anywhere] md:text-4xl">
+          <h1 className="text-2xl font-medium [overflow-wrap:anywhere] sm:text-3xl md:text-4xl">
             {election.name}
           </h1>
           <p className="mt-1.5 text-muted-foreground">Results at a glance</p>

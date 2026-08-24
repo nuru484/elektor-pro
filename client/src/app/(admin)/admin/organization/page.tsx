@@ -132,11 +132,11 @@ function SettingsCard({
           </form>
         ) : (
           <div className="flex items-start justify-between gap-3">
-            <dl className="grid flex-1 gap-4 sm:grid-cols-2">
+            <dl className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
               {fields.map((f) => (
                 <div key={f.name}>
                   <dt className="text-xs text-muted-foreground">{f.label}</dt>
-                  <dd className="mt-0.5 break-words text-sm font-medium">
+                  <dd className="mt-0.5 text-sm font-medium [overflow-wrap:anywhere]">
                     {String(
                       (org as unknown as Record<string, unknown>)[f.name] ?? "",
                     ) || "—"}

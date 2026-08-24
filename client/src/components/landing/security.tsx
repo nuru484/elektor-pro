@@ -89,7 +89,7 @@ export function Security() {
 
           <div className="mt-6 grid gap-12 lg:grid-cols-2 lg:gap-20">
             <div>
-              <h2 className="display max-w-[14ch] text-[clamp(2.4rem,5vw,4.5rem)]">
+              <h2 className="display max-w-[14ch] text-[clamp(2rem,5vw,4.5rem)]">
                 Trust is the whole product
               </h2>
               <p className="mt-7 max-w-md text-lg leading-relaxed text-ink-foreground/75">

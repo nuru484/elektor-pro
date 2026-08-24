@@ -45,7 +45,7 @@ function VoterRow({
     >
       <EntityAvatar name={voter.name} size="size-6" url={voter.profilePicture} />
       <span className="min-w-0 truncate">{voter.name}</span>
-      <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
+      <span className="ml-auto min-w-0 max-w-[45%] shrink-0 truncate font-mono text-xs text-muted-foreground">
         {voter.voterId}
       </span>
       <Plus className="size-3.5 shrink-0 text-muted-foreground" />

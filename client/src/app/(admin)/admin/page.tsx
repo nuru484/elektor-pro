@@ -267,7 +267,7 @@ export default function AdminDashboard() {
             {recentActivity.slice(0, 8).map((a) => (
               <div className="flex items-center gap-3 text-sm" key={a.id}>
                 <span className="size-1.5 shrink-0 rounded-full bg-brand" />
-                <span className="truncate text-muted-foreground">
+                <span className="min-w-0 truncate text-muted-foreground">
                   <span className="font-medium text-foreground">{a.action}</span> · {a.entity}
                 </span>
               </div>

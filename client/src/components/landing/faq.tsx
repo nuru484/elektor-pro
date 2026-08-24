@@ -44,7 +44,7 @@ export function Faq() {
         <div className="lg:sticky lg:top-32 lg:self-start">
           <h2
             data-reveal
-            className="display max-w-[10ch] text-[clamp(2.4rem,5vw,4.5rem)]"
+            className="display max-w-[10ch] text-[clamp(2rem,5vw,4.5rem)]"
           >
             Questions, answered
           </h2>

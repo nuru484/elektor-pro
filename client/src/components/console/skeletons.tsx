@@ -130,7 +130,7 @@ export function MeterListSkeleton({ rows = 4 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i}>
           <div className="flex items-baseline justify-between gap-3">
-            <Skeleton className={cn("h-3.5", widths[i % widths.length])} />
+            <Skeleton className={cn("h-3.5 max-w-full", widths[i % widths.length])} />
             <Skeleton className="h-2.5 w-14 shrink-0" />
           </div>
           <Skeleton className="mt-1.5 h-1.5 w-full" />
@@ -147,7 +147,7 @@ function LinkedRowsSkeleton({ rows = 5 }: { rows?: number }) {
     <div className="divide-y divide-border">
       {Array.from({ length: rows }).map((_, i) => (
         <div className="flex items-center justify-between gap-3 py-3" key={i}>
-          <Skeleton className={cn("h-3.5", widths[i % widths.length])} />
+          <Skeleton className={cn("h-3.5 max-w-full", widths[i % widths.length])} />
           <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
         </div>
       ))}
@@ -325,7 +325,7 @@ export function BorderedListSkeleton({
         <div className="flex items-center gap-3 px-3 py-2.5" key={i}>
           {avatar && <Skeleton className="size-8 shrink-0 rounded-full" />}
           <div className="min-w-0 flex-1">
-            <Skeleton className={cn("h-3.5", widths[i % widths.length])} />
+            <Skeleton className={cn("h-3.5 max-w-full", widths[i % widths.length])} />
             <Skeleton className="mt-1.5 h-2.5 w-24" />
           </div>
           <Skeleton className="h-5 w-14 shrink-0" />

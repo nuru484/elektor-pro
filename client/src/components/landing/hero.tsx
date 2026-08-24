@@ -67,7 +67,7 @@ export function Hero() {
               {/* Each line is a real text node inside its own clipping box,
                   so the heading is still one string to a screen reader while
                   the lines swing up from behind their own edge. */}
-              <h1 className="display mt-6 text-[clamp(2.9rem,6.4vw,5.6rem)]">
+              <h1 className="display mt-6 text-[clamp(2.5rem,6.4vw,5.6rem)]">
                 <span className="line-mask">
                   <span>Run the vote.</span>
                 </span>

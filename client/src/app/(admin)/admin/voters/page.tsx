@@ -188,7 +188,7 @@ export default function VotersPage() {
               <span className="min-w-0 truncate text-sm font-medium">
                 {row.original.name}
               </span>
-              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+              <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
                 {row.original.voterId}
               </span>
             </div>

@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="text-sm font-medium tracking-[0.2em] text-muted-foreground uppercase">
         Error 404
       </p>
-      <h1 className="mt-3 text-3xl font-medium md:text-4xl">
+      <h1 className="mt-3 text-2xl font-medium sm:text-3xl md:text-4xl">
         This page isn&apos;t on the ballot.
       </h1>
       <p className="mt-4 max-w-md text-lg leading-relaxed text-muted-foreground">

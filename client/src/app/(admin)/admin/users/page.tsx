@@ -145,7 +145,7 @@ function CreateUserModal({ onClose, open }: { onClose: () => void; open: boolean
             their own password on first sign-in.
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-center font-mono text-lg tracking-wider">
+            <code className="min-w-0 flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-center font-mono text-lg tracking-wider break-all">
               {tempPassword}
             </code>
             <Button

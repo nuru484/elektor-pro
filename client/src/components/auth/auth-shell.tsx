@@ -83,7 +83,7 @@ export function AuthShell({
 
           <div className="mt-8 lg:mt-0">
             {title && (
-              <h1 className="font-display text-3xl font-semibold md:text-4xl">
+              <h1 className="font-display text-2xl font-semibold sm:text-3xl md:text-4xl">
                 {title}
               </h1>
             )}

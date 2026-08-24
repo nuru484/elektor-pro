@@ -179,7 +179,7 @@ export function TurnoutGauge({
   return (
     <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
       <div className="min-w-0">
-        <p className="font-mono text-4xl font-semibold tabular-nums">{pct}%</p>
+        <p className="font-mono text-3xl font-semibold tabular-nums sm:text-4xl">{pct}%</p>
         <p className="mt-1 text-sm text-muted-foreground">
           {fmt(totalVoted)} of {fmt(totalEligible)} eligible voters cast a
           ballot

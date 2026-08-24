@@ -84,7 +84,7 @@ export function SiteFooter() {
         <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-8 px-5 py-16 sm:flex-row sm:items-center sm:justify-between md:px-8 md:py-20 lg:px-12">
           <h2
             data-reveal
-            className="display max-w-[22ch] text-[clamp(1.9rem,3.4vw,3rem)]"
+            className="display max-w-[22ch] text-[clamp(1.7rem,3.4vw,3rem)]"
           >
             Run an election nobody can dispute.
           </h2>

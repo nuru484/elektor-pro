@@ -155,7 +155,7 @@ function ContactChannel({
               value={value}
             />
           </Field>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={reset} size="sm" type="button" variant="outline">
               Cancel
             </Button>

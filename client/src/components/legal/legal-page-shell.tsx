@@ -30,7 +30,7 @@ export function LegalPageShell({
           <p className="font-mono text-xs font-bold tracking-[0.18em] uppercase text-brand">
             Elektor Pro · Legal
           </p>
-          <h1 className="display mt-3 text-4xl lg:text-5xl">
+          <h1 className="display mt-3 text-3xl sm:text-4xl lg:text-5xl">
             {title}
           </h1>
           <p className="mt-3 mb-10 text-sm text-muted-foreground">

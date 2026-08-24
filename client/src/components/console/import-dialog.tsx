@@ -76,7 +76,7 @@ function ImportBody({
     <div className="space-y-4">
       {/* Stage 1 - the file */}
       <div className="rounded-lg border border-dashed border-border p-4">
-        <p className="text-sm font-medium">{fileName ?? "Choose a CSV or Excel file"}</p>
+        <p className="text-sm font-medium [overflow-wrap:anywhere]">{fileName ?? "Choose a CSV or Excel file"}</p>
         <p className="mt-1 text-xs text-muted-foreground">{columnsHint}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button loading={parsing} onClick={() => fileInput.current?.click()} size="sm" variant="brand">
@@ -285,7 +285,7 @@ export function VoterImportDialog({
                     <li className="px-3 py-1.5" key={row.voterId}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="min-w-0 truncate text-xs font-medium">{row.name}</span>
-                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                        <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
                           {row.voterId}
                         </span>
                       </div>
@@ -402,7 +402,7 @@ export function CandidateImportDialog({
                     <li className="px-3 py-1.5" key={`${row.portfolioId}-${row.name}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="min-w-0 truncate text-xs font-medium">{row.name}</span>
-                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                        <span className="max-w-[45%] shrink-0 truncate text-[11px] text-muted-foreground">
                           {row.portfolioName}
                         </span>
                       </div>

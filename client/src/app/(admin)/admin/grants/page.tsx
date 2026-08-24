@@ -322,7 +322,7 @@ export default function GrantsPage() {
               <span className="min-w-0 truncate text-sm font-medium">
                 {row.original.user.firstName} {row.original.user.lastName}
               </span>
-              <Badge variant="brand">
+              <Badge className="min-w-0 shrink" variant="brand">
                 {capabilityLabel(catalog, row.original.capability)}
               </Badge>
             </div>

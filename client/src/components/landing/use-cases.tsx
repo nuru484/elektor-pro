@@ -31,7 +31,7 @@ export function UseCases() {
       <div className="mx-auto w-full max-w-[100rem] px-5 md:px-8 lg:px-12">
         <h2
           data-reveal
-          className="display max-w-[18ch] text-[clamp(2.4rem,5vw,4.5rem)]"
+          className="display max-w-[18ch] text-[clamp(2rem,5vw,4.5rem)]"
         >
           Built for every kind of body
         </h2>

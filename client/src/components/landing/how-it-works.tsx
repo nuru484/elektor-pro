@@ -134,7 +134,7 @@ export function HowItWorks() {
       <div className="mx-auto w-full max-w-[100rem] px-5 md:px-8 lg:px-12">
         <h2
           data-reveal
-          className="display max-w-[12ch] text-[clamp(2.4rem,5vw,4.5rem)]"
+          className="display max-w-[12ch] text-[clamp(2rem,5vw,4.5rem)]"
         >
           How it works
         </h2>
@@ -151,7 +151,7 @@ export function HowItWorks() {
               className="group grid grid-cols-1 gap-3 border-t border-border py-9 last:border-b sm:grid-cols-[7rem_1fr] sm:gap-8 lg:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1.15fr)]"
               key={step.title}
             >
-              <span className="font-display text-3xl font-medium text-muted-foreground/50 transition-colors group-hover:text-brand md:text-4xl">
+              <span className="font-display text-2xl font-medium text-muted-foreground/50 transition-colors group-hover:text-brand sm:text-3xl md:text-4xl">
                 {(index + 1).toString().padStart(2, "0")}
               </span>
               <h3 className="font-display text-2xl font-medium md:text-3xl">

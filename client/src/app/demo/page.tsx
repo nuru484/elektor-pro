@@ -101,7 +101,7 @@ export default function DemoPage() {
     <main className="mx-auto flex min-h-svh max-w-4xl flex-col justify-center px-6 py-16">
       <Logo className="mb-8" imgSize={36} textClassName="text-xl" />
 
-      <h1 className="text-3xl font-medium md:text-4xl">Try Elektor Pro</h1>
+      <h1 className="text-2xl font-medium sm:text-3xl md:text-4xl">Try Elektor Pro</h1>
       <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
         This is a portfolio demonstration running on sample data. Pick a role
         to sign in instantly - no account, no password. Everything you see is
