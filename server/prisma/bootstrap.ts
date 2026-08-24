@@ -24,6 +24,7 @@ import prisma from '../src/lib/prisma.js';
 import { appendAudit } from '../src/services/audit/audit.service.js';
 import { hashPassword } from '../src/utils/password.js';
 import { generateTempPassword } from '../src/utils/temp-password.js';
+import { requireAdminEnv } from './admin-env.js';
 
 const bootstrapOrganization = async (): Promise<void> => {
   if ((await prisma.organization.count()) > 0) {
@@ -58,7 +59,7 @@ const bootstrapSuperAdmin = async (): Promise<void> => {
     return;
   }
 
-  const email = ENV.ADMIN_EMAIL.toLowerCase().trim();
+  const { email, firstName, lastName, phone } = requireAdminEnv();
   // Generated, never taken from env: an ADMIN_PASSWORD sitting in a
   // deployment's environment is a long-lived shared credential, and this one
   // has to be replaced on first sign-in anyway.
@@ -66,11 +67,11 @@ const bootstrapSuperAdmin = async (): Promise<void> => {
   const user = await prisma.user.create({
     data: {
       email,
-      firstName: ENV.ADMIN_FIRST_NAME,
-      lastName: ENV.ADMIN_LAST_NAME,
+      firstName,
+      lastName,
       mustChangePassword: true,
       password: await hashPassword(temporaryPassword),
-      phone: ENV.ADMIN_PHONE || null,
+      phone: phone || null,
       role: Role.SUPER_ADMIN,
     },
     select: { id: true },

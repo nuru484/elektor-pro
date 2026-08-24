@@ -23,6 +23,7 @@ import { resolveEligiblePortfolios } from '../src/services/voting/eligibility.se
 import { type BallotSelection, castBallot } from '../src/services/voting/voting.service.js';
 import { chainHash, generateReceiptCode, sha256, stableStringify } from '../src/utils/crypto.js';
 import { hashPassword } from '../src/utils/password.js';
+import { requireAdminEnv } from './admin-env.js';
 
 /**
  * This seed is DEVELOPMENT DATA. It creates demo accounts that all share one
@@ -195,13 +196,16 @@ async function main() {
   }
 
   // --- Accounts. One password for every seeded account (dev data only). ---
+  // Only this script and the bootstrap read ADMIN_*, so the assertion lives
+  // here rather than in the env module every process loads.
+  const admin = requireAdminEnv();
   const superAdmin = await upsertUser(
-    ENV.ADMIN_EMAIL,
-    ENV.ADMIN_FIRST_NAME,
-    ENV.ADMIN_LAST_NAME,
+    admin.email,
+    admin.firstName,
+    admin.lastName,
     Role.SUPER_ADMIN,
     SEED_PASSWORD,
-    ENV.ADMIN_PHONE,
+    admin.phone,
   );
   await upsertUser('commission@elektorpro.com', 'Ada', 'Mensah', Role.ADMIN, SEED_PASSWORD, '+233200000002');
   const agent = await upsertUser('agent@elektorpro.com', 'Kojo', 'Asare', Role.AGENT, SEED_PASSWORD, '+233200000003');

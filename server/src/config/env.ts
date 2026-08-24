@@ -65,11 +65,11 @@ const envSecret = (name: string): string => {
 interface IENV {
   ACCESS_TOKEN_EXPIRY: string;
   ACCESS_TOKEN_SECRET: string;
-  ADMIN_EMAIL: string;
-  ADMIN_FIRST_NAME: string;
-  ADMIN_LAST_NAME: string;
-  ADMIN_PASSWORD: string;
-  ADMIN_PHONE: string;
+  ADMIN_EMAIL: string | undefined;
+  ADMIN_FIRST_NAME: string | undefined;
+  ADMIN_LAST_NAME: string | undefined;
+  ADMIN_PASSWORD: string | undefined;
+  ADMIN_PHONE: string | undefined;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
   CLOUDINARY_CLOUD_NAME: string;
@@ -142,11 +142,17 @@ interface IENV {
 const ENV: IENV = {
   ACCESS_TOKEN_EXPIRY: envOptional("ACCESS_TOKEN_EXPIRY", "30m"),
   ACCESS_TOKEN_SECRET: envSecret("ACCESS_TOKEN_SECRET"),
-  ADMIN_EMAIL: envOptional("ADMIN_EMAIL", "admin@elektorpro.com"),
-  ADMIN_FIRST_NAME: envOptional("ADMIN_FIRST_NAME", "Super"),
-  ADMIN_LAST_NAME: envOptional("ADMIN_LAST_NAME", "Admin"),
-  ADMIN_PASSWORD: envOptional("ADMIN_PASSWORD", "ChangeMe123!"),
-  ADMIN_PHONE: envOptional("ADMIN_PHONE", "+233200000000"),
+  /**
+   * ADMIN_*: read ONLY by `npm run seed` and `npm run bootstrap`, both of
+   * which assert what they need. Optional here, and deliberately without
+   * defaults - a fallback password in the environment is a shared credential
+   * nobody chose, and production has no reason to carry these at all.
+   */
+  ADMIN_EMAIL: envOptional("ADMIN_EMAIL"),
+  ADMIN_FIRST_NAME: envOptional("ADMIN_FIRST_NAME"),
+  ADMIN_LAST_NAME: envOptional("ADMIN_LAST_NAME"),
+  ADMIN_PASSWORD: envOptional("ADMIN_PASSWORD"),
+  ADMIN_PHONE: envOptional("ADMIN_PHONE"),
   CLOUDINARY_API_KEY: envOptional("CLOUDINARY_API_KEY"),
   CLOUDINARY_API_SECRET: envOptional("CLOUDINARY_API_SECRET"),
   CLOUDINARY_CLOUD_NAME: envOptional("CLOUDINARY_CLOUD_NAME"),
