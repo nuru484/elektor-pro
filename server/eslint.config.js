@@ -6,7 +6,8 @@ import perfectionist from "eslint-plugin-perfectionist";
 
 export default tseslint.config(
   {
-    ignores: ["**/*.js", "generated/**", "build/**", "dist/**"],
+    // scripts/*.mjs are CI tooling, outside the app's tsconfig project.
+    ignores: ["**/*.js", "generated/**", "build/**", "dist/**", "scripts/**"],
   },
   eslint.configs.recommended,
   tseslint.configs.strictTypeChecked,
