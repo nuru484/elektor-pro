@@ -59,6 +59,15 @@ const bootstrapSuperAdmin = async (): Promise<void> => {
     return;
   }
 
+  // Absent admin identity is not a failure here: this runs as part of the
+  // release command, and a deployment that never intends to bootstrap an
+  // admin should not have its build fail over it.
+  if (!ENV.ADMIN_EMAIL || !ENV.ADMIN_FIRST_NAME || !ENV.ADMIN_LAST_NAME) {
+    console.log(
+      '• bootstrap skipped: set ADMIN_EMAIL, ADMIN_FIRST_NAME and ADMIN_LAST_NAME to create the first super admin',
+    );
+    return;
+  }
   const { email, firstName, lastName, phone } = requireAdminEnv();
   // Generated, never taken from env: an ADMIN_PASSWORD sitting in a
   // deployment's environment is a long-lived shared credential, and this one
