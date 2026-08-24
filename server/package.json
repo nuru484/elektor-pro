@@ -20,7 +20,7 @@
     "migrate:deploy": "node --env-file .env ./node_modules/.bin/prisma migrate deploy",
     "seed": "npx prisma db seed",
     "bootstrap": "tsx prisma/bootstrap.ts",
-    "deploy": "npm ci --include=dev && npm run build && npm run bootstrap",
+    "deploy": "npm ci --include=dev && npm run build",
     "postinstall": "prisma generate",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -91,5 +91,8 @@
   },
   "imports": {
     "#*": "./src/*"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }

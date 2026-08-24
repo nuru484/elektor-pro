@@ -76,13 +76,14 @@ and can be overridden with `SEED_PASSWORD`.
 
 ```bash
 cd server
-npm run deploy   # npm ci --include=dev && npm run build && npm run bootstrap
+npm run deploy   # npm ci --include=dev && npm run build
 npm start        # runs the COMPILED server (dist/), not tsx
 ```
 
 Those are the two Render commands: **Build Command** `npm run deploy`, **Start
-Command** `npm start`. Migrations are NOT part of either - they run from the
-deploy workflow, before Render is allowed to build (see below).
+Command** `npm start`. Neither migrations nor the bootstrap are part of them:
+both run from the deploy workflow, before Render is allowed to build, so the
+platform only ever installs, builds and starts.
 
 ### GitHub secrets the deploy needs
 
