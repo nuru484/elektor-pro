@@ -25,11 +25,19 @@ the only thing that does is this workflow, after CI passes. The pipeline becomes
 
 ```
 push to main
-  -> CI            lint, type-check, build, tests on real Postgres (server + client)
+  -> CI            lint, type-check, migration drift, build, tests with
+                   coverage floors (server + client), production-dependency
+                   audit (server + client)
   -> migrations    prisma migrate deploy against the production database
   -> deploy hook   Render builds and releases the CI-validated commit
   -> health check  GET /health/ready until the new release answers
 ```
+
+CI pins Node from the repository's `.nvmrc`. Coverage floors live in each
+package's `vitest.config.ts`; the audit gate is `npm run audit:ci` in each
+package (`scripts/audit-gate.mjs`, fails on HIGH/CRITICAL advisories in
+production dependencies, empty allowlist). Dependabot opens weekly grouped
+update PRs for `server/`, `client/` and the workflow actions.
 
 If CI fails, no hook is fired and production keeps running the previous release.
 
@@ -143,6 +151,16 @@ RESEND_API_KEY=
 MAIL_FROM="Elektor Pro <no-reply@manuru.dev>"
 
 SENTRY_DSN=
+# Events are tagged with the deployed commit: Render sets RENDER_GIT_COMMIT
+# on its own, so SENTRY_RELEASE only needs setting to override it.
+SENTRY_RELEASE=
+
+# Product analytics. Unset disables PostHog entirely.
+POSTHOG_API_KEY=
+POSTHOG_HOST=https://eu.i.posthog.com
+
+# Optional pino level override (fatal | error | warn | info | debug | trace).
+LOG_LEVEL=
 
 ADMIN_EMAIL=admin@example.org
 ADMIN_FIRST_NAME=Super
@@ -166,8 +184,8 @@ If you must:
 - Use the `production` environment's approval gate (Settings -> Environments ->
   `production` -> required reviewers) so it cannot happen by accident.
 - The app closes HTTP, realtime, workers and the pool in order on `SIGTERM`
-  with its own 35s cap, so a restart drains in-flight ballots rather than being
-  killed mid-transaction.
+  with its own 10s cap (inside Render's 30s grace period), so a restart drains
+  in-flight ballots rather than being killed mid-transaction.
 - Prefer a window when no election is `IN_PROGRESS`.
   `GET /api/v1/elections?status=IN_PROGRESS` answers that in one call.
 
@@ -181,3 +199,9 @@ request.
 `NEXT_PUBLIC_API_URL` is baked in **at build time** and also lands in the CSP's
 `connect-src`, so changing the API's hostname requires a rebuild, not just an
 environment change.
+
+Optional on Vercel: `NEXT_PUBLIC_SENTRY_DSN` (plus `SENTRY_ORG`,
+`SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` for source maps) and
+`NEXT_PUBLIC_POSTHOG_KEY` (plus `NEXT_PUBLIC_POSTHOG_HOST` when not on the EU
+cloud). Sentry events carry `VERCEL_GIT_COMMIT_SHA` as the release; PostHog
+traffic is proxied under `/ingest`. The build passes with all of them unset.

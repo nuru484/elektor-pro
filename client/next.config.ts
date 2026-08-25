@@ -20,6 +20,16 @@ const socketOrigin = apiOrigin.replace(/^http/, 'ws');
 const isDev = process.env.NODE_ENV === 'development';
 
 /**
+ * PostHog ingestion host, proxied under /ingest so the browser only ever
+ * talks to this origin: the CSP connect-src stays closed, and ad blockers
+ * that key on the posthog hostname do not drop events. The static assets
+ * host follows PostHog's naming (eu.i -> eu-assets.i).
+ */
+const posthogHost =
+  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com';
+const posthogAssetsHost = posthogHost.replace('.i.posthog.com', '-assets.i.posthog.com');
+
+/**
  * Content-Security-Policy.
  *
  * Set here, statically, rather than per-request with a nonce. A nonce does
@@ -101,6 +111,13 @@ const nextConfig: NextConfig = {
   },
   // The version banner is free reconnaissance for an attacker.
   poweredByHeader: false,
+  rewrites: () =>
+    Promise.resolve([
+      { destination: `${posthogAssetsHost}/static/:path*`, source: '/ingest/static/:path*' },
+      { destination: `${posthogHost}/:path*`, source: '/ingest/:path*' },
+    ]),
+  // PostHog's endpoints end in a slash; Next would otherwise 308 them away.
+  skipTrailingSlashRedirect: true,
 };
 
 /**

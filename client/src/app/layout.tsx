@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 import { IBM_Plex_Mono, Poppins, Space_Grotesk } from "next/font/google";
 
+import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { BrandingProvider } from "@/components/brand/branding-provider";
 import { SiteBackground } from "@/components/site-background";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -107,6 +108,7 @@ export default async function RootLayout({
         >
           <SiteBackground />
           <ReduxProvider>
+            <PostHogProvider />
             <BrandingProvider branding={branding}>{children}</BrandingProvider>
           </ReduxProvider>
         </ThemeProvider>

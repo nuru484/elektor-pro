@@ -125,3 +125,18 @@ jobs, and live results correct across processes.
 cd server && npm test      # Vitest + Supertest (needs a local Postgres)
 cd client && npm test      # Vitest + Testing Library
 ```
+
+CI runs `npm run test:coverage` in both packages and fails when coverage
+drops below the floors in each `vitest.config.ts`, and `npm run audit:ci`
+fails on a HIGH/CRITICAL advisory in production dependencies.
+
+## Observability
+
+Both packages report errors to Sentry and product events to PostHog only when
+the respective key is set (`SENTRY_DSN` / `POSTHOG_API_KEY` on the API,
+`NEXT_PUBLIC_SENTRY_DSN` / `NEXT_PUBLIC_POSTHOG_KEY` on the client); unset,
+both are no-ops. The API logs with pino (`LOG_LEVEL` overrides the default),
+stamps every request with an `X-Request-Id` that follows it into queue jobs,
+error reports and job logs, and tags Sentry events with the deployed commit.
+Every variable is described in `server/.env.example`, `client/.env.example`
+and `.github/DEPLOY.md`.

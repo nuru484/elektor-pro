@@ -3,6 +3,7 @@ import type { Prisma, Role } from '../../../generated/prisma/client.js';
 // src/services/audit/audit.service.ts
 // Append-only, tamper-evident (hash-chained) audit trail.
 import { GENESIS_HASH } from '../../config/constants.js';
+import { capture } from '../../lib/analytics.js';
 import prisma from '../../lib/prisma.js';
 import { chainHash } from '../../utils/crypto.js';
 
@@ -129,9 +130,30 @@ export const appendAudit = async (
 ): Promise<void> => {
   if (isRootClient(client)) {
     await client.$transaction((tx) => appendAuditInTx(tx, entry));
-    return;
+  } else {
+    await appendAuditInTx(client, entry);
   }
-  await appendAuditInTx(client, entry);
+  trackAudit(entry);
+};
+
+/**
+ * Every audit entry is also a product event: the audit trail already names
+ * each action the system considers significant, so it is the one place to
+ * hook analytics without a second list to keep in sync. Fire-and-forget and
+ * never inside the audit transaction - the chain write must not wait on, or
+ * fail because of, a network call.
+ */
+const trackAudit = (entry: AuditEntryInput): void => {
+  capture({
+    distinctId: entry.actorId,
+    event: entry.action,
+    properties: {
+      actorRole: entry.actorRole ?? null,
+      entity: entry.entity,
+      entityId: entry.entityId ?? null,
+      ...(entry.metadata ?? {}),
+    },
+  });
 };
 
 /**

@@ -7,6 +7,7 @@ import {
   attachWorkerFailureReporting,
   stopWorkers,
 } from './src/jobs/lifecycle.js';
+import { flushAnalytics, initAnalytics } from './src/lib/analytics.js';
 import {
   flushErrorReporting,
   initErrorReporting,
@@ -20,6 +21,8 @@ import logger from './src/utils/logger.js';
 // Before the server starts taking traffic or workers pick up jobs, so no
 // early error goes unreported. No-op when SENTRY_DSN is unset.
 initErrorReporting();
+// Same shape for product analytics: no-op when POSTHOG_API_KEY is unset.
+initAnalytics();
 
 // BullMQ workers run in-process (deliberate, to save a separate dyno). Worker
 // entry modules are imported here; each registers itself with
@@ -76,13 +79,14 @@ const shutdown = async (signal: string, exitCode = 0): Promise<void> => {
     await stopWorkers();
     await closeRateLimitStore();
     await prisma.$disconnect();
-    // Last: give buffered crash/error reports a bounded chance to leave.
-    await flushErrorReporting();
+    // Last: give buffered crash/error reports and events a bounded chance
+    // to leave.
+    await Promise.all([flushErrorReporting(), flushAnalytics()]);
     logger.info('Shutdown complete');
     process.exit(exitCode);
   } catch (error) {
     logger.error(error, 'Error during shutdown');
-    await flushErrorReporting();
+    await Promise.all([flushErrorReporting(), flushAnalytics()]);
     process.exit(1);
   }
 };
