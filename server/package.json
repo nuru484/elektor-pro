@@ -75,7 +75,7 @@
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
-    "@types/node": "^24.13.3",
+    "@types/node": "^26.2.0",
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.21.0",
     "@types/qrcode": "^1.5.6",
