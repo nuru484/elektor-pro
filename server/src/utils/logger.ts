@@ -1,9 +1,10 @@
 // src/utils/logger.ts
-import type { LoggerOptions } from 'pino';
+import type { Logger, LoggerOptions } from 'pino';
 
 import pino from 'pino';
 
 import ENV from '../config/env.js';
+import { getRequestId } from '../lib/request-store.js';
 
 const isProduction = ENV.NODE_ENV === 'production';
 const isTest = ENV.NODE_ENV === 'test';
@@ -73,5 +74,16 @@ const logger = pino({
         },
       }),
 });
+
+/**
+ * A logger bound to the running request (or the job's originating request):
+ * every line carries `requestId`, so a service or worker log links back to
+ * the access-log entry and error report for the same request. Outside any
+ * request it is the plain logger.
+ */
+export const requestLogger = (bindings: Record<string, unknown> = {}): Logger => {
+  const requestId = getRequestId();
+  return logger.child(requestId ? { requestId, ...bindings } : bindings);
+};
 
 export default logger;

@@ -12,7 +12,7 @@ import { createRedisConnection, queuesEnabled } from '../jobs/connection.js';
 import { type ImportJob, importQueue } from '../jobs/imports.queue.js';
 import { registerWorker } from '../jobs/lifecycle.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
-import { getRequestId } from '../lib/request-store.js';
+import { getRequestId, runWithRequestId } from '../lib/request-store.js';
 import {
   failImportBatch,
   processImportBatch,
@@ -44,9 +44,10 @@ if (queuesEnabled()) {
     const worker = registerWorker(
       new Worker<ImportJob>(
         QUEUE_NAMES.IMPORTS,
-        async (job) => {
-          await processImportBatch(job.data.batchId);
-        },
+        (job) =>
+          runWithRequestId(job.data.requestId, async () => {
+            await processImportBatch(job.data.batchId);
+          }),
         {
           // One import at a time: they are write-heavy, and two large ones in
           // parallel would compete for the same connection pool the API needs

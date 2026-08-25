@@ -4,6 +4,9 @@ import type { NextFunction, Request, Response } from 'express';
 import ENV from '../config/env.js';
 import { reportError } from '../lib/error-reporting.js';
 import logger from '../utils/logger.js';
+import { sanitizeErrorData } from '../utils/sanitize.js';
+
+export { sanitizeErrorData };
 
 /**
  * Error severity levels for better logging and monitoring
@@ -67,43 +70,6 @@ export class CustomError extends Error {
  */
 const generateErrorId = (): string => {
   return `err_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
-};
-
-/**
- * Sanitize error data for safe logging and response
- */
-export const sanitizeErrorData = (data: unknown): unknown => {
-  if (!data) return data;
-
-  // Preserve array shape (mapping entries through the sanitizer); treating an
-  // array as a generic object would turn it into { "0": ..., "1": ... }.
-  if (Array.isArray(data)) return data.map(sanitizeErrorData);
-
-  if (typeof data === 'object') {
-    const sanitized: Record<string, unknown> = {};
-
-    // Deep copy and sanitize object properties
-    Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
-      // Skip sensitive fields. Substring matches catch the long credential
-      // names; the exact-name list covers short fields the substring list
-      // can't safely include: `code` carries OTP/2FA guesses and receipt
-      // codes, `otp`/`pin` are credentials wherever they appear.
-      if (
-        ['password', 'token', 'secret', 'auth', 'key', 'credit', 'ssn'].some((k) => key.toLowerCase().includes(k)) ||
-        ['code', 'otp', 'pin'].includes(key.toLowerCase())
-      ) {
-        sanitized[key] = '[REDACTED]';
-      } else if (typeof value === 'object' && value !== null) {
-        sanitized[key] = sanitizeErrorData(value);
-      } else {
-        sanitized[key] = value;
-      }
-    });
-
-    return sanitized;
-  }
-
-  return data;
 };
 
 /**

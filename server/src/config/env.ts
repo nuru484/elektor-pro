@@ -45,6 +45,9 @@ const envEnum = <T extends string>(
 
 const isProduction = (process.env.NODE_ENV ?? "development") === "production";
 
+const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
+type LogLevel = (typeof LOG_LEVELS)[number];
+
 /**
  * Secrets must actually be secret-sized. A short ACCESS_TOKEN_SECRET is a
  * guessable HMAC key, and every session in the system hangs off it, so this
@@ -111,7 +114,7 @@ interface IENV {
   FROG_USERNAME: string;
   FRONTEND_URL: string;
   /** pino level override; empty picks the per-environment default. */
-  LOG_LEVEL: string;
+  LOG_LEVEL: "" | LogLevel;
   /** Sender for outgoing mail; must be on a Resend-verified domain. */
   MAIL_FROM: string;
   NODE_ENV: string;
@@ -123,6 +126,10 @@ interface IENV {
   OTP_MODE: "live" | "mock";
   OTP_TTL_MINUTES: number;
   PORT: number;
+  /** PostHog project key; empty disables product analytics (dev, CI, tests). */
+  POSTHOG_API_KEY: string;
+  /** PostHog ingestion host; the EU cloud unless the project lives elsewhere. */
+  POSTHOG_HOST: string;
   /** Internal callers presenting this via X-Rate-Limit-Bypass skip rate limits. */
   RATE_LIMIT_BYPASS_SECRET: string;
   /**
@@ -142,6 +149,12 @@ interface IENV {
   SENTRY_DSN: string;
   /** Environment tag on tracker events; defaults to NODE_ENV. */
   SENTRY_ENVIRONMENT: string;
+  /**
+   * Release tag on tracker events. Explicit SENTRY_RELEASE wins; otherwise
+   * the commit Render deployed (it sets RENDER_GIT_COMMIT itself); otherwise
+   * events carry no release, which is never a reason to refuse to boot.
+   */
+  SENTRY_RELEASE: string | undefined;
   /** Fraction of requests traced for performance (0 to 1); 0 disables tracing. */
   SENTRY_TRACES_SAMPLE_RATE: number;
 }
@@ -201,7 +214,7 @@ const ENV: IENV = {
   FROG_SENDER_ID: envOptional("FROG_SENDER_ID"),
   FROG_USERNAME: envOptional("FROG_USERNAME"),
   FRONTEND_URL: envOptional("FRONTEND_URL", "http://localhost:3000"),
-  LOG_LEVEL: envOptional("LOG_LEVEL"),
+  LOG_LEVEL: envEnum("LOG_LEVEL", LOG_LEVELS, ""),
   MAIL_FROM: envOptional("MAIL_FROM", "Elektor Pro <no-reply@manuru.dev>"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
   NOTIFICATION_CONCURRENCY: envNumber("NOTIFICATION_CONCURRENCY", 5),
@@ -215,6 +228,8 @@ const ENV: IENV = {
   OTP_TTL_MINUTES: envNumber("OTP_TTL_MINUTES", 10),
   // Default matches .env.example and the client's NEXT_PUBLIC_API_URL fallback.
   PORT: envNumber("PORT", 4040),
+  POSTHOG_API_KEY: envOptional("POSTHOG_API_KEY"),
+  POSTHOG_HOST: envOptional("POSTHOG_HOST", "https://eu.i.posthog.com"),
   RATE_LIMIT_BYPASS_SECRET: envOptional("RATE_LIMIT_BYPASS_SECRET"),
   RATE_LIMIT_SCALE: envNumber("RATE_LIMIT_SCALE", isProduction ? 1 : 1000),
   REDIS_URL: envOptional("REDIS_URL"),
@@ -223,6 +238,7 @@ const ENV: IENV = {
   RESEND_API_KEY: envOptional("RESEND_API_KEY"),
   SENTRY_DSN: envOptional("SENTRY_DSN"),
   SENTRY_ENVIRONMENT: envOptional("SENTRY_ENVIRONMENT", process.env.NODE_ENV ?? "development"),
+  SENTRY_RELEASE: envOptional("SENTRY_RELEASE") || envOptional("RENDER_GIT_COMMIT") || undefined,
   SENTRY_TRACES_SAMPLE_RATE: envNumber("SENTRY_TRACES_SAMPLE_RATE", 0),
 };
 

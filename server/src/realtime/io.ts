@@ -8,6 +8,7 @@ import { Server as SocketServer } from 'socket.io';
 
 import ENV from '../config/env.js';
 import { createRedisConnection } from '../jobs/connection.js';
+import { reportError } from '../lib/error-reporting.js';
 import logger from '../utils/logger.js';
 
 let io: SocketServer | undefined;
@@ -51,16 +52,45 @@ export const initRealtime = (httpServer: HttpServer): SocketServer => {
     }
   }
 
+  // Handshake failures (a rejected origin, a transport the client cannot
+  // negotiate) never reach a socket, so they are only observable here.
+  io.engine.on('connection_error', (error: { code?: number; context?: unknown; message?: string; req?: { url?: string } }) => {
+    logger.warn({ code: error.code, url: error.req?.url }, `Realtime connection error: ${error.message ?? 'unknown'}`);
+    reportError(error, {
+      details: { code: error.code, url: error.req?.url },
+      errorId: `socket_handshake_${error.code ?? 'unknown'}`,
+      layer: 'realtime',
+      severity: 'high',
+    });
+  });
+
   io.on('connection', (socket) => {
+    const log = logger.child({ socketId: socket.id });
+    log.debug({ transport: socket.conn.transport.name }, 'Realtime client connected');
+
     socket.on('election:subscribe', (electionId: unknown) => {
       if (isValidElectionId(electionId)) {
         void socket.join(electionRoom(electionId));
+        log.debug({ room: electionRoom(electionId) }, 'Realtime client joined room');
       }
     });
     socket.on('election:unsubscribe', (electionId: unknown) => {
       if (isValidElectionId(electionId)) {
         void socket.leave(electionRoom(electionId));
+        log.debug({ room: electionRoom(electionId) }, 'Realtime client left room');
       }
+    });
+    socket.on('disconnect', (reason) => {
+      log.debug({ reason, rooms: [...socket.rooms] }, 'Realtime client disconnected');
+    });
+    socket.on('error', (error) => {
+      log.error(error, 'Realtime socket error');
+      reportError(error, {
+        details: { rooms: [...socket.rooms], socketId: socket.id },
+        errorId: `socket_${socket.id}`,
+        layer: 'realtime',
+        severity: 'high',
+      });
     });
   });
 

@@ -11,6 +11,7 @@ import { createRedisConnection, queuesEnabled } from '../jobs/connection.js';
 import { registerWorker } from '../jobs/lifecycle.js';
 import { type MailJob } from '../jobs/mail.queue.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
+import { runWithRequestId } from '../lib/request-store.js';
 import logger from '../utils/logger.js';
 import sendMail from '../utils/sendMail.js';
 
@@ -25,9 +26,10 @@ if (queuesEnabled()) {
     registerWorker(
       new Worker<MailJob>(
         QUEUE_NAMES.MAIL,
-        async (job) => {
-          await deliverEmail(job.data);
-        },
+        (job) =>
+          runWithRequestId(job.data.requestId, async () => {
+            await deliverEmail(job.data);
+          }),
         {
           concurrency: 5,
           connection: connection as unknown as ConnectionOptions,

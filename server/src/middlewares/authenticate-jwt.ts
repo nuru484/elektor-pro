@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import ENV from '../config/env.js';
+import { setRequestUserId } from '../lib/request-store.js';
 import { mustChangePassword } from '../services/auth/password-gate.service.js';
 import { CookieManager } from '../utils/CookieManager.js';
 import { verifyJwtToken } from '../utils/verify-jwt-token.js';
@@ -35,6 +36,9 @@ const authenticateJWT = asyncHandler(async (req: Request, res: Response, next: N
 
     req.user = decodedUser;
     userId = decodedUser.id;
+    // Error reports and analytics for the rest of this request carry the
+    // principal's opaque id and nothing else about them.
+    setRequestUserId(userId);
   } catch (tokenError) {
     // NB: never attach the raw token to the error context - it would end up
     // in logs / the error tracker. The message + code are enough to debug.

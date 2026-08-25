@@ -12,7 +12,7 @@ import { createRedisConnection, queuesEnabled } from '../jobs/connection.js';
 import { type ExportJobData, exportQueue } from '../jobs/exports.queue.js';
 import { registerWorker } from '../jobs/lifecycle.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
-import { getRequestId } from '../lib/request-store.js';
+import { getRequestId, runWithRequestId } from '../lib/request-store.js';
 import {
   failExportJob,
   processExportJob,
@@ -36,9 +36,10 @@ if (queuesEnabled()) {
     const worker = registerWorker(
       new Worker<ExportJobData>(
         QUEUE_NAMES.EXPORTS,
-        async (job) => {
-          await processExportJob(job.data.exportJobId);
-        },
+        (job) =>
+          runWithRequestId(job.data.requestId, async () => {
+            await processExportJob(job.data.exportJobId);
+          }),
         {
           // Rendering a large PDF is CPU-bound and this shares a process with
           // the API; two at once would compete for the event loop that is

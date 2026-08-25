@@ -17,6 +17,7 @@ import {
   type NotificationJob,
 } from '../jobs/notifications.queue.js';
 import { QUEUE_NAMES } from '../jobs/queue-names.js';
+import { runWithRequestId } from '../lib/request-store.js';
 import { buildAnnouncementEmail } from '../mail/election-emails.js';
 import { defaultDeps } from '../services/deps.js';
 import logger from '../utils/logger.js';
@@ -53,7 +54,7 @@ if (queuesEnabled()) {
     registerWorker(
       new Worker<NotificationJob>(
         QUEUE_NAMES.NOTIFICATIONS,
-        async (job) => deliverNotification(job.data),
+        (job) => runWithRequestId(job.data.requestId, () => deliverNotification(job.data)),
         {
           concurrency: NOTIFICATION_CONCURRENCY,
           connection: connection as unknown as ConnectionOptions,

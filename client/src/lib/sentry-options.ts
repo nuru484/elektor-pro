@@ -11,6 +11,9 @@ export const sentryOptions = {
     process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
     process.env.VERCEL_ENV ??
     process.env.NODE_ENV,
+  // The deployed commit, which Vercel sets on its own; absent elsewhere,
+  // and events simply carry no release then.
+  release: process.env.VERCEL_GIT_COMMIT_SHA,
   // Voter and staff identity never leaves the app: no IP, cookies or headers.
   sendDefaultPii: false,
   tracesSampleRate: isProduction ? 0.1 : 0,
