@@ -5,6 +5,19 @@ import { TEST_WORKER_COUNT } from './test/worker-count.js';
 
 export default defineConfig({
   test: {
+    // Floors, not targets: each sits just under the measured level so a
+    // change that drops coverage fails CI while existing code passes. Raise
+    // them as coverage grows; never lower them to get green.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary'],
+      thresholds: {
+        branches: 55,
+        functions: 75,
+        lines: 75,
+        statements: 75,
+      },
+    },
     env: {
       ACCESS_TOKEN_SECRET: 'test_access_secret_0123456789abcdef0123456789abcdef',
       CLOUDINARY_API_KEY: 'test',

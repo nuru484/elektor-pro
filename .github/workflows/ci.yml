@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: server/package-lock.json
 
@@ -87,9 +87,10 @@ jobs:
         run: npm run build
 
       # Integration suite: real HTTP through supertest against real Postgres,
-      # each worker on its own clone of the migrated template.
+      # each worker on its own clone of the migrated template. Coverage floors
+      # live in vitest.config.ts; a drop below them fails here.
       - name: Test
-        run: npm test
+        run: npm run test:coverage
 
   client:
     runs-on: ubuntu-latest
@@ -107,7 +108,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: client/package-lock.json
 
@@ -120,30 +121,35 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
 
+      # Coverage floors live in vitest.config.ts; a drop below them fails here.
       - name: Test
-        run: npm test
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build
 
   # Fails the build on a known HIGH/critical advisory in a production
-  # dependency (see server/scripts/audit-gate.mjs). The tree is clean today; this is
-  # what stops the next one from shipping unnoticed. Dev-only and moderate
-  # advisories do not block, and the wrapper carries an allowlist for
-  # advisories that provably cannot apply here - currently empty, which is the
-  # goal state.
+  # dependency of either package (see <package>/scripts/audit-gate.mjs). The
+  # trees are clean today; this is what stops the next one from shipping
+  # unnoticed. Dev-only and moderate advisories do not block, and the wrapper
+  # carries an allowlist for advisories that provably cannot apply here -
+  # currently empty, which is the goal state.
   security-audit:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [server, client]
     defaults:
       run:
-        working-directory: server
+        working-directory: ${{ matrix.package }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Audit production dependencies
