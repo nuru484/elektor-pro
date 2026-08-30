@@ -321,9 +321,9 @@ function CandidateProfileContent() {
                 url={candidate.profilePicture}
               />
               <div className="min-w-0 w-full">
-                <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere]">
+                <h2 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere]">
                   {candidate.name}
-                </h1>
+                </h2>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
                   {candidate.status && <StatusBadge status={candidate.status} />}
                   {candidate.ballotNumber != null && (

@@ -88,18 +88,21 @@ export default function ElectionWorkspaceLayout({
       {isLoading && <WorkspaceHeaderSkeleton />}
       {isError && <ErrorState message={getApiErrorMessage(error, "Could not load this election")} />}
       {election && (
-        // The name owns the full width (long names wrap over every column);
-        // status + actions sit on their own row beneath it.
+        // The heading and the identity line own the full width (long names
+        // wrap over every column); status + actions sit on their own row
+        // beneath them.
         <div className="space-y-3">
           <div className="min-w-0 space-y-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <BackButton href="/admin/elections" label="Back to elections" />
-              <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
-                {election.name}
+              <h1 className="min-w-0 text-xl font-semibold sm:text-2xl">
+                Election workspace
               </h1>
             </div>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-mono text-xs [overflow-wrap:anywhere]">{election.slug}</span>
+            <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+              <span className="font-medium text-foreground">{election.name}</span>
+              {" · "}
+              <span className="font-mono text-xs">{election.slug}</span>
               {" · "}
               {formatDate(election.startDate)} –{" "}
               {formatDate(election.endDate)}

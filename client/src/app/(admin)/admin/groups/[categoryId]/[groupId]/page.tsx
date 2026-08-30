@@ -120,11 +120,13 @@ export default function GroupDetailPage({
               href={`/admin/groups/${categoryId}`}
               label="Back to the category"
             />
-            <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
-              {group.name}
+            <h1 className="min-w-0 text-xl font-semibold sm:text-2xl">
+              Group details
             </h1>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            <span className="font-medium text-foreground">{group.name}</span>
+            {" · "}
             <span className="font-mono text-xs">{group.code}</span>
             {" · "}
             <Link

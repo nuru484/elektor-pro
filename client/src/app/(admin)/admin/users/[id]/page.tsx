@@ -393,9 +393,9 @@ function UserProfileContent() {
                 onUpload={(file) => updatePicture({ file, id: user.id }).unwrap()}
                 url={user.profilePicture}
               />
-              <h1 className="min-w-0 max-w-full text-xl font-semibold [overflow-wrap:anywhere]">
+              <h2 className="min-w-0 max-w-full text-xl font-semibold [overflow-wrap:anywhere]">
                 {user.firstName} {user.lastName}
-              </h1>
+              </h2>
               <dl className="mt-2 w-full space-y-2.5 border-t border-border pt-4 text-left">
                 <div className="flex items-baseline justify-between gap-3">
                   <dt className="text-xs text-muted-foreground">Two-factor</dt>

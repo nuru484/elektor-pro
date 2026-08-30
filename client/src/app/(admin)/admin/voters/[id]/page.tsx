@@ -285,7 +285,7 @@ function VoterProfileContent() {
                 url={voter.profilePicture}
               />
               <div className="min-w-0">
-                <h1 className="min-w-0 max-w-full text-xl font-semibold [overflow-wrap:anywhere]">{voter.name}</h1>
+                <h2 className="min-w-0 max-w-full text-xl font-semibold [overflow-wrap:anywhere]">{voter.name}</h2>
                 <p className="mt-0.5 font-mono text-sm text-muted-foreground">
                   {voter.voterId}
                 </p>

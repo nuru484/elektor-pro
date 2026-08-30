@@ -260,14 +260,16 @@ export default function CategoryDetailPage({
         <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <BackButton href="/admin/groups" label="Back to groups" />
-            <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
-              {category.name}
+            <h1 className="min-w-0 text-xl font-semibold sm:text-2xl">
+              Category details
             </h1>
             <Badge variant="outline">
               {category.allowMultiple ? "Multiple memberships" : "Single membership"}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            <span className="font-medium text-foreground">{category.name}</span>
+            {" · "}
             <span className="font-mono text-xs">{category.code}</span>
             {" · "}
             {category._count?.groups ?? totalCount} groups
