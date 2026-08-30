@@ -114,37 +114,34 @@ export default function GroupDetailPage({
           <Skeleton className="h-4 w-72" />
         </div>
       ) : (
-        <div className="flex min-w-0 items-start gap-1.5">
-          {/* The negative top margin centres the 40px target on the name's
-              line box rather than on the whole heading block. */}
-          <BackButton
-            className="-mt-1.5 sm:-mt-1"
-            href={`/admin/groups/${categoryId}`}
-            label="Back to the category"
-          />
-          <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 space-y-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <BackButton
+              href={`/admin/groups/${categoryId}`}
+              label="Back to the category"
+            />
             <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
               {group.name}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-mono text-xs">{group.code}</span>
-              {" · "}
-              <Link
-                className="hover:text-brand"
-                href={`/admin/groups/${categoryId}`}
-                title="Open the category"
-              >
-                {group.category?.name ?? "Category"}
-              </Link>
-              {" · "}
-              {totalCount} members
-            </p>
-            {group.description && (
-              <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                {group.description}
-              </p>
-            )}
           </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-mono text-xs">{group.code}</span>
+            {" · "}
+            <Link
+              className="hover:text-brand"
+              href={`/admin/groups/${categoryId}`}
+              title="Open the category"
+            >
+              {group.category?.name ?? "Category"}
+            </Link>
+            {" · "}
+            {totalCount} members
+          </p>
+          {group.description && (
+            <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+              {group.description}
+            </p>
+          )}
         </div>
       )}
 

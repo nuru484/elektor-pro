@@ -50,7 +50,7 @@ export function PageHeader({
   title,
 }: {
   action?: React.ReactNode;
-  /** Set with backLabel to put a back arrow left of the title. */
+  /** Set with backLabel to put a back arrow on the title's row, left of it. */
   backHref?: string;
   backLabel?: string;
   className?: string;
@@ -59,20 +59,16 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="flex min-w-0 items-start gap-1.5">
-        {backHref && backLabel && (
-          // The negative top margin centres the 40px target on the title's
-          // line box rather than on the whole title-plus-description block.
-          <BackButton className="-mt-1 sm:-mt-0.5" href={backHref} label={backLabel} />
-        )}
-        <div className="min-w-0 flex-1 space-y-1">
-          <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
-          {description && (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {description}
-            </p>
-          )}
+      <div className="min-w-0 space-y-1">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {backHref && backLabel && <BackButton href={backHref} label={backLabel} />}
+          <h1 className="min-w-0 text-2xl font-semibold sm:text-3xl">{title}</h1>
         </div>
+        {description && (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        )}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>
