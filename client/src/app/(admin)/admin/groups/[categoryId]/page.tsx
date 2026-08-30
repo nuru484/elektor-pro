@@ -14,6 +14,7 @@ import type { Group } from "@/types/api";
 
 import { RowActionsMenu } from "@/components/console/row-actions";
 import { TableToolbar } from "@/components/console/table-toolbar";
+import { BackButton } from "@/components/ui/back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -256,28 +257,37 @@ export default function CategoryDetailPage({
           <Skeleton className="h-4 w-72" />
         </div>
       ) : (
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
-              {category.name}
-            </h1>
-            <Badge variant="outline">
-              {category.allowMultiple ? "Multiple memberships" : "Single membership"}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            <span className="font-mono text-xs">{category.code}</span>
-            {" · "}
-            {category._count?.groups ?? totalCount} groups
-            {category.allowMultiple
-              ? " · voters may join several groups here"
-              : " · voters join exactly one group here"}
-          </p>
-          {category.description && (
-            <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              {category.description}
+        <div className="flex min-w-0 items-start gap-1.5">
+          {/* The negative top margin centres the 40px target on the name's
+              line box rather than on the whole heading block. */}
+          <BackButton
+            className="-mt-1.5 sm:-mt-1"
+            href="/admin/groups"
+            label="Back to groups"
+          />
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
+                {category.name}
+              </h1>
+              <Badge variant="outline">
+                {category.allowMultiple ? "Multiple memberships" : "Single membership"}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-mono text-xs">{category.code}</span>
+              {" · "}
+              {category._count?.groups ?? totalCount} groups
+              {category.allowMultiple
+                ? " · voters may join several groups here"
+                : " · voters join exactly one group here"}
             </p>
-          )}
+            {category.description && (
+              <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                {category.description}
+              </p>
+            )}
+          </div>
         </div>
       )}
 

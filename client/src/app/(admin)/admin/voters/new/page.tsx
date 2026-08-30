@@ -92,6 +92,8 @@ export default function NewVoterPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        backHref="/admin/voters"
+        backLabel="Back to voters"
         description="Register one voter into their election(s). For many at once, use the bulk import."
         title="Add voter"
       />

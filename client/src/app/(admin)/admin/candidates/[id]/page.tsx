@@ -289,7 +289,12 @@ function CandidateProfileContent() {
 
   return (
     <div className="space-y-6">
-      <PageHeader description="View and manage this candidacy." title="Candidate profile" />
+      <PageHeader
+        backHref="/admin/candidates"
+        backLabel="Back to candidates"
+        description="View and manage this candidacy."
+        title="Candidate profile"
+      />
 
       {/* The ballot shows faces: keep nudging until the photo exists. */}
       {candidate && !candidate.profilePicture && (

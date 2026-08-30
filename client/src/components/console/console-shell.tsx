@@ -6,7 +6,6 @@
 // Role-aware: nav items come from nav-config filtered by the signed-in user's
 // role, and the guard redirects signed-out visitors to the login page.
 import {
-  ArrowLeft,
   Globe,
   LogOut,
   Menu,
@@ -60,25 +59,6 @@ const COLLAPSE_KEY = "ep-sidebar-collapsed";
 const emptySubscribe = () => () => {
   // localStorage only changes through this component in this tab.
 };
-
-/**
- * Back affordance in the top bar: on any /admin subpage (details, creation
- * pages) it links to that section's list, so pages don't stack their own
- * back link above the heading.
- */
-function HeaderBackButton() {
-  const pathname = usePathname();
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] !== "admin" || segments.length < 3) return null;
-  const section = segments[1] ?? "";
-  return (
-    <Button asChild size="icon-sm" variant="ghost">
-      <Link aria-label={`Back to ${section}`} href={`/admin/${section}`}>
-        <ArrowLeft aria-hidden className="size-5" />
-      </Link>
-    </Button>
-  );
-}
 
 const ROLE_LABELS: Record<Role, string> = {
   ACCREDITOR: "Accreditor",
@@ -509,7 +489,6 @@ export function ConsoleShell({
                 {sidebar(false)}
               </SheetContent>
             </Sheet>
-            <HeaderBackButton />
             {/* Desktop: collapse/expand the sidebar. */}
             <Button
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}

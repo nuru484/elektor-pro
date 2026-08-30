@@ -4,8 +4,7 @@
 // is in it (not just a blind "add the whole group"), search the register, or
 // both. Only voters not yet part of this election are offered. Saving
 // returns to the election's Voters tab.
-import { ArrowLeft, Plus, UserRoundPlus, X } from "lucide-react";
-import Link from "next/link";
+import { Plus, UserRoundPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import { toast } from "sonner";
@@ -120,18 +119,12 @@ export default function AddVotersPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          href={`/admin/elections/${electionId}/voters`}
-        >
-          <ArrowLeft className="size-4" /> Back to the roll
-        </Link>
-        <PageHeader
-          description="Pick a group to see its members, search the register, or both. Only voters not yet in this election are offered."
-          title="Add voters"
-        />
-      </div>
+      <PageHeader
+        backHref={`/admin/elections/${electionId}/voters`}
+        backLabel="Back to the roll"
+        description="Pick a group to see its members, search the register, or both. Only voters not yet in this election are offered."
+        title="Add voters"
+      />
 
       <div className="max-w-2xl space-y-5 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-6">
         <Field

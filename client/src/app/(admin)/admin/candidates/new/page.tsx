@@ -71,6 +71,8 @@ export default function NewCandidatePage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        backHref="/admin/candidates"
+        backLabel="Back to candidates"
         description="Nominate a candidate for a portfolio in one of your elections."
         title="Add candidate"
       />

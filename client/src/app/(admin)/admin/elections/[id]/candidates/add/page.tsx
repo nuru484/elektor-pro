@@ -4,8 +4,7 @@
 // in THIS election - the same person contesting again without retyping their
 // details. A few allocatable people are shown right away; the search narrows
 // them down. Saving returns to the election's Candidates tab.
-import { ArrowLeft, Plus, UserRoundPlus, X } from "lucide-react";
-import Link from "next/link";
+import { Plus, UserRoundPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import { toast } from "sonner";
@@ -111,18 +110,12 @@ export default function AllocateCandidatesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          href={`/admin/elections/${electionId}/candidates`}
-        >
-          <ArrowLeft className="size-4" /> Back to candidates
-        </Link>
-        <PageHeader
-          description="Assign people already in the system to a portfolio in this election. Their account carries over, so their candidacy history stays linked."
-          title="Allocate candidates"
-        />
-      </div>
+      <PageHeader
+        backHref={`/admin/elections/${electionId}/candidates`}
+        backLabel="Back to candidates"
+        description="Assign people already in the system to a portfolio in this election. Their account carries over, so their candidacy history stays linked."
+        title="Allocate candidates"
+      />
 
       <div className="max-w-2xl space-y-5 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-6">
         <Field

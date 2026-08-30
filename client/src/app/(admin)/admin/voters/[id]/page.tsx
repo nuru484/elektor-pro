@@ -261,7 +261,12 @@ function VoterProfileContent() {
 
   return (
     <div className="space-y-6">
-      <PageHeader description="View and manage this voter." title="Voter profile" />
+      <PageHeader
+        backHref="/admin/voters"
+        backLabel="Back to voters"
+        description="View and manage this voter."
+        title="Voter profile"
+      />
 
       {isLoading ? (
         <ProfileSkeleton />

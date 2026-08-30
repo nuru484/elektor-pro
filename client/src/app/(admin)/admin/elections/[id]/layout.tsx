@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 import { use } from "react";
 
 import { ElectionStatusControl } from "@/components/elections/status-control";
+import { BackButton } from "@/components/ui/back-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -90,16 +91,25 @@ export default function ElectionWorkspaceLayout({
         // The name owns the full width (long names wrap over every column);
         // status + actions sit on their own row beneath it.
         <div className="space-y-3">
-          <div className="min-w-0 space-y-1">
-            <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
-              {election.name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-mono text-xs [overflow-wrap:anywhere]">{election.slug}</span>
-              {" · "}
-              {formatDate(election.startDate)} –{" "}
-              {formatDate(election.endDate)}
-            </p>
+          <div className="flex min-w-0 items-start gap-1.5">
+            {/* The negative top margin centres the 40px target on the name's
+                line box rather than on the whole name-plus-dates block. */}
+            <BackButton
+              className="-mt-1.5 sm:-mt-1"
+              href="/admin/elections"
+              label="Back to elections"
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <h1 className="min-w-0 text-xl font-semibold [overflow-wrap:anywhere] sm:text-2xl">
+                {election.name}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-mono text-xs [overflow-wrap:anywhere]">{election.slug}</span>
+                {" · "}
+                {formatDate(election.startDate)} –{" "}
+                {formatDate(election.endDate)}
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={election.status} />

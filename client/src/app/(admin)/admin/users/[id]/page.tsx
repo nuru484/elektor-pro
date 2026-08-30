@@ -370,6 +370,8 @@ function UserProfileContent() {
   return (
     <div className="space-y-6">
       <PageHeader
+        backHref="/admin/users"
+        backLabel="Back to users"
         description="View and manage this account."
         title="User profile"
       />
